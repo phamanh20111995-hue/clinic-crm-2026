@@ -7,21 +7,24 @@ class ChatChannel(models.Model):
     channel_type = models.CharField(max_length=10, choices=CHANNEL_TYPES)
     name = models.CharField(max_length=100, blank=True)
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='channels')
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_channels')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Kênh chat'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name or f"Channel #{self.pk}"
 
 
 class Message(models.Model):
-    channel = models.ForeignKey(ChatChannel, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='sent_messages')
-    content = models.TextField(blank=True)
     MESSAGE_TYPES = [
         ('text', 'Text'), ('file', 'File'), ('image', 'Ảnh'),
         ('system', 'Hệ thống'), ('kh_share', 'Chia sẻ KH'), ('hd_share', 'Chia sẻ HĐ'),
     ]
+    channel = models.ForeignKey(ChatChannel, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='sent_messages')
+    content = models.TextField(blank=True)
     message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default='text')
     file = models.FileField(upload_to='chat_files/', blank=True)
     metadata = models.JSONField(default=dict)
@@ -29,5 +32,33 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Tin nhắn'
         ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.sender} → {self.channel}: {self.content[:50]}"
+
+
+class Notification(models.Model):
+    NOTIF_TYPES = [
+        ('kh_checkin', 'KH Check-in'),
+        ('hd_pending_kt', 'HĐ chờ KT duyệt'),
+        ('hd_approved', 'HĐ đã duyệt'),
+        ('hd_rejected', 'HĐ bị từ chối'),
+        ('return_request', 'Hoàn số'),
+        ('absence_alert', 'Vắng mặt'),
+        ('appointment_reminder', 'Nhắc lịch hẹn'),
+        ('general', 'Chung'),
+    ]
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    notif_type = models.CharField(max_length=30, choices=NOTIF_TYPES)
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True)
+    data = models.JSONField(default=dict)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.notif_type} → {self.recipient}: {self.title}"

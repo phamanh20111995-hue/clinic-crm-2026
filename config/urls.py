@@ -5,16 +5,15 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # Auth
-    path('api/auth/', include('apps.accounts.urls')),
-
-    # Apps (Sprint 2+)
-    path('api/customers/', include('apps.customers.urls')),
+    path('api/auth/',         include('apps.accounts.urls')),
+    path('api/customers/',    include('apps.customers.urls')),
+    path('api/calls/',        include('apps.customers.call_urls')),
     path('api/appointments/', include('apps.appointments.urls')),
-    path('api/contracts/', include('apps.contracts.urls')),
-    path('api/attendance/', include('apps.attendance.urls')),
-    path('api/salary/', include('apps.salary.urls')),
-    path('api/chat/', include('apps.chat.urls')),
-    path('api/kpi/', include('apps.kpi.urls')),
+    path('api/rooms/',        include('apps.clinics.urls')),
+    path('api/contracts/',    include('apps.contracts.urls')),
+    path('api/attendance/',   include('apps.attendance.urls')),
+    path('api/salary/',       include('apps.salary.urls')),
+    path('api/chat/',         include('apps.chat.urls')),
+    path('api/kpi/',          include('apps.kpi.urls')),
+    path('api/integrations/', include('apps.integrations.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
