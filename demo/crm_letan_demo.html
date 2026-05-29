@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CRM — Lễ tân</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;background:#eef1f6;color:#1a2233}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:58px;background:#0f2044;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:2px;flex-shrink:0}
+.sb-logo{width:38px;height:38px;background:#b45309;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.sbi{width:46px;height:46px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a7fa8;cursor:pointer;gap:2px}
+.sbi.on{background:#b45309;color:#fff}
+.sbi.off{opacity:.2;cursor:not-allowed}
+.sbi i{font-size:18px}.sbi span{font-size:9px;font-weight:500}
+.sb-sp{flex:1}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+
+/* Subnav */
+.subnav{background:#fff;border-bottom:1px solid #dde3ef;padding:0 14px;display:flex;align-items:center;height:40px;flex-shrink:0;overflow-x:auto;gap:0}
+.subnav::-webkit-scrollbar{display:none}
+.sntab{padding:0 11px;height:40px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;border:none;background:none;flex-shrink:0;transition:color .12s;font-family:inherit;white-space:nowrap}
+.sntab:hover{color:#374151}
+.sntab.on{color:#b45309;border-bottom:2px solid #b45309}
+.sntab i{font-size:13px}
+.sn-badge{background:#dc2626;color:#fff;border-radius:20px;padding:0 6px;font-size:9px;font-weight:700;margin-left:3px}
+.sn-right{margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0}
+
+/* Screens */
+.sc{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0}
+.sc.on{display:flex}
+
+/* Shared */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #dde3ef;background:#fff;color:#374151;font-family:inherit;white-space:nowrap;transition:all .12s}
+.btn i{font-size:13px}
+.btn-p{background:#b45309;color:#fff;border-color:#b45309}
+.btn-g{background:#16a34a;color:#fff;border-color:#16a34a}
+.btn-r{background:#dc2626;color:#fff;border-color:#dc2626}
+.cnt{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border:1px solid #dde3ef;border-radius:10px;overflow:hidden}
+.card-hd{padding:9px 14px;border-bottom:1px solid #eef1f6;display:flex;align-items:center;justify-content:space-between;background:#f8fafc;flex-shrink:0}
+.card-hd-l{font-size:12px;font-weight:600;color:#0f2044;display:flex;align-items:center;gap:6px}
+.bdg{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;white-space:nowrap}
+.b-ok{background:#dcfce7;color:#15803d}
+.b-warn{background:#fef9c3;color:#854d0e}
+.b-err{background:#fee2e2;color:#991b1b}
+.b-blue{background:#dbeafe;color:#1e40af}
+.b-purple{background:#ede9fe;color:#5b21b6}
+.b-gray{background:#f1f5f9;color:#475569}
+.b-tv{background:#ede9fe;color:#5b21b6}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.fg label{font-size:10px;font-weight:600;color:#64748b}
+.fg select,.fg input{border:1px solid #dde3ef;border-radius:7px;padding:6px 10px;font-size:12px;font-family:inherit;outline:none;background:#fff;width:100%;transition:border-color .12s}
+.fg select:focus,.fg input:focus{border-color:#b45309}
+
+/* Layout 2 cột */
+.two-col{display:grid;grid-template-columns:1fr 320px;gap:10px;flex:1;overflow:hidden;padding:12px 14px;min-height:0}
+.col-scroll{overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+
+/* Bộ lọc */
+.filter-bar{background:#fff;border-bottom:1px solid #dde3ef;padding:6px 14px;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto}
+.filter-bar::-webkit-scrollbar{display:none}
+.fi{border:1px solid #dde3ef;border-radius:7px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none;background:#fff;height:28px;transition:border-color .12s;cursor:pointer}
+.fi:focus,.fi:hover{border-color:#b45309}
+.fi-search{padding-left:26px;width:160px;cursor:text}
+.fi-sep{width:1px;height:18px;background:#dde3ef;flex-shrink:0}
+.tag-row{background:#f8fafc;border-bottom:1px solid #eef1f6;padding:5px 14px;display:flex;align-items:center;gap:5px;overflow-x:auto;flex-shrink:0}
+.tag-row::-webkit-scrollbar{display:none}
+.tag{padding:3px 10px;border-radius:20px;font-size:9px;font-weight:600;cursor:pointer;border:1.5px solid transparent;white-space:nowrap;font-family:inherit;transition:all .12s}
+.tag.on{font-weight:700;box-shadow:0 0 0 1.5px currentColor}
+
+/* KH list */
+.kh-row{display:flex;align-items:center;gap:9px;padding:9px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .1s}
+.kh-row:hover{background:#fef9f0}
+.kh-row.sel{background:#fef9f0;border-left:3px solid #b45309}
+.kh-row:last-child{border-bottom:none}
+.kh-row.urgent{background:#fef2f2}
+.kh-row.hidden{display:none!important}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+
+/* Staff card */
+.staff-card{border-radius:9px;padding:10px 11px;border:2px solid transparent;cursor:pointer;transition:all .14s;position:relative}
+.staff-card:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.staff-card.free{background:#f0fdf4;border-color:#16a34a}
+.staff-card.busy{background:#fef2f2;border-color:#dc2626}
+.staff-card.soon{background:#fef9c3;border-color:#ca8a04}
+.staff-card.sel-staff{box-shadow:0 0 0 3px rgba(180,83,9,.45)!important}
+.staff-name{font-size:11px;font-weight:700}
+.staff-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-free{background:#16a34a}.dot-busy{background:#dc2626}.dot-soon{background:#ca8a04}
+.staff-info{font-size:10px;margin-top:4px;line-height:1.5}
+.timer-badge{position:absolute;top:7px;right:8px;border-radius:5px;padding:1px 6px;font-size:9px;font-weight:600}
+.mini-prog{height:4px;border-radius:4px;background:#f1f5f9;margin-top:6px;overflow:hidden}
+.mini-prog-f{height:100%;border-radius:4px}
+
+/* Stat */
+.stat{background:#fff;border:1px solid #dde3ef;border-radius:9px;padding:11px 13px}
+.stat .lbl{font-size:10px;color:#94a3b8;margin-bottom:4px}
+.stat .val{font-size:19px;font-weight:700}
+.stat .sub{font-size:10px;color:#94a3b8;margin-top:2px}
+
+/* Action panel */
+.act-panel{padding:12px 14px;display:flex;flex-direction:column;gap:9px}
+
+/* Info box */
+.ib{border-radius:8px;padding:8px 12px;font-size:10px;line-height:1.7;display:flex;gap:6px}
+.ib i{font-size:13px;flex-shrink:0;margin-top:2px}
+.ib-amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.ib-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.ib-green{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.ib-red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.ib-purple{background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl thead th{background:#f8fafc;padding:7px 11px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6;white-space:nowrap}
+.tbl thead th.r{text-align:right}
+.tbl tbody td{padding:7px 11px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.tbl tbody td.r{text-align:right}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tfoot td{padding:7px 11px;font-weight:700;background:#f8fafc;border-top:2px solid #fde68a}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:14px;padding:20px;width:480px;max-height:92vh;overflow-y:auto}
+.modal-hd{font-size:14px;font-weight:700;color:#0f2044;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.modal-ft{display:flex;justify-content:flex-end;gap:7px;margin-top:14px;padding-top:12px;border-top:1px solid #eef1f6}
+.info-row{display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px solid #f8fafc}
+.info-row:last-child{border-bottom:none}
+
+/* Tua table */
+.luong-row{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid #f8fafc}
+.luong-row:last-child{border-bottom:none}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+
+/* ════════════════════════════════════
+   RESPONSIVE — Mobile first
+   Breakpoint: <= 768px = mobile
+════════════════════════════════════ */
+
+/* Ẩn sidebar trên mobile, dùng bottom nav */
+@media (max-width: 768px) {
+
+  /* Layout chính */
+  .app { flex-direction: column; }
+  
+  .sidebar {
+    display: none !important;
+  }
+
+  .main {
+    padding-bottom: 56px; /* chỗ cho bottom nav */
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 0 10px;
+    height: 50px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .topbar .top-appname { font-size: 12px; }
+  .topbar .top-sep { display: none; }
+  .topbar .top-mod {
+    display: none;
+  }
+  .topbar .top-user .top-uname { display: none; }
+  .back-btn span { display: none; }
+  .back-btn { padding: 4px 7px; }
+
+  /* Subnav — scroll ngang */
+  .subnav, .modnav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 6px;
+    scrollbar-width: none;
+  }
+  .modnav { height: auto; flex-wrap: nowrap; }
+  .mnbtn { font-size: 9px; padding: 5px 7px; }
+  .sntab { font-size: 10px; padding: 0 9px; }
+
+  /* Filter bar — scroll ngang */
+  .filter-bar, .crm-filter-bar {
+    padding: 5px 10px;
+    gap: 5px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fi, .crm-fi { height: 30px; font-size: 11px; }
+  .fi-search, .crm-fi-search { width: 130px; }
+
+  /* Content area */
+  .cnt { padding: 10px; gap: 8px; }
+
+  /* Stat grids — 2 cột trên mobile */
+  .stat-row,
+  [style*="grid-template-columns:repeat(4"],
+  [style*="grid-template-columns:repeat(5"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  [style*="grid-template-columns:repeat(3"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* 2 cột → 1 cột */
+  .g2, .g3, .g4 {
+    grid-template-columns: 1fr !important;
+  }
+  [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Cards */
+  .card { border-radius: 8px; }
+  .card-hd { padding: 8px 11px; }
+  .card-hd-l { font-size: 11px; }
+
+  /* Table — scroll ngang */
+  .card > table,
+  .card > div > table,
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl { font-size: 10px; min-width: 500px; }
+  .tbl thead th, .tbl tbody td { padding: 6px 8px; }
+
+  /* Two-col layout → 1 cột */
+  .two-col {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto;
+    grid-template-rows: auto auto;
+  }
+
+  /* Data rows */
+  .data-row { padding: 8px 10px; gap: 8px; }
+  .data-row .av { width: 30px; height: 30px; font-size: 9px; }
+
+  /* Modal — full screen trên mobile */
+  .modal-bg { align-items: flex-end; }
+  .modal, .modal-wide {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 14px 14px 0 0 !important;
+    max-height: 92vh;
+    padding: 16px;
+  }
+
+  /* Stat vals */
+  .stat .val { font-size: 18px; }
+  .stat { padding: 9px 11px; }
+
+  /* Buttons */
+  .btn { padding: 5px 10px; font-size: 10px; }
+  .btn-p, .btn-g, .btn-r { padding: 6px 12px; }
+
+  /* KQ modal lần gọi chips */
+  #lan-wrap { gap: 4px; }
+  .lan-chip { padding: 3px 8px; font-size: 9px; }
+
+  /* Chat */
+  .chat-right { display: none !important; }
+  .chat-left { width: 240px; }
+
+  /* BS Mobile đã responsive sẵn */
+}
+
+/* ── BOTTOM NAV (chỉ mobile) ── */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    background: #0f2044;
+    border-top: 1px solid rgba(255,255,255,.1);
+    z-index: 100;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+  }
+}
+/* Ẩn bottom nav trên desktop */
+.bottom-nav { display: none; }
+
+.bn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #5a7fa8;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: all .12s;
+  flex: 1;
+}
+.bn-item.on { color: #60a5fa; }
+.bn-item i { font-size: 20px; }
+.bn-item span { font-size: 8px; font-weight: 500; white-space: nowrap; }
+.bn-badge {
+  position: absolute;
+  top: 2px; right: calc(50% - 16px);
+  background: #dc2626; color: #fff;
+  border-radius: 20px; padding: 0 5px;
+  font-size: 8px; font-weight: 700;
+}
+
+
+@media (max-width: 768px) {
+  .topbar { padding: 0 8px; height: 48px; gap: 5px; }
+  .top-right .btn span { display: none; }
+  .cnt { padding: 8px 10px; }
+  .stat-row { grid-template-columns: 1fr 1fr !important; gap: 6px; }
+  /* Sơ đồ phòng — scroll ngang */
+  .room-grid { 
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+  }
+  .room-card { min-width: 140px; }
+  /* Hàng chờ */
+  .data-row { padding: 8px 10px; }
+  .modal-bg { align-items: flex-end; }
+  .modal { border-radius: 14px 14px 0 0 !important; }
+}
+</style>
+<style id="crm-filter-inline">
+/* CRM Filter Component - Inline */
+.crm-filter-bar{background:#fff;border-bottom:1px solid #dde3ef;padding:6px 14px;display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;flex-wrap:nowrap}
+.crm-filter-bar::-webkit-scrollbar{display:none}
+.crm-fi{border:1px solid #dde3ef;border-radius:7px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none;background:#fff;height:28px;cursor:pointer;transition:border-color .12s;white-space:nowrap;flex-shrink:0}
+.crm-fi:hover,.crm-fi:focus{border-color:#b45309}
+.crm-fi-search{padding-left:26px;width:160px;cursor:text}
+.crm-fi-time{font-weight:500;min-width:120px}
+.crm-fi-sep{width:1px;height:18px;background:#dde3ef;flex-shrink:0}
+.crm-fi-reset{border:1px solid #dde3ef;border-radius:7px;padding:0 10px;font-size:10px;font-family:inherit;cursor:pointer;background:#fff;color:#64748b;height:28px;display:flex;align-items:center;gap:4px;flex-shrink:0;transition:all .12s;white-space:nowrap}
+.crm-fi-reset:hover{border-color:#dc2626;color:#dc2626;background:#fef2f2}
+.crm-fi-count{font-size:10px;color:#94a3b8;white-space:nowrap;margin-left:4px;flex-shrink:0}
+.crm-tag-bar{background:#f8fafc;border-bottom:1px solid #eef1f6;padding:5px 14px;display:flex;align-items:center;gap:5px;overflow-x:auto;flex-shrink:0}
+.crm-tag-bar::-webkit-scrollbar{display:none}
+.crm-tag-label{font-size:9px;color:#94a3b8;font-weight:600;white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
+.crm-tag{padding:3px 10px;border-radius:20px;font-size:9px;font-weight:600;cursor:pointer;border:1.5px solid transparent;white-space:nowrap;font-family:inherit;transition:all .12s;background:none}
+.crm-tag.on{box-shadow:0 0 0 1.5px currentColor;font-weight:700}
+.crm-time-wrap{position:relative;flex-shrink:0}
+.crm-custom-range{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #dde3ef;border-radius:8px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.1);z-index:100;gap:6px;align-items:center;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="sidebar">
+  <div class="sb-logo"><i class="ti ti-door-enter" style="font-size:19px;color:#fff"></i></div>
+  <div class="sbi on"><i class="ti ti-door-enter"></i><span>Lễ tân</span></div>
+  <div class="sbi off"><i class="ti ti-users"></i><span>KH</span></div>
+  <div class="sbi off"><i class="ti ti-chart-bar"></i><span>KPI</span></div>
+  <div class="sb-sp"></div>
+  <div class="sbi"><i class="ti ti-bell"></i></div>
+  <div class="sbi"><i class="ti ti-user-circle"></i></div>
+</div>
+
+<div class="main">
+
+<!-- SUBNAV -->
+<div class="subnav">
+  <button class="sntab on" id="sntab-homnay" onclick="goSc('homnay')"><i class="ti ti-calendar-today"></i> Hôm nay <span class="sn-badge">7</span></button>
+  <button class="sntab" id="sntab-so-do" onclick="goSc('so-do')"><i class="ti ti-layout-grid"></i> Sơ đồ BS/KTV</button>
+  <button class="sntab" id="sntab-tua" onclick="goSc('tua')"><i class="ti ti-coin"></i> Chia tua <span class="sn-badge" style="background:#5b21b6">3</span></button>
+  <button class="sntab" id="sntab-anh" onclick="goSc('anh')"><i class="ti ti-camera"></i> Ảnh điều trị</button>
+  <button class="sntab" id="sntab-lich" onclick="goSc('lich')"><i class="ti ti-calendar-week"></i> Lịch tuần</button>
+  <div class="sn-right">
+    <span id="clock" style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;border-radius:6px;padding:3px 9px">14:35</span>
+    <div style="font-size:10px;color:#b45309;background:#fef9f0;border:1px solid #fde68a;border-radius:6px;padding:3px 9px">LT001 · Phạm T. Hoa</div>
+  </div>
+</div>
+
+<!-- ══ HÔM NAY ══ -->
+<div class="sc on" id="sc-homnay">
+
+  <!-- TOPBAR: quick check + walk-in -->
+  <div style="background:#fff;border-bottom:1px solid #dde3ef;padding:6px 14px;display:flex;align-items:center;gap:7px;flex-shrink:0">
+    <span style="font-size:10px;color:#64748b;background:#f1f5f9;border-radius:5px;padding:3px 8px;white-space:nowrap;flex-shrink:0">
+      <i class="ti ti-git-branch" style="font-size:11px"></i> 2 giai đoạn: Tư vấn → Chốt → Phân phòng ĐT
+    </span>
+    <div style="flex:1"></div>
+    <!-- Quick SĐT check -->
+    <div style="position:relative;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:0;background:#fff;border:1px solid #dde3ef;border-radius:7px;overflow:hidden">
+        <i class="ti ti-search" style="font-size:13px;color:#94a3b8;padding:0 7px"></i>
+        <input id="quick-sdt" type="tel" placeholder="SĐT — kiểm tra trong hệ thống..."
+          style="border:none;outline:none;font-size:11px;font-family:inherit;width:175px;padding:5px 4px;color:#374151"
+          onkeydown="if(event.key==='Enter')quickCheck()"/>
+        <button onclick="quickCheck()" style="background:#0f2044;color:#fff;border:none;padding:5px 11px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;height:100%;white-space:nowrap">Check</button>
+      </div>
+      <div id="quick-result" style="display:none;position:absolute;top:calc(100% + 5px);right:0;background:#fff;border:1px solid #dde3ef;border-radius:9px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100;min-width:300px;overflow:hidden"></div>
+    </div>
+    <button class="btn btn-p" onclick="showM('m-walkin')"><i class="ti ti-plus"></i> Walk-in</button>
+  </div>
+
+  <!-- BỘ LỌC -->
+  <div class="crm-filter-bar">
+    <div style="position:relative;flex-shrink:0">
+      <i class="ti ti-search" style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:12px;color:#94a3b8;pointer-events:none"></i>
+      <input class="crm-fi crm-fi-search" id="f-search" placeholder="Tên, SĐT..." oninput="applyFilter()"/>
+    </div>
+    <!-- Lọc thời gian -->
+    <div style="position:relative;flex-shrink:0" class="crm-time-wrap">
+      <select class="crm-fi crm-fi-time" id="f-time-main" onchange="onTimeMainChange(this)">
+        <option value="">⏱ Thời gian</option>
+        <option value="today">Hôm nay</option>
+        <option value="yesterday">Hôm qua</option>
+        <option value="week">Tuần này</option>
+        <option value="lastweek">Tuần trước</option>
+        <option value="month">Tháng này</option>
+        <option value="lastmonth">Tháng trước</option>
+        <option value="quarter">Quý này</option>
+        <option value="year">Năm nay</option>
+        <option value="custom">Tuỳ chọn...</option>
+      </select>
+      <div id="f-time-range" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #dde3ef;border-radius:8px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.1);z-index:100;display:none;gap:6px;align-items:center;white-space:nowrap">
+        <input type="date" style="border:1px solid #dde3ef;border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit;outline:none"/>
+        <span style="font-size:11px;color:#94a3b8">→</span>
+        <input type="date" style="border:1px solid #dde3ef;border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit;outline:none"/>
+        <button onclick="document.getElementById('f-time-range').style.display='none'" style="border:none;background:#0f2044;color:#fff;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;font-family:inherit">Áp dụng</button>
+      </div>
+    </div>
+    <div class="crm-fi-sep"></div>
+    <select class="crm-fi" id="f-status" onchange="applyFilter()">
+      <option value="">Tất cả trạng thái</option>
+      <option value="dang-dt">🔴 Đang điều trị</option>
+      <option value="dang-tv">🟣 Đang tư vấn</option>
+      <option value="cho-phan">⚠️ Chờ phân công</option>
+      <option value="chua-den">⏳ Chưa đến</option>
+      <option value="da-ve">✓ Đã về</option>
+    </select>
+    <select class="crm-fi" id="f-nguon" onchange="applyFilter()">
+      <option value="">Tất cả nguồn</option>
+      <option value="facebook">📘 Facebook</option>
+      <option value="tiktok">🎵 TikTok</option>
+      <option value="zalo">💬 Zalo</option>
+      <option value="google">🗺️ Google / Maps</option>
+      <option value="instagram">📸 Instagram</option>
+      <option value="gioi-thieu">👥 Giới thiệu</option>
+      <option value="vanglai">🚶 Vãng lai</option>
+    </select>
+    <select class="crm-fi" id="f-dv" onchange="applyFilter()">
+      <option value="">Tất cả DV</option>
+      <option value="seo">SEO rỗ</option>
+      <option value="mun">Điều trị mụn</option>
+      <option value="tre-hoa">Trẻ hoá da</option>
+      <option value="implant">Implant</option>
+      <option value="nieng">Niềng răng</option>
+    </select>
+    <select class="crm-fi" id="f-bs" onchange="applyFilter()">
+      <option value="">Tất cả BS/KTV</option>
+      <option value="bs-kien">BS KIÊN</option>
+      <option value="bs-hoan">BS HOÀN</option>
+      <option value="bs-hung">BS HƯNG</option>
+      <option value="ktv-lan">KTV Lan</option>
+      <option value="ktv-ha">KTV Hà</option>
+    </select>
+    <select class="crm-fi" id="f-time" onchange="applyFilter()">
+      <option value="">Tất cả giờ</option>
+      <option value="sang">☀️ Sáng 8-12h</option>
+      <option value="chieu">🌤 Chiều 12-17h</option>
+      <option value="toi">🌙 Tối 17-20h</option>
+    </select>
+    <div class="crm-fi-sep"></div>
+    <button onclick="resetFilter()" class="btn" style="height:28px;font-size:10px;padding:0 9px"><i class="ti ti-x" style="font-size:11px"></i> Xoá lọc</button>
+    <span id="f-count" style="font-size:10px;color:#94a3b8;white-space:nowrap;margin-left:4px"></span>
+  </div>
+
+  <!-- TAG NHANH -->
+  <div class="crm-tag-bar">
+    <span style="font-size:9px;color:#94a3b8;font-weight:600;white-space:nowrap">LỌC NHANH:</span>
+    <button class="crm-tag on" id="tag-all" onclick="setTag('all')" style="background:#f1f5f9;color:#475569">Tất cả (7)</button>
+    <button class="crm-tag" id="tag-dang-dt" onclick="setTag('dang-dt')" style="background:#fee2e2;color:#991b1b">🔴 Đang ĐT (3)</button>
+    <button class="crm-tag" id="tag-dang-tv" onclick="setTag('dang-tv')" style="background:#ede9fe;color:#5b21b6">🟣 Tư vấn (1)</button>
+    <button class="crm-tag" id="tag-cho-phan" onclick="setTag('cho-phan')" style="background:#fee2e2;color:#dc2626">⚠️ Chờ phân (1)</button>
+    <button class="crm-tag" id="tag-chua-den" onclick="setTag('chua-den')" style="background:#f1f5f9;color:#475569">⏳ Chưa đến (2)</button>
+    <button class="crm-tag" id="tag-da-ve" onclick="setTag('da-ve')" style="background:#dcfce7;color:#15803d">✓ Đã về (1)</button>
+  </div>
+
+  <!-- 2 CỘT CHÍNH -->
+  <div class="two-col">
+    <!-- Cột trái: danh sách KH -->
+    <div class="col-scroll">
+      <!-- Stat -->
+      <div class="g4">
+        <div class="stat" style="border-color:#b45309"><div class="lbl">Tổng KH hôm nay</div><div class="val" style="color:#b45309">7</div><div class="sub">Tele hẹn + Walk-in</div></div>
+        <div class="stat"><div class="lbl">Đang điều trị</div><div class="val" style="color:#dc2626">3</div><div class="sub">BS HOÀN · KIÊN · HƯNG</div></div>
+        <div class="stat"><div class="lbl">Đang tư vấn</div><div class="val" style="color:#5b21b6">1</div><div class="sub">TV1 · S001 + BS KIÊN</div></div>
+        <div class="stat"><div class="lbl">Chờ phân công</div><div class="val" style="color:#854d0e">1</div><div class="sub">Cần xử lý ngay</div></div>
+      </div>
+
+      <!-- Danh sách -->
+      <div class="card" style="flex:1">
+        <div class="card-hd">
+          <div class="card-hd-l"><i class="ti ti-list" style="color:#b45309"></i> Danh sách KH hôm nay</div>
+        </div>
+
+        <div class="kh-row" id="kh-dat" data-status="dang-dt" data-bs="bs-hoan" data-dv="seo" data-nguon="facebook" data-time="chieu" onclick="selKH('kh-dat',this)">
+          <div class="av" style="background:#fef9c3;color:#854d0e">DH</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">Dat Huynh <span class="bdg b-err">Đang ĐT</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">SEO rỗ · Buổi 3/10 · Ph.2 · BS HOÀN + KTV Lan</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;color:#dc2626;font-weight:600">~25p còn</div>
+            <button class="btn" style="font-size:9px;padding:2px 7px;margin-top:3px" onclick="event.stopPropagation();showM('m-kh-ve')">KH về</button>
+          </div>
+        </div>
+
+        <div class="kh-row" id="kh-kathy" data-status="dang-dt" data-bs="bs-kien" data-dv="mun" data-nguon="facebook" data-time="chieu" onclick="selKH('kh-kathy',this)">
+          <div class="av" style="background:#dbeafe;color:#1e40af">KL</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">Kathy Le <span class="bdg b-err">Đang ĐT</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">Điều trị mụn · Buổi 3/10 · Ph.1 · BS KIÊN + KTV Mai</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;color:#ca8a04;font-weight:600">~5p sắp xong</div>
+            <button class="btn" style="font-size:9px;padding:2px 7px;margin-top:3px" onclick="event.stopPropagation();showM('m-kh-ve')">KH về</button>
+          </div>
+        </div>
+
+        <div class="kh-row" id="kh-thao" data-status="dang-dt" data-bs="bs-hung" data-dv="tre-hoa" data-nguon="facebook" data-time="chieu" onclick="selKH('kh-thao',this)">
+          <div class="av" style="background:#ede9fe;color:#5b21b6">TV</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">Thảo Vi <span class="bdg b-err">Đang ĐT</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">Trẻ hoá da · Buổi 3/6 · Ph.3 · BS HƯNG</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;color:#dc2626;font-weight:600">~40p còn</div>
+            <button class="btn" style="font-size:9px;padding:2px 7px;margin-top:3px" onclick="event.stopPropagation();showM('m-kh-ve')">KH về</button>
+          </div>
+        </div>
+
+        <div class="kh-row" id="kh-ngan" data-status="dang-tv" data-bs="bs-kien" data-dv="seo" data-nguon="facebook" data-time="chieu" style="background:#f5f3ff" onclick="selKH('kh-ngan',this)">
+          <div class="av" style="background:#ede9fe;color:#5b21b6">TN</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;color:#5b21b6">Trần Thu Ngân <span class="bdg b-tv">Đang tư vấn</span> <span class="bdg b-blue" style="font-size:8px">📞 Tele</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">TV1 · S001 Thủy Linh + BS KIÊN · Vào 14:40</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;color:#5b21b6">Chờ Sale chốt</div>
+            <button class="btn" style="font-size:9px;padding:2px 7px;margin-top:3px;border-color:#5b21b6;color:#5b21b6" onclick="event.stopPropagation();showM('m-chot-phan-phong')">Đã chốt → ĐT</button>
+          </div>
+        </div>
+
+        <div class="kh-row urgent" id="kh-khoi" data-status="cho-phan" data-bs="" data-dv="seo" data-nguon="facebook" data-time="chieu" onclick="selKH('kh-khoi',this)">
+          <div class="av" style="background:#fee2e2;color:#991b1b">AK</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;color:#991b1b">Anh Khoi LE <span class="bdg b-err">⚠ Chờ phân công</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">SEO rỗ · Buổi 1 · Đã chốt 15tr · Chưa phân phòng ĐT</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;color:#dc2626;font-weight:600">Cần xử lý!</div>
+            <button class="btn btn-p" style="font-size:9px;padding:2px 7px;margin-top:3px" onclick="event.stopPropagation();showM('m-phan-phong')">Phân phòng ĐT</button>
+          </div>
+        </div>
+
+        <div class="kh-row" id="kh-muoi" data-status="chua-den" data-bs="bs-kien" data-dv="implant" data-nguon="facebook" data-time="chieu" onclick="selKH('kh-muoi',this)">
+          <div class="av" style="background:#f1f5f9;color:#475569">NM</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">Nguyễn Vũ Mười <span class="bdg b-blue" style="font-size:8px">📞 Tele · Hẹn 15:00</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">Implant · Giai đoạn 2 · T002 Linh đặt lịch</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <span class="bdg b-gray">Chưa đến</span>
+            <div style="display:flex;gap:4px;margin-top:4px">
+              <button class="btn btn-g" style="font-size:9px;padding:2px 7px" onclick="event.stopPropagation();xacNhanDen()">Đã đến</button>
+              <button class="btn" style="font-size:9px;padding:2px 7px">Gọi nhắc</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="kh-row" id="kh-duc" data-status="da-ve" data-bs="bs-kien" data-dv="mun" data-nguon="facebook" data-time="sang" style="opacity:.65">
+          <div class="av" style="background:#f1f5f9;color:#475569">PM</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">Phạm Minh Đức <span class="bdg b-ok">Đã về · 10:15</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">Điều trị mụn · Buổi 2/10 · 09:30–10:15 · Tua đã tính</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action panel -->
+      <div class="card" id="act-card">
+        <div class="card-hd"><div class="card-hd-l" id="act-title"><i class="ti ti-user" style="color:#b45309"></i> Chọn KH để thao tác</div></div>
+        <div class="act-panel" id="act-body">
+          <div style="text-align:center;font-size:11px;color:#94a3b8;padding:8px 0">Bấm vào tên KH bên trên</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột phải: Sơ đồ BS/KTV -->
+    <div class="col-scroll">
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-l"><i class="ti ti-layout-grid" style="color:#b45309"></i> Sơ đồ BS/KTV — thời gian thực</div>
+          <span style="font-size:9px;color:#94a3b8">Cập nhật 14:35</span>
+        </div>
+        <div style="display:flex;gap:10px;padding:7px 14px;border-bottom:1px solid #eef1f6;font-size:10px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:4px"><span class="staff-status-dot dot-free"></span><b style="color:#15803d">Trống</b></span>
+          <span style="display:flex;align-items:center;gap:4px"><span class="staff-status-dot dot-soon"></span><b style="color:#ca8a04">Sắp xong</b></span>
+          <span style="display:flex;align-items:center;gap:4px"><span class="staff-status-dot dot-busy"></span><b style="color:#dc2626">Đang bận</b></span>
+          <span style="margin-left:auto;font-size:9px;color:#94a3b8">Click để chỉ định</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px">
+          <div class="staff-card busy" onclick="selStaff('bs-hoan',this)">
+            <div class="timer-badge" style="background:rgba(220,38,38,.12);color:#991b1b">~25p</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><span class="staff-status-dot dot-busy"></span><span class="staff-name" style="color:#991b1b">BS HOÀN</span><span class="bdg b-err" style="font-size:8px">BS001</span></div>
+            <div class="staff-info" style="color:#7f1d1d">Dat Huynh · SEO rỗ<br>Ph.2 · Vào 13:40</div>
+            <div class="mini-prog"><div class="mini-prog-f" style="width:65%;background:#dc2626"></div></div>
+          </div>
+          <div class="staff-card soon" onclick="selStaff('bs-kien',this)">
+            <div class="timer-badge" style="background:rgba(202,138,4,.12);color:#854d0e">~5p</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><span class="staff-status-dot dot-soon"></span><span class="staff-name" style="color:#854d0e">BS KIÊN</span><span class="bdg b-warn" style="font-size:8px">BS002</span></div>
+            <div class="staff-info" style="color:#713f0b">Kathy Le · Mụn<br>Ph.1 · Sắp xong</div>
+            <div class="mini-prog"><div class="mini-prog-f" style="width:92%;background:#ca8a04"></div></div>
+          </div>
+          <div class="staff-card busy" onclick="selStaff('bs-hung',this)">
+            <div class="timer-badge" style="background:rgba(220,38,38,.12);color:#991b1b">~40p</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><span class="staff-status-dot dot-busy"></span><span class="staff-name" style="color:#991b1b">BS HƯNG</span><span class="bdg b-err" style="font-size:8px">BS003</span></div>
+            <div class="staff-info" style="color:#7f1d1d">Thảo Vi · Trẻ hoá<br>Ph.3 · Vào 14:00</div>
+            <div class="mini-prog"><div class="mini-prog-f" style="width:20%;background:#dc2626"></div></div>
+          </div>
+          <div class="staff-card free" onclick="selStaff('ktv-ha',this)">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px"><span class="staff-status-dot dot-free"></span><span class="staff-name" style="color:#15803d">KTV Hà</span><span class="bdg b-ok" style="font-size:8px">KTV003</span></div>
+            <div class="staff-info" style="color:#166534">✓ Sẵn sàng<br>Trống từ 13:30</div>
+            <div class="mini-prog"><div class="mini-prog-f" style="width:0%;background:#16a34a"></div></div>
+          </div>
+        </div>
+        <div style="padding:9px 14px;background:#f0fdf4;border-top:1px solid #bbf7d0;font-size:10px;color:#15803d;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-sparkles" style="font-size:12px"></i>
+          <div><b>Gợi ý Anh Khoi LE:</b> BS KIÊN sắp xong (~5p) + KTV Hà (trống)</div>
+          <button class="btn" style="font-size:9px;padding:2px 8px;margin-left:auto;border-color:#16a34a;color:#15803d" onclick="applyGoiY()">Áp dụng</button>
+        </div>
+      </div>
+
+      <!-- Trạng thái phòng -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-door" style="color:#b45309"></i> Trạng thái phòng</div></div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #f1f5f9"><span style="font-size:11px;font-weight:500">Phòng TV1</span><div style="font-size:10px"><span class="bdg b-tv">Tư vấn</span> Trần Thu Ngân</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #f1f5f9"><span style="font-size:11px;font-weight:500">Phòng 1</span><div style="font-size:10px"><span class="bdg b-err">ĐT</span> Kathy Le · BS KIÊN</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #f1f5f9"><span style="font-size:11px;font-weight:500">Phòng 2</span><div style="font-size:10px"><span class="bdg b-err">ĐT</span> Dat Huynh · BS HOÀN</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #f1f5f9"><span style="font-size:11px;font-weight:500">Phòng 3</span><div style="font-size:10px"><span class="bdg b-err">ĐT</span> Thảo Vi · BS HƯNG</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #f1f5f9;background:#f0fdf4"><span style="font-size:11px;font-weight:600;color:#15803d">Phòng 4</span><div style="font-size:10px;color:#15803d"><span class="bdg b-ok">Trống</span></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:#f0fdf4"><span style="font-size:11px;font-weight:600;color:#15803d">Phòng 5</span><div style="font-size:10px;color:#15803d"><span class="bdg b-ok">Trống</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SƠ ĐỒ BS/KTV ══ -->
+<div class="sc" id="sc-so-do">
+  <div class="cnt">
+    <div class="ib ib-blue"><i class="ti ti-info-circle"></i> Sơ đồ đầy đủ toàn bộ BS/KTV — xem realtime tại cột phải tab Hôm nay. Tab này hiển thị thêm lịch ca làm việc theo tuần.</div>
+    <div class="card" style="flex:1">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-calendar-week" style="color:#b45309"></i> Ca làm việc BS/KTV — tuần 19-25/05</div></div>
+      <table class="tbl">
+        <thead><tr><th>BS/KTV</th><th>T2</th><th>T3</th><th>T4</th><th style="background:#fffbeb">T5 ◀</th><th>T6</th><th>T7</th></tr></thead>
+        <tbody>
+          <tr><td><b>BS HOÀN</b></td><td><span class="bdg b-err">3 ca</span></td><td><span class="bdg b-err">4 ca</span></td><td><span class="bdg b-err">3 ca</span></td><td style="background:#fffbeb"><span class="bdg b-warn">2 ca</span></td><td><span class="bdg b-ok">1 ca</span></td><td><span class="bdg b-gray">Nghỉ</span></td></tr>
+          <tr><td><b>BS KIÊN</b></td><td><span class="bdg b-err">2 ca</span></td><td><span class="bdg b-err">3 ca</span></td><td><span class="bdg b-gray">Nghỉ</span></td><td style="background:#fffbeb"><span class="bdg b-warn">2 ca</span></td><td><span class="bdg b-err">3 ca</span></td><td><span class="bdg b-err">2 ca</span></td></tr>
+          <tr><td><b>BS HƯNG</b></td><td><span class="bdg b-ok">1 ca</span></td><td><span class="bdg b-err">2 ca</span></td><td><span class="bdg b-err">3 ca</span></td><td style="background:#fffbeb"><span class="bdg b-err">2 ca</span></td><td><span class="bdg b-gray">Nghỉ</span></td><td><span class="bdg b-err">2 ca</span></td></tr>
+          <tr><td><b>KTV Lan</b></td><td><span class="bdg b-err">3 ca</span></td><td><span class="bdg b-err">3 ca</span></td><td><span class="bdg b-err">2 ca</span></td><td style="background:#fffbeb"><span class="bdg b-err">3 ca</span></td><td><span class="bdg b-ok">1 ca</span></td><td><span class="bdg b-gray">Nghỉ</span></td></tr>
+          <tr><td><b>KTV Hà</b></td><td><span class="bdg b-ok">1 ca</span></td><td><span class="bdg b-err">2 ca</span></td><td><span class="bdg b-ok">1 ca</span></td><td style="background:#fffbeb"><span class="bdg b-ok">1 ca</span></td><td><span class="bdg b-err">2 ca</span></td><td><span class="bdg b-err">2 ca</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CHIA TUA ══ -->
+<div class="sc" id="sc-tua">
+  <div class="cnt">
+    <div class="ib ib-purple"><i class="ti ti-info-circle"></i>Lễ tân chia tua → gửi link Zalo cho từng BS/KTV xác nhận → KT ghi lương chính thức.</div>
+    <div class="card" style="flex:1">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-coin" style="color:#5b21b6"></i> Bảng tua tháng 05/2026</div></div>
+      <table class="tbl">
+        <thead><tr><th>BS/KTV</th><th class="r">Số buổi</th><th class="r">Đơn giá</th><th class="r">Tổng tua</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+        <tbody>
+          <tr><td><b>BS HOÀN</b></td><td class="r">28</td><td class="r">450.000đ</td><td class="r" style="color:#5b21b6;font-weight:600">12.600.000đ</td><td><span class="bdg b-warn">Chờ xác nhận</span></td><td><button class="btn" style="font-size:9px;border-color:#00b259;color:#00b259" onclick="showM('m-gui-link')"><i class="ti ti-brand-whatsapp"></i> Gửi Zalo</button></td></tr>
+          <tr><td><b>BS KIÊN</b></td><td class="r">24</td><td class="r">450.000đ</td><td class="r" style="color:#5b21b6;font-weight:600">10.800.000đ</td><td><span class="bdg b-warn">Chờ xác nhận</span></td><td><button class="btn" style="font-size:9px;border-color:#00b259;color:#00b259" onclick="showM('m-gui-link')"><i class="ti ti-brand-whatsapp"></i> Gửi Zalo</button></td></tr>
+          <tr><td><b>BS HƯNG</b></td><td class="r">8</td><td class="r">450.000đ</td><td class="r" style="color:#15803d;font-weight:600">3.600.000đ</td><td><span class="bdg b-ok">✓ Đã xác nhận</span></td><td></td></tr>
+          <tr><td><b>KTV Lan</b></td><td class="r">22</td><td class="r">200.000đ</td><td class="r" style="color:#15803d;font-weight:600">4.400.000đ</td><td><span class="bdg b-ok">✓ Đã xác nhận</span></td><td></td></tr>
+          <tr><td><b>KTV Hà</b></td><td class="r">18</td><td class="r">200.000đ</td><td class="r" style="color:#5b21b6;font-weight:600">3.600.000đ</td><td><span class="bdg b-warn">Chờ xác nhận</span></td><td><button class="btn" style="font-size:9px;border-color:#00b259;color:#00b259" onclick="showM('m-gui-link')"><i class="ti ti-brand-whatsapp"></i> Gửi Zalo</button></td></tr>
+        </tbody>
+        <tfoot><tr><td>Tổng</td><td class="r">100</td><td class="r">—</td><td class="r" style="color:#5b21b6">35.000.000đ</td><td colspan="2"></td></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ẢNH ĐIỀU TRỊ ══ -->
+<div class="sc" id="sc-anh">
+  <div class="cnt">
+    <div class="ib ib-blue"><i class="ti ti-camera"></i><div>Lễ tân chụp ảnh: (1) KH check-in → ảnh TRƯỚC · (2) KH về → ảnh SAU · (3) Lần đầu → chụp CCCD. Ảnh tự vào hồ sơ KH.</div></div>
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-camera" style="color:#b45309"></i> Upload ảnh điều trị</div></div>
+      <div style="padding:14px">
+        <div class="g2" style="margin-bottom:10px">
+          <div class="fg"><label>Chọn KH</label><select><option>Dat Huynh — SEO rỗ Buổi 3</option><option>Kathy Le — Mụn Buổi 3</option></select></div>
+          <div class="fg"><label>Loại ảnh</label><select><option>Ảnh TRƯỚC điều trị</option><option>Ảnh SAU điều trị</option><option>Ảnh TRONG điều trị</option><option>Ảnh CCCD</option></select></div>
+        </div>
+        <div style="border:2px dashed #fde68a;border-radius:10px;padding:28px;text-align:center;cursor:pointer;background:#fef9f0" onclick="alert('Mở camera...')">
+          <i class="ti ti-camera-plus" style="font-size:36px;color:#b45309;display:block;margin-bottom:8px"></i>
+          <div style="font-size:12px;font-weight:500;color:#b45309">Chụp ảnh hoặc chọn từ thiết bị</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LỊCH TUẦN ══ -->
+<div class="sc" id="sc-lich">
+  <div class="cnt">
+    <div class="card" style="flex:1">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-calendar-week" style="color:#b45309"></i> Lịch tuần 19-25/05/2026</div></div>
+      <div style="padding:14px;font-size:11px;color:#94a3b8;text-align:center">Lịch tuần — xem thêm chi tiết từng ngày</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main -->
+</div><!-- end app -->
+
+<!-- ══════════ MODALS ══════════ -->
+<div class="modal-bg" id="m-walkin">
+  <div class="modal" style="width:500px">
+    <div class="modal-hd"><i class="ti ti-user-plus" style="color:#b45309"></i> KH Tự Đến — Walk-in</div>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:10px 13px;margin-bottom:14px;font-size:11px;color:#854d0e;line-height:1.8">
+      <b>Check SĐT</b> = kiểm tra SĐT đã có trong hệ thống chưa<br>
+      · <b>Có rồi</b> → xác nhận KH đến, vào danh sách hôm nay<br>
+      · <b>Chưa có</b> → nhập thông tin + chọn nguồn → tạo hồ sơ mới → vào hàng chờ Tele
+    </div>
+    <div class="fg">
+      <label>SĐT — Kiểm tra đã có trong hệ thống chưa <span style="color:#dc2626">*</span></label>
+      <div style="display:flex;gap:7px">
+        <input type="tel" placeholder="09xx xxx xxx" id="walkin-sdt" style="flex:1;border:1px solid #dde3ef;border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none"/>
+        <button onclick="checkSDT()" style="padding:7px 14px;border-radius:7px;background:#0f2044;color:#fff;border:none;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Check</button>
+      </div>
+    </div>
+    <div id="check-result" style="display:none;margin-bottom:12px"></div>
+    <div id="walkin-form" style="display:none">
+      <div class="g2">
+        <div class="fg"><label>Họ tên</label><input id="walkin-name" placeholder="Tên KH"/></div>
+        <div class="fg"><label>DV quan tâm</label><select><option>SEO rỗ</option><option>Điều trị mụn</option><option>Trẻ hoá da</option><option>Niềng răng</option><option>Implant</option><option>Chưa rõ</option></select></div>
+      </div>
+      <div class="fg">
+        <label>Nguồn</label>
+        <select id="walkin-nguon">
+          <option value="Facebook">📘 Facebook</option>
+          <option value="TikTok">🎵 TikTok</option>
+          <option value="Zalo">💬 Zalo</option>
+          <option value="Google / Maps">🗺️ Google / Google Maps</option>
+          <option value="Instagram">📸 Instagram</option>
+          <option value="Giới thiệu">👥 Giới thiệu từ KH cũ</option>
+          <option value="Vãng lai">🚶 Vãng lai — Không xác định được nguồn</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Phân Tele xử lý</label>
+        <select id="walkin-tele">
+          <option>🔄 Tự động — Lead Tele T001 chia</option>
+          <option>T001 Nguyễn T. Trang — Lead Tele</option>
+          <option>T002 Phạm T. Linh</option>
+          <option>T003 Lê T. Hương</option>
+        </select>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:8px 12px;font-size:10px;color:#1e40af;margin-bottom:12px;line-height:1.7">
+        <i class="ti ti-info-circle" style="font-size:11px"></i>
+        Hồ sơ tạo → tự vào Data hôm nay + hàng chờ Tele → Lead Tele nhận thông báo ngay.
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideM('m-walkin');resetWalkin()">Hủy</button>
+      <button class="btn" id="walkin-check-btn" onclick="checkSDT()" style="border-color:#0f2044;color:#0f2044"><i class="ti ti-search"></i> Check hệ thống</button>
+      <button class="btn btn-p" id="walkin-submit-btn" style="display:none" onclick="submitWalkin()"><i class="ti ti-plus"></i> Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-phan-phong">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-door-enter" style="color:#b45309"></i> Phân phòng điều trị — Anh Khoi LE</div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.8"><b>Sale S001 đã chốt:</b> SEO rỗ · 10 buổi · 15.000.000đ</div>
+    <div class="g3">
+      <div class="fg"><label>Phòng</label><select><option>Phòng 4 (trống)</option><option>Phòng 5 (trống)</option></select></div>
+      <div class="fg"><label>Bác sĩ</label><select><option>BS KIÊN (~5p)</option><option>BS HOÀN (~25p)</option></select></div>
+      <div class="fg"><label>KTV</label><select><option>KTV Hà (trống)</option></select></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideM('m-phan-phong')">Hủy</button>
+      <button class="btn btn-g" onclick="hideM('m-phan-phong');alert('✅ Bắt đầu!\n→ BS KIÊN + KTV Hà nhận in-app + Zalo')"><i class="ti ti-player-play"></i> Bắt đầu ĐT</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-chot-phan-phong">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-checks" style="color:#5b21b6"></i> Sale vừa chốt — Trần Thu Ngân</div>
+    <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.8">S001 Thủy Linh báo chốt: <b>SEO rỗ · 10+1 buổi · 15tr đ</b></div>
+    <div class="g3">
+      <div class="fg"><label>Phòng</label><select><option>Phòng 4 (trống)</option></select></div>
+      <div class="fg"><label>Bác sĩ</label><select><option>BS KIÊN (~5p)</option></select></div>
+      <div class="fg"><label>KTV</label><select><option>KTV Hà (trống)</option></select></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideM('m-chot-phan-phong')">Hủy</button>
+      <button class="btn btn-p" onclick="hideM('m-chot-phan-phong');alert('✅ Phân phòng xong!\n→ BS KIÊN + KTV Hà nhận in-app + Zalo')"><i class="ti ti-player-play"></i> Phân phòng + Bắt đầu</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-kh-ve">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-door-exit" style="color:#b45309"></i> Kết thúc buổi — Dat Huynh</div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px">
+      <div class="info-row"><span style="color:#64748b">Vào</span><b>13:40</b></div>
+      <div class="info-row"><span style="color:#64748b">Ra</span><b>14:35</b></div>
+      <div class="info-row"><span style="color:#64748b">BS HOÀN</span><b style="color:#5b21b6">Tua: 450.000đ</b></div>
+      <div class="info-row"><span style="color:#64748b">KTV Lan</span><b style="color:#1e40af">Tua: 200.000đ</b></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideM('m-kh-ve')">Hủy</button>
+      <button class="btn btn-p" onclick="hideM('m-kh-ve');alert('✅ KH về!\n→ Tua ghi nhận\n→ BS HOÀN + KTV Lan: Sẵn sàng')"><i class="ti ti-door-exit"></i> Xác nhận KH về</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-gui-link">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-brand-whatsapp" style="color:#00b259"></i> Gửi link xác nhận tua — BS HOÀN</div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.8">BS HOÀN · 28 buổi · <b style="color:#5b21b6">12.600.000đ</b><br>Link: <span style="color:#1e40af">https://pkdalieu.vn/tua/abc123...</span></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideM('m-gui-link')">Hủy</button>
+      <button class="btn" style="border-color:#00b259;color:#00b259" onclick="hideM('m-gui-link');alert('✅ Đã gửi Zalo!\n→ BS HOÀN mở link → xác nhận → KT ghi lương')"><i class="ti ti-brand-whatsapp"></i> Gửi Zalo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Clock
+function onTimeMainChange(sel) {
+  var rangeEl = document.getElementById('f-time-range');
+  if (!rangeEl) return;
+  rangeEl.style.display = sel.value === 'custom' ? 'flex' : 'none';
+}
+function tick() {
+  var n = new Date();
+  var el = document.getElementById('clock');
+  if (el) el.textContent = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+}
+tick();
+setInterval(tick, 30000);
+
+// Subnav
+var ALL_SC = ['homnay','so-do','tua','anh','lich'];
+function goSc(s) {
+  ALL_SC.forEach(function(x) {
+    var sc = document.getElementById('sc-' + x);
+    var tab = document.getElementById('sntab-' + x);
+    if (sc) sc.classList.remove('on');
+    if (tab) tab.classList.remove('on');
+  });
+  var sc = document.getElementById('sc-' + s);
+  var tab = document.getElementById('sntab-' + s);
+  if (sc) sc.classList.add('on');
+  if (tab) tab.classList.add('on');
+}
+
+// ── BỘ LỌC ──────────────────────────────────
+function applyFilter() {
+  var search = (document.getElementById('f-search') ? document.getElementById('f-search').value : '').toLowerCase();
+  var status = document.getElementById('f-status') ? document.getElementById('f-status').value : '';
+  var nguon  = document.getElementById('f-nguon')  ? document.getElementById('f-nguon').value  : '';
+  var dv     = document.getElementById('f-dv')     ? document.getElementById('f-dv').value     : '';
+  var bs     = document.getElementById('f-bs')     ? document.getElementById('f-bs').value     : '';
+  var time   = document.getElementById('f-time')   ? document.getElementById('f-time').value   : '';
+
+  var rows = document.querySelectorAll('.kh-row[data-status]');
+  var shown = 0;
+  rows.forEach(function(row) {
+    var ok =
+      (!search || row.textContent.toLowerCase().indexOf(search) >= 0) &&
+      (!status || row.dataset.status === status) &&
+      (!nguon  || row.dataset.nguon  === nguon) &&
+      (!dv     || row.dataset.dv     === dv) &&
+      (!bs     || row.dataset.bs     === bs) &&
+      (!time   || row.dataset.time   === time);
+    row.classList.toggle('hidden', !ok);
+    if (ok) shown++;
+  });
+  var cnt = document.getElementById('f-count');
+  if (cnt) cnt.textContent = (shown < rows.length) ? shown + ' / ' + rows.length + ' KH' : '';
+}
+
+function resetFilter() {
+  ['f-search','f-status','f-nguon','f-dv','f-bs','f-time'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.kh-row[data-status]').forEach(function(r) { r.classList.remove('hidden'); });
+  var cnt = document.getElementById('f-count');
+  if (cnt) cnt.textContent = '';
+  setTag('all');
+}
+
+function setTag(tag) {
+  document.querySelectorAll('.tag').forEach(function(t) { t.classList.remove('on'); });
+  var el = document.getElementById('tag-' + tag);
+  if (el) el.classList.add('on');
+  var fStatus = document.getElementById('f-status');
+  if (fStatus) fStatus.value = (tag === 'all') ? '' : tag;
+  applyFilter();
+}
+
+// ── ACTION PANEL ──────────────────────────────
+var ACT = {
+  'kh-dat': {
+    title: 'Dat Huynh — Đang điều trị (Ph.2)',
+    html: '<div class="ib ib-green"><i class="ti ti-stethoscope"></i><div>Đang điều trị · BS HOÀN + KTV Lan · Ph.2 · còn ~25p</div></div><div class="g2"><button class="btn btn-p" style="justify-content:center" onclick="showM(\'m-kh-ve\')"><i class="ti ti-door-exit"></i> KH về · Tính tua</button><button class="btn" style="justify-content:center;border-color:#1d4ed8;color:#1d4ed8" onclick="alert(\'Mở camera...\')"><i class="ti ti-camera"></i> Chụp ảnh SAU</button></div>'
+  },
+  'kh-kathy': {
+    title: 'Kathy Le — Sắp xong (Ph.1)',
+    html: '<div class="ib ib-amber"><i class="ti ti-clock"></i><div>Sắp xong · BS KIÊN + KTV Mai · Ph.1 · ~5p</div></div><button class="btn btn-p" style="width:100%;justify-content:center" onclick="showM(\'m-kh-ve\')"><i class="ti ti-door-exit"></i> KH về · Tính tua</button>'
+  },
+  'kh-thao': {
+    title: 'Thảo Vi — Đang điều trị (Ph.3)',
+    html: '<div class="ib ib-green"><i class="ti ti-stethoscope"></i><div>Đang điều trị · BS HƯNG · Ph.3 · còn ~40p</div></div><button class="btn btn-p" style="width:100%;justify-content:center" onclick="showM(\'m-kh-ve\')"><i class="ti ti-door-exit"></i> KH về · Tính tua</button>'
+  },
+  'kh-ngan': {
+    title: 'Trần Thu Ngân — Đang tư vấn (TV1)',
+    html: '<div class="ib ib-purple"><i class="ti ti-stethoscope"></i><div>S001 Thủy Linh + BS KIÊN đang tư vấn tại TV1. Chờ Sale chốt.</div></div><button class="btn btn-p" style="width:100%;justify-content:center" onclick="showM(\'m-chot-phan-phong\')"><i class="ti ti-check"></i> Sale đã chốt → Phân phòng ĐT</button>'
+  },
+  'kh-khoi': {
+    title: 'Anh Khoi LE — Cần phân phòng ngay',
+    html: '<div class="ib ib-red"><i class="ti ti-alert-triangle"></i><div>Đã chốt HĐ 15tr · Chưa phân phòng điều trị · Cần xử lý ngay!</div></div><button class="btn btn-g" style="width:100%;justify-content:center" onclick="showM(\'m-phan-phong\')"><i class="ti ti-player-play"></i> Phân phòng + Bắt đầu ĐT</button>'
+  },
+  'kh-muoi': {
+    title: 'Nguyễn Vũ Mười — Hẹn 15:00',
+    html: '<div class="ib ib-blue"><i class="ti ti-calendar-check"></i><div>Lịch hẹn 15:00 · Implant GĐ2 · T002 Linh đặt · Chưa đến.</div></div><div class="g2"><button class="btn btn-g" style="justify-content:center" onclick="xacNhanDen()"><i class="ti ti-door-enter"></i> Xác nhận KH đến</button><button class="btn" style="justify-content:center"><i class="ti ti-phone"></i> Gọi nhắc</button></div>'
+  }
+};
+
+function selKH(id, el) {
+  document.querySelectorAll('.kh-row').forEach(function(r) { r.classList.remove('sel'); });
+  if (el) el.classList.add('sel');
+  var a = ACT[id];
+  if (!a) return;
+  var title = document.getElementById('act-title');
+  var body  = document.getElementById('act-body');
+  if (title) title.innerHTML = '<i class="ti ti-user" style="color:#b45309"></i> ' + a.title;
+  if (body)  body.innerHTML  = a.html;
+}
+
+function selStaff(id, el) {
+  document.querySelectorAll('.staff-card').forEach(function(c) { c.classList.remove('sel-staff'); });
+  if (el) el.classList.add('sel-staff');
+}
+
+function applyGoiY() {
+  var bk = document.querySelector('.staff-card.soon');
+  var ha = document.querySelector('.staff-card.free');
+  if (bk) bk.classList.add('sel-staff');
+  if (ha) ha.classList.add('sel-staff');
+}
+
+function xacNhanDen() {
+  alert('✅ Xác nhận Nguyễn Vũ Mười đã đến!\n→ T002 Phạm T. Linh nhận thông báo in-app ngay\n→ Trạng thái: Chờ phân phòng tư vấn');
+}
+
+// ── QUICK SDT CHECK ──────────────────────────
+function quickCheck() {
+  var sdt = (document.getElementById('quick-sdt') ? document.getElementById('quick-sdt').value : '').trim();
+  if (!sdt) return;
+  var res = document.getElementById('quick-result');
+  if (!res) return;
+  res.style.display = 'block';
+  var now = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+
+  if (sdt.indexOf('0905') === 0) {
+    res.innerHTML =
+      '<div style="padding:11px 13px">' +
+      '<div style="font-size:11px;font-weight:600;color:#15803d;margin-bottom:5px"><i class="ti ti-user-check" style="font-size:13px"></i> Tìm thấy — Nguyễn Vũ Mười</div>' +
+      '<div style="font-size:10px;color:#64748b;margin-bottom:9px;line-height:1.7">T002 đặt lịch · Hẹn 15:00 · Implant GĐ2</div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<button onclick="xacNhanDenQuick()" style="flex:1;padding:7px;border-radius:7px;border:none;background:#15803d;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">✓ Xác nhận đã đến</button>' +
+      '<button onclick="closeQuick()" style="padding:7px 11px;border-radius:7px;border:1px solid #dde3ef;background:#fff;font-size:11px;cursor:pointer;font-family:inherit">Đóng</button>' +
+      '</div></div>';
+  } else if (sdt.length >= 9) {
+    res.innerHTML =
+      '<div style="padding:11px 13px">' +
+      '<div style="font-size:11px;font-weight:600;color:#854d0e;margin-bottom:5px"><i class="ti ti-user-question" style="font-size:13px"></i> Không tìm thấy · ' + sdt + '</div>' +
+      '<div style="font-size:10px;color:#64748b;margin-bottom:9px">SĐT chưa có trong hệ thống → Tạo hồ sơ mới + vào hàng chờ Tele</div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<button onclick="openWalkinNew()" style="flex:1;padding:7px;border-radius:7px;border:none;background:#b45309;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">+ Nhập thông tin KH mới</button>' +
+      '<button onclick="closeQuick()" style="padding:7px 11px;border-radius:7px;border:1px solid #dde3ef;background:#fff;font-size:11px;cursor:pointer;font-family:inherit">Đóng</button>' +
+      '</div></div>';
+  } else {
+    res.style.display = 'none';
+  }
+}
+
+function xacNhanDenQuick() {
+  closeQuick();
+  alert('✅ Xác nhận Nguyễn Vũ Mười đã đến!\n→ T002 Phạm T. Linh nhận thông báo in-app ngay\n→ Vào danh sách KH hôm nay');
+}
+
+function openWalkinNew() {
+  closeQuick();
+  var sdt = document.getElementById('quick-sdt') ? document.getElementById('quick-sdt').value : '';
+  showM('m-walkin');
+  setTimeout(function() {
+    var inp = document.getElementById('walkin-sdt');
+    if (inp) { inp.value = sdt; checkSDT(); }
+  }, 100);
+}
+
+function closeQuick() {
+  var res = document.getElementById('quick-result');
+  if (res) res.style.display = 'none';
+  var inp = document.getElementById('quick-sdt');
+  if (inp) inp.value = '';
+}
+
+document.addEventListener('click', function(e) {
+  var res = document.getElementById('quick-result');
+  var inp = document.getElementById('quick-sdt');
+  if (res && inp && !res.contains(e.target) && e.target !== inp) {
+    res.style.display = 'none';
+  }
+});
+
+// ── WALK-IN MODAL ──────────────────────────
+var walkinState = 'new';
+
+function checkSDT() {
+  var sdt = (document.getElementById('walkin-sdt') ? document.getElementById('walkin-sdt').value : '').trim();
+  if (!sdt) { alert('Vui lòng nhập SĐT'); return; }
+  var res       = document.getElementById('check-result');
+  var form      = document.getElementById('walkin-form');
+  var submitBtn = document.getElementById('walkin-submit-btn');
+  var checkBtn  = document.getElementById('walkin-check-btn');
+  if (!res) return;
+  var now = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+
+  if (sdt.indexOf('0905') === 0) {
+    walkinState = 'found';
+    res.style.display = 'block';
+    res.innerHTML =
+      '<div style="background:#f0fdf4;border:1.5px solid #16a34a;border-radius:9px;padding:11px 13px;font-size:11px">' +
+      '<div style="font-weight:600;color:#15803d;margin-bottom:5px"><i class="ti ti-user-check" style="font-size:13px"></i> Tìm thấy — Nguyễn Vũ Mười</div>' +
+      '<div style="color:#374151;line-height:1.8">T002 Phạm T. Linh đặt lịch · Hẹn 15:00 · Implant GĐ2<br>' +
+      '<b style="color:#15803d">→ Tele nhận in-app · Vào danh sách hôm nay</b></div>' +
+      '</div>';
+    if (form) form.style.display = 'none';
+    if (submitBtn) { submitBtn.style.display = 'inline-flex'; submitBtn.innerHTML = '<i class="ti ti-check"></i> Xác nhận KH đã đến'; submitBtn.style.background = '#15803d'; }
+    if (checkBtn) checkBtn.style.display = 'none';
+  } else {
+    walkinState = 'new';
+    res.style.display = 'block';
+    res.innerHTML =
+      '<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:9px;padding:10px 13px;font-size:11px">' +
+      '<div style="font-weight:600;color:#991b1b;margin-bottom:3px"><i class="ti ti-user-question" style="font-size:13px"></i> Không tìm thấy · ' + sdt + '</div>' +
+      '<div style="color:#374151;line-height:1.8">SĐT chưa có trong hệ thống → Điền thông tin KH + chọn nguồn → vào hàng chờ Tele</div>' +
+      '</div>';
+    if (form) form.style.display = 'block';
+    if (submitBtn) { submitBtn.style.display = 'inline-flex'; submitBtn.innerHTML = '<i class="ti ti-plus"></i> Tạo hồ sơ + Đưa vào hàng chờ Tele'; submitBtn.style.background = '#b45309'; }
+    if (checkBtn) checkBtn.style.display = 'none';
+  }
+}
+
+function submitWalkin() {
+  var now = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+  if (walkinState === 'found') {
+    hideM('m-walkin');
+    alert('✅ Xác nhận KH đã đến!\n→ Nguyễn Vũ Mười · ' + now + '\n→ T002 Phạm T. Linh nhận thông báo in-app\n→ Vào danh sách KH hôm nay');
+  } else {
+    var name   = (document.getElementById('walkin-name')   ? document.getElementById('walkin-name').value   : '') || 'KH mới';
+    var nguon  = (document.getElementById('walkin-nguon')  ? document.getElementById('walkin-nguon').value  : '') || 'Vãng lai';
+    hideM('m-walkin');
+    alert('✅ Tạo hồ sơ KH mới!\n\nKH: ' + name + '\nNguồn: ' + nguon + '\n\n→ Vào Data hôm nay · Nguồn: ' + nguon + '\n→ Vào hàng chờ Tele\n→ Lead Tele T001 nhận thông báo phân data mới');
+  }
+  resetWalkin();
+}
+
+function resetWalkin() {
+  var ids = ['check-result','walkin-form'];
+  ids.forEach(function(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  var cr = document.getElementById('check-result'); if (cr) cr.innerHTML = '';
+  var sb = document.getElementById('walkin-submit-btn'); if (sb) sb.style.display = 'none';
+  var cb = document.getElementById('walkin-check-btn'); if (cb) cb.style.display = 'inline-flex';
+  var sdt = document.getElementById('walkin-sdt'); if (sdt) sdt.value = '';
+  var name = document.getElementById('walkin-name'); if (name) name.value = '';
+}
+
+// ── MODALS ──────────────────────────────────
+function showM(id) { var el = document.getElementById(id); if (el) el.classList.add('on'); }
+function hideM(id) { var el = document.getElementById(id); if (el) el.classList.remove('on'); }
+document.querySelectorAll('.modal-bg').forEach(function(m) {
+  m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('on'); });
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-bg.on').forEach(function(m) { m.classList.remove('on'); });
+});
+
+function onTimeChange(sel, rangeId) {
+  var el = document.getElementById(rangeId);
+  if (!el) return;
+  el.style.display = sel.value === 'custom' ? 'flex' : 'none';
+}
+
+</script>
+<div class="bottom-nav">
+    <button class="bn-item on" onclick="goSc('homnay')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-home-2" style="font-size:20px"></i>
+      </div>
+      <span>Hôm nay</span>
+    </button>
+    <button class="bn-item" onclick="goSc('phong')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-armchair" style="font-size:20px"></i>
+      </div>
+      <span>Phòng</span>
+    </button>
+    <button class="bn-item" onclick="showM('m-walkin')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-user-plus" style="font-size:20px"></i>
+      </div>
+      <span>Walk-in</span>
+    </button>
+    <button class="bn-item" onclick="goSc('lichhen')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-calendar" style="font-size:20px"></i>
+      </div>
+      <span>Lịch hẹn</span>
+    </button>
+    <button class="bn-item" onclick="window.location='crm_DEMO_HOAN_CHINH.html'">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-home" style="font-size:20px"></i>
+      </div>
+      <span>Hub</span>
+    </button>
+    </div>
+</body>
+</html>

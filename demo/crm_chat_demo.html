@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CRM — Chat nội bộ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;background:#eef1f6;color:#1a2233}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:58px;background:#0f2044;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:2px;flex-shrink:0}
+.sb-logo{width:38px;height:38px;background:#0891b2;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.sbi{width:46px;height:46px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a7fa8;cursor:pointer;gap:2px;position:relative}
+.sbi.on{background:#0891b2;color:#fff}
+.sbi i{font-size:18px}.sbi span{font-size:9px;font-weight:500}
+.sbi-badge{position:absolute;top:6px;right:6px;background:#dc2626;color:#fff;border-radius:20px;padding:0 5px;font-size:8px;font-weight:700}
+.sb-sp{flex:1}
+
+/* LAYOUT CHAT */
+.chat-layout{flex:1;display:flex;overflow:hidden}
+
+/* PANEL TRÁI: danh sách kênh */
+.chat-left{width:280px;background:#fff;border-right:1px solid #dde3ef;display:flex;flex-direction:column;flex-shrink:0}
+.chat-left-top{padding:12px 14px;border-bottom:1px solid #eef1f6;flex-shrink:0}
+.search-box{display:flex;align-items:center;background:#f1f5f9;border-radius:8px;padding:6px 10px;gap:7px}
+.search-box input{border:none;background:none;outline:none;font-size:12px;font-family:inherit;flex:1;color:#374151}
+.channel-list{flex:1;overflow-y:auto}
+.channel-section{padding:8px 14px 4px;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;justify-content:space-between}
+.channel-item{display:flex;align-items:center;gap:9px;padding:8px 14px;cursor:pointer;transition:background .1s;border-radius:0}
+.channel-item:hover{background:#f8fafc}
+.channel-item.active{background:#e0f2fe;border-right:3px solid #0891b2}
+.channel-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;position:relative}
+.ch-av-group{border-radius:10px}
+.online-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:1.5px solid #fff}
+.dot-online{background:#16a34a}
+.dot-away{background:#ca8a04}
+.dot-offline{background:#94a3b8}
+.channel-info{flex:1;min-width:0}
+.channel-name{font-size:12px;font-weight:600;color:#1a2233;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.channel-last{font-size:10px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.unread-badge{background:#dc2626;color:#fff;border-radius:20px;padding:1px 7px;font-size:9px;font-weight:700;flex-shrink:0}
+
+/* PANEL GIỮA: chat chính */
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.chat-header{background:#fff;border-bottom:1px solid #dde3ef;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.chat-title{font-size:13px;font-weight:700;color:#0f2044}
+.chat-sub{font-size:10px;color:#94a3b8;margin-top:1px}
+.chat-header-actions{margin-left:auto;display:flex;gap:5px}
+.icon-btn{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:#f1f5f9;color:#64748b;transition:all .12s}
+.icon-btn:hover{background:#dde3ef;color:#374151}
+
+/* Messages */
+.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:2px}
+.msg-date-sep{text-align:center;font-size:10px;color:#94a3b8;margin:12px 0;position:relative}
+.msg-date-sep::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#eef1f6;z-index:0}
+.msg-date-sep span{background:#eef1f6;padding:2px 10px;border-radius:20px;position:relative;z-index:1}
+.msg-group{display:flex;gap:9px;margin-bottom:6px;align-items:flex-end}
+.msg-group.me{flex-direction:row-reverse}
+.msg-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.msg-content{max-width:65%;display:flex;flex-direction:column;gap:2px}
+.msg-group.me .msg-content{align-items:flex-end}
+.msg-sender{font-size:10px;font-weight:600;color:#64748b;margin-bottom:1px}
+.msg-bubble{padding:8px 12px;border-radius:12px;font-size:12px;line-height:1.5;word-break:break-word;position:relative}
+.msg-bubble.other{background:#fff;border:1px solid #eef1f6;border-bottom-left-radius:3px;color:#1a2233}
+.msg-bubble.me{background:#0891b2;color:#fff;border-bottom-right-radius:3px}
+.msg-bubble.system{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:11px;text-align:center;border-radius:8px;padding:6px 12px}
+.msg-time{font-size:9px;color:#94a3b8;margin-top:2px;padding:0 3px}
+.msg-reaction{font-size:13px;cursor:pointer;margin-top:2px}
+.msg-file{background:#f8fafc;border:1px solid #dde3ef;border-radius:8px;padding:8px 11px;display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;max-width:240px}
+.msg-file:hover{background:#eff6ff}
+.msg-img{max-width:200px;border-radius:8px;cursor:pointer}
+
+/* Pinned */
+.pinned-bar{background:#fef9c3;border-bottom:1px solid #fde68a;padding:7px 16px;display:flex;align-items:center;gap:8px;font-size:11px;color:#854d0e;flex-shrink:0;cursor:pointer}
+.pinned-bar:hover{background:#fef3c7}
+
+/* Input */
+.chat-input-area{background:#fff;border-top:1px solid #dde3ef;padding:10px 16px;flex-shrink:0}
+.input-actions{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
+.ia-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;font-size:10px;font-weight:500;cursor:pointer;border:1px solid #dde3ef;background:#f8fafc;color:#64748b;font-family:inherit;transition:all .12s}
+.ia-btn:hover{border-color:#0891b2;color:#0891b2;background:#e0f2fe}
+.input-box{display:flex;align-items:flex-end;gap:8px}
+.input-box textarea{flex:1;border:1.5px solid #dde3ef;border-radius:10px;padding:9px 12px;font-size:12px;font-family:inherit;outline:none;resize:none;min-height:38px;max-height:120px;line-height:1.5;transition:border-color .12s}
+.input-box textarea:focus{border-color:#0891b2}
+.send-btn{width:38px;height:38px;background:#0891b2;border:none;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .12s}
+.send-btn:hover{background:#0e7490}
+.send-btn i{font-size:17px;color:#fff}
+
+/* PANEL PHẢI: thông tin kênh */
+.chat-right{width:260px;background:#fff;border-left:1px solid #dde3ef;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.chat-right-hd{padding:12px 14px;border-bottom:1px solid #eef1f6;font-size:12px;font-weight:600;color:#0f2044;display:flex;align-items:center;justify-content:space-between}
+.member-item{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid #f8fafc}
+.member-item:last-child{border-bottom:none}
+
+/* Badges */
+.bdg{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;white-space:nowrap}
+.b-ok{background:#dcfce7;color:#15803d}
+.b-blue{background:#dbeafe;color:#1e40af}
+.b-purple{background:#ede9fe;color:#5b21b6}
+.b-gray{background:#f1f5f9;color:#475569}
+.b-warn{background:#fef9c3;color:#854d0e}
+.b-cyan{background:#cffafe;color:#0e7490}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+
+/* ════════════════════════════════════
+   RESPONSIVE — Mobile first
+   Breakpoint: <= 768px = mobile
+════════════════════════════════════ */
+
+/* Ẩn sidebar trên mobile, dùng bottom nav */
+@media (max-width: 768px) {
+
+  /* Layout chính */
+  .app { flex-direction: column; }
+  
+  .sidebar {
+    display: none !important;
+  }
+
+  .main {
+    padding-bottom: 56px; /* chỗ cho bottom nav */
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 0 10px;
+    height: 50px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .topbar .top-appname { font-size: 12px; }
+  .topbar .top-sep { display: none; }
+  .topbar .top-mod {
+    display: none;
+  }
+  .topbar .top-user .top-uname { display: none; }
+  .back-btn span { display: none; }
+  .back-btn { padding: 4px 7px; }
+
+  /* Subnav — scroll ngang */
+  .subnav, .modnav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 6px;
+    scrollbar-width: none;
+  }
+  .modnav { height: auto; flex-wrap: nowrap; }
+  .mnbtn { font-size: 9px; padding: 5px 7px; }
+  .sntab { font-size: 10px; padding: 0 9px; }
+
+  /* Filter bar — scroll ngang */
+  .filter-bar, .crm-filter-bar {
+    padding: 5px 10px;
+    gap: 5px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fi, .crm-fi { height: 30px; font-size: 11px; }
+  .fi-search, .crm-fi-search { width: 130px; }
+
+  /* Content area */
+  .cnt { padding: 10px; gap: 8px; }
+
+  /* Stat grids — 2 cột trên mobile */
+  .stat-row,
+  [style*="grid-template-columns:repeat(4"],
+  [style*="grid-template-columns:repeat(5"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  [style*="grid-template-columns:repeat(3"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* 2 cột → 1 cột */
+  .g2, .g3, .g4 {
+    grid-template-columns: 1fr !important;
+  }
+  [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Cards */
+  .card { border-radius: 8px; }
+  .card-hd { padding: 8px 11px; }
+  .card-hd-l { font-size: 11px; }
+
+  /* Table — scroll ngang */
+  .card > table,
+  .card > div > table,
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl { font-size: 10px; min-width: 500px; }
+  .tbl thead th, .tbl tbody td { padding: 6px 8px; }
+
+  /* Two-col layout → 1 cột */
+  .two-col {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto;
+    grid-template-rows: auto auto;
+  }
+
+  /* Data rows */
+  .data-row { padding: 8px 10px; gap: 8px; }
+  .data-row .av { width: 30px; height: 30px; font-size: 9px; }
+
+  /* Modal — full screen trên mobile */
+  .modal-bg { align-items: flex-end; }
+  .modal, .modal-wide {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 14px 14px 0 0 !important;
+    max-height: 92vh;
+    padding: 16px;
+  }
+
+  /* Stat vals */
+  .stat .val { font-size: 18px; }
+  .stat { padding: 9px 11px; }
+
+  /* Buttons */
+  .btn { padding: 5px 10px; font-size: 10px; }
+  .btn-p, .btn-g, .btn-r { padding: 6px 12px; }
+
+  /* KQ modal lần gọi chips */
+  #lan-wrap { gap: 4px; }
+  .lan-chip { padding: 3px 8px; font-size: 9px; }
+
+  /* Chat */
+  .chat-right { display: none !important; }
+  .chat-left { width: 240px; }
+
+  /* BS Mobile đã responsive sẵn */
+}
+
+/* ── BOTTOM NAV (chỉ mobile) ── */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    background: #0f2044;
+    border-top: 1px solid rgba(255,255,255,.1);
+    z-index: 100;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+  }
+}
+/* Ẩn bottom nav trên desktop */
+.bottom-nav { display: none; }
+
+.bn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #5a7fa8;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: all .12s;
+  flex: 1;
+}
+.bn-item.on { color: #60a5fa; }
+.bn-item i { font-size: 20px; }
+.bn-item span { font-size: 8px; font-weight: 500; white-space: nowrap; }
+.bn-badge {
+  position: absolute;
+  top: 2px; right: calc(50% - 16px);
+  background: #dc2626; color: #fff;
+  border-radius: 20px; padding: 0 5px;
+  font-size: 8px; font-weight: 700;
+}
+
+
+@media (max-width: 768px) {
+  .chat-left { 
+    position: fixed; left: -280px; top: 0; bottom: 0;
+    z-index: 50; transition: left .25s; box-shadow: 2px 0 12px rgba(0,0,0,.2);
+  }
+  .chat-left.open { left: 0; }
+  .chat-right { display: none !important; }
+  .chat-header { padding: 8px 10px; }
+  .messages { padding: 10px; }
+  .msg-bubble { font-size: 11px; padding: 7px 10px; }
+  .msg-bubble.other, .msg-bubble.me { max-width: 85%; }
+  .msg-content { max-width: 80%; }
+  .chat-input-area { padding: 8px 10px; }
+  .input-actions { gap: 4px; }
+  .ia-btn span { display: none; }
+  .ia-btn { padding: 4px 7px; }
+  /* Overlay khi sidebar mở */
+  .chat-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 49;
+  }
+  .chat-overlay.open { display: block; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-logo"><i class="ti ti-message-2" style="font-size:18px;color:#fff"></i></div>
+  <div class="sbi on"><i class="ti ti-message-2"></i><span>Chat</span></div>
+  <div class="sbi"><i class="ti ti-database"></i><span>Data</span></div>
+  <div class="sbi"><i class="ti ti-users"></i><span>KH</span></div>
+  <div class="sbi"><i class="ti ti-chart-bar"></i><span>KPI</span></div>
+  <div class="sb-sp"></div>
+  <div class="sbi" style="position:relative"><i class="ti ti-bell"></i><span class="sbi-badge">5</span></div>
+  <div class="sbi"><i class="ti ti-user-circle"></i></div>
+</div>
+
+<!-- CHAT LAYOUT -->
+<div class="chat-overlay" id="chat-overlay" onclick="closeChatSidebar()"></div>
+<div class="chat-layout">
+
+  <!-- PANEL TRÁI -->
+  <div class="chat-left">
+    <div class="chat-left-top">
+      <div style="font-size:14px;font-weight:700;color:#0f2044;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        Chat nội bộ
+        <button onclick="showModal('m-new-channel')" style="border:none;background:#e0f2fe;border-radius:7px;padding:4px 10px;font-size:10px;font-weight:600;color:#0891b2;cursor:pointer;font-family:inherit">+ Tạo nhóm</button>
+      </div>
+      <div class="search-box">
+        <i class="ti ti-search" style="font-size:14px;color:#94a3b8"></i>
+        <input placeholder="Tìm người hoặc nhóm..."/>
+      </div>
+    </div>
+    <div class="channel-list">
+
+      <!-- Nhóm chat -->
+      <div class="channel-section">Nhóm <span style="cursor:pointer;color:#0891b2">+</span></div>
+
+      <div class="channel-item active" onclick="openChannel('chung')">
+        <div class="channel-avatar ch-av-group" style="background:#0891b2;font-size:15px">💬</div>
+        <div class="channel-info">
+          <div class="channel-name"># Phòng khám chung</div>
+          <div class="channel-last">BS KIÊN: Sơ đồ BS hôm nay cập nhật...</div>
+        </div>
+        <span class="unread-badge">3</span>
+      </div>
+
+      <div class="channel-item" onclick="openChannel('letan-sale')">
+        <div class="channel-avatar ch-av-group" style="background:#15803d;font-size:15px">🏥</div>
+        <div class="channel-info">
+          <div class="channel-name"># Lễ tân — Sale</div>
+          <div class="channel-last">LT001: KH Trần Thu Ngân đã chốt...</div>
+        </div>
+        <span class="unread-badge">1</span>
+      </div>
+
+      <div class="channel-item" onclick="openChannel('bs-ktv')">
+        <div class="channel-avatar ch-av-group" style="background:#5b21b6;font-size:15px">🩺</div>
+        <div class="channel-info">
+          <div class="channel-name"># BS / KTV</div>
+          <div class="channel-last">BS HOÀN: Ca chiều hôm nay ai trực?</div>
+        </div>
+      </div>
+
+      <div class="channel-item" onclick="openChannel('tele-sale')">
+        <div class="channel-avatar ch-av-group" style="background:#0369a1;font-size:15px">📞</div>
+        <div class="channel-info">
+          <div class="channel-name"># Tele — Sale</div>
+          <div class="channel-last">T002: KH Lê Thị Mỹ rất tiềm năng...</div>
+        </div>
+        <span class="unread-badge">2</span>
+      </div>
+
+      <div class="channel-item" onclick="openChannel('mkt')">
+        <div class="channel-avatar ch-av-group" style="background:#d97706;font-size:15px">📣</div>
+        <div class="channel-info">
+          <div class="channel-name"># Marketing</div>
+          <div class="channel-last">MKT001: Bài đăng hôm nay reach tốt</div>
+        </div>
+      </div>
+
+      <div class="channel-item" onclick="openChannel('quan-ly')">
+        <div class="channel-avatar ch-av-group" style="background:#dc2626;font-size:15px">👑</div>
+        <div class="channel-info">
+          <div class="channel-name"># Quản lý nội bộ</div>
+          <div class="channel-last">QL001: Họp tổng kết T05 lúc 17:30</div>
+        </div>
+        <span class="unread-badge">1</span>
+      </div>
+
+      <!-- Nhắn tin cá nhân -->
+      <div class="channel-section">Nhắn tin trực tiếp <span style="cursor:pointer;color:#0891b2">+</span></div>
+
+      <div class="channel-item" onclick="openDM('bs-kien')">
+        <div class="channel-avatar" style="background:#dcfce7;color:#15803d">BK</div>
+        <div class="online-dot dot-online" style="position:relative;width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-bottom:0;top:-6px;left:-8px"></div>
+        <div class="channel-info" style="margin-left:-8px">
+          <div class="channel-name">BS KIÊN</div>
+          <div class="channel-last">🟢 Đang online</div>
+        </div>
+      </div>
+
+      <div class="channel-item" onclick="openDM('lt001')">
+        <div class="channel-avatar" style="background:#ede9fe;color:#5b21b6">PH</div>
+        <div class="channel-info">
+          <div class="channel-name">LT001 Phạm T. Hoa</div>
+          <div class="channel-last">🟡 Vắng mặt</div>
+        </div>
+      </div>
+
+      <div class="channel-item" onclick="openDM('s001')">
+        <div class="channel-avatar" style="background:#fef9c3;color:#854d0e">TL</div>
+        <div class="channel-info">
+          <div class="channel-name">S001 Thủy Linh</div>
+          <div class="channel-last">🟢 Đang online</div>
+        </div>
+        <span class="unread-badge">1</span>
+      </div>
+
+      <div class="channel-item" onclick="openDM('kt001')">
+        <div class="channel-avatar" style="background:#f1f5f9;color:#475569">LM</div>
+        <div class="channel-info">
+          <div class="channel-name">KT001 Lê T. Mai</div>
+          <div class="channel-last">⚫ Ngoại tuyến</div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- end chat-left -->
+
+  <!-- PANEL GIỮA: Main chat -->
+  <div class="chat-main">
+
+    <!-- Header -->
+    <div class="chat-header">
+      <button onclick="openChatSidebar()" style="display:none;border:none;background:#f1f5f9;border-radius:7px;width:32px;height:32px;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:18px;color:#374151" id="btn-open-sidebar" class="icon-btn">
+        <i class="ti ti-layout-sidebar"></i>
+      </button>
+      <div class="channel-avatar ch-av-group" style="background:#0891b2;font-size:18px;width:36px;height:36px">💬</div>
+      <div>
+        <div class="chat-title"># Phòng khám chung</div>
+        <div class="chat-sub">14 thành viên · 8 đang online</div>
+      </div>
+      <div class="chat-header-actions">
+        <button class="icon-btn" title="Ghim tin nhắn"><i class="ti ti-pin" style="font-size:16px"></i></button>
+        <button class="icon-btn" title="Tìm kiếm" onclick="alert('Tìm kiếm trong cuộc trò chuyện...')"><i class="ti ti-search" style="font-size:16px"></i></button>
+        <button class="icon-btn" title="Thành viên" onclick="toggleRight()"><i class="ti ti-users" style="font-size:16px"></i></button>
+        <button class="icon-btn" title="Tạo task từ tin nhắn"><i class="ti ti-checkbox" style="font-size:16px"></i></button>
+      </div>
+    </div>
+
+    <!-- Pinned -->
+    <div class="pinned-bar" onclick="alert('Xem tin nhắn ghim...')">
+      <i class="ti ti-pin" style="font-size:14px"></i>
+      <b>Ghim:</b> Họp tổng kết T05 — Thứ 5, 22/05 lúc 17:30 tại phòng họp · QL001 ghim
+      <i class="ti ti-chevron-right" style="font-size:13px;margin-left:auto"></i>
+    </div>
+
+    <!-- Messages -->
+    <div class="messages" id="msg-area">
+
+      <div class="msg-date-sep"><span>Hôm nay, 22/05/2026</span></div>
+
+      <!-- System message -->
+      <div style="text-align:center;margin:4px 0">
+        <span class="msg-bubble system">BS KIÊN đã ghim 1 tin nhắn về lịch họp T05</span>
+      </div>
+
+      <!-- BS HOÀN -->
+      <div class="msg-group">
+        <div class="msg-av" style="background:#dcfce7;color:#15803d">BH</div>
+        <div class="msg-content">
+          <div class="msg-sender">BS HOÀN <span style="font-weight:400;color:#94a3b8">09:15</span></div>
+          <div class="msg-bubble other">Sáng nay ca tôi có 4 KH, ai phân lịch chiều chưa? <span class="msg-reaction">👀</span></div>
+        </div>
+      </div>
+
+      <!-- LT001 -->
+      <div class="msg-group">
+        <div class="msg-av" style="background:#ede9fe;color:#5b21b6">PH</div>
+        <div class="msg-content">
+          <div class="msg-sender">LT001 Phạm T. Hoa <span style="font-weight:400;color:#94a3b8">09:17</span></div>
+          <div class="msg-bubble other">Chiều có 3 suất trống Phòng 2 và Phòng 4 nha BS ơi 😊</div>
+          <div class="msg-bubble other" style="margin-top:2px">
+            <!-- File đính kèm -->
+            <div class="msg-file" onclick="alert('Mở file lịch...')">
+              <i class="ti ti-file-spreadsheet" style="font-size:22px;color:#15803d;flex-shrink:0"></i>
+              <div>
+                <div style="font-weight:600;font-size:11px">Lich_PT_22-05.xlsx</div>
+                <div style="font-size:10px;color:#94a3b8">24 KB · Excel</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BS KIÊN -->
+      <div class="msg-group">
+        <div class="msg-av" style="background:#dcfce7;color:#15803d">BK</div>
+        <div class="msg-content">
+          <div class="msg-sender">BS KIÊN <span style="font-weight:400;color:#94a3b8">09:22</span></div>
+          <div class="msg-bubble other">Sơ đồ BS/KTV hôm nay đã cập nhật rồi nha team 👍</div>
+        </div>
+      </div>
+
+      <!-- S001 -->
+      <div class="msg-group">
+        <div class="msg-av" style="background:#fef9c3;color:#854d0e">TL</div>
+        <div class="msg-content">
+          <div class="msg-sender">S001 Thủy Linh <span style="font-weight:400;color:#94a3b8">10:05</span></div>
+          <div class="msg-bubble other">Vừa chốt được ca <b>Trần Thu Ngân</b> — SEO rỗ 10 buổi 15 triệu 🎉 HĐ gửi KT rồi!</div>
+          <div style="font-size:18px;margin-top:3px">🎉 👏 ❤️</div>
+        </div>
+      </div>
+
+      <!-- System: thông báo HĐ -->
+      <div style="text-align:center;margin:4px 0">
+        <div class="msg-bubble system" style="display:inline-block;max-width:380px">
+          📋 <b>HĐ-2026-041</b> — Trần Thu Ngân · 15.000.000đ · Sale S001 Thủy Linh<br>
+          Đã gửi KT duyệt · <span style="color:#0891b2;cursor:pointer">Xem HĐ</span>
+        </div>
+      </div>
+
+      <!-- T002 -->
+      <div class="msg-group">
+        <div class="msg-av" style="background:#dbeafe;color:#1e40af">PL</div>
+        <div class="msg-content">
+          <div class="msg-sender">T002 Phạm T. Linh <span style="font-weight:400;color:#94a3b8">11:30</span></div>
+          <div class="msg-bubble other">Nhắc ae: KH <b>Lê Thị Mỹ</b> nóng lắm, vừa nhắn hỏi giá lần 2. Ai gọi được thì gọi ngay nhé 🔥</div>
+        </div>
+      </div>
+
+      <!-- QL001 mention -->
+      <div class="msg-group">
+        <div class="msg-av" style="background:#fee2e2;color:#dc2626">QL</div>
+        <div class="msg-content">
+          <div class="msg-sender">QL001 Quản lý <span style="font-weight:400;color:#94a3b8">14:00</span></div>
+          <div class="msg-bubble other">
+            <span style="color:#0891b2;font-weight:600">@toàn team</span> Nhắc họp tổng kết T05 lúc <b>17:30</b> tại phòng họp tầng 2.<br>
+            Chuẩn bị: Số liệu KPI cá nhân + đề xuất cải tiến T06 🙏
+          </div>
+        </div>
+      </div>
+
+      <!-- CS001 -->
+      <div class="msg-group">
+        <div class="msg-av" style="background:#fce7f3;color:#be185d">KA</div>
+        <div class="msg-content">
+          <div class="msg-sender">CS001 Kiều Anh <span style="font-weight:400;color:#94a3b8">14:15</span></div>
+          <div class="msg-bubble other">OK a QL! Kathy Le vừa xếp lịch tái khám buổi 4, ai trực chiều cho em nhờ một tay 😊</div>
+          <div style="font-size:18px;margin-top:3px">👍 ✅</div>
+        </div>
+      </div>
+
+      <!-- ME -->
+      <div class="msg-group me">
+        <div class="msg-av" style="background:#cffafe;color:#0e7490">KT</div>
+        <div class="msg-content">
+          <div class="msg-sender" style="text-align:right">KT001 Lê T. Mai <span style="font-weight:400;color:#94a3b8">14:30</span></div>
+          <div class="msg-bubble me">Đã duyệt HĐ Trần Thu Ngân 💰 DT ghi chính thức rồi nhé S001!</div>
+          <div style="font-size:18px;margin-top:3px;text-align:right">🎉</div>
+        </div>
+      </div>
+
+      <!-- System: thông báo KH đến -->
+      <div style="text-align:center;margin:4px 0">
+        <div class="msg-bubble system" style="display:inline-block;max-width:380px">
+          🏥 <b>KH Nguyễn Vũ Mười</b> đã check-in lúc 14:35<br>
+          Lễ tân LT001 xác nhận · <span style="color:#0891b2;cursor:pointer">Xem hồ sơ</span>
+        </div>
+      </div>
+
+      <div style="height:8px"></div>
+    </div><!-- end messages -->
+
+    <!-- Input area -->
+    <div class="chat-input-area">
+      <div class="input-actions">
+        <button class="ia-btn" onclick="insertMention()"><i class="ti ti-at" style="font-size:12px"></i> Mention</button>
+        <button class="ia-btn" onclick="alert('Đính kèm file...')"><i class="ti ti-paperclip" style="font-size:12px"></i> Đính kèm</button>
+        <button class="ia-btn" onclick="alert('Chụp ảnh...')"><i class="ti ti-camera" style="font-size:12px"></i> Ảnh</button>
+        <button class="ia-btn" onclick="alert('Tạo task từ tin nhắn...')"><i class="ti ti-checkbox" style="font-size:12px"></i> Tạo task</button>
+        <button class="ia-btn" onclick="alert('Chia sẻ thông tin KH...')"><i class="ti ti-user-share" style="font-size:12px"></i> Chia sẻ KH</button>
+      </div>
+      <div class="input-box">
+        <textarea id="msg-input" placeholder="Nhắn tin tới # Phòng khám chung... (Enter để gửi, Shift+Enter xuống dòng)" rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" onclick="sendMsg()"><i class="ti ti-send"></i></button>
+      </div>
+    </div>
+
+  </div><!-- end chat-main -->
+
+  <!-- PANEL PHẢI: thông tin -->
+  <div class="chat-right" id="chat-right">
+    <div class="chat-right-hd">
+      Thành viên
+      <button onclick="toggleRight()" style="border:none;background:none;cursor:pointer;color:#94a3b8;font-size:18px;line-height:1">×</button>
+    </div>
+
+    <!-- Online -->
+    <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Đang online — 8</div>
+    <div class="member-item">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#dcfce7;color:#15803d">BK</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">BS KIÊN</div><div style="font-size:10px;color:#15803d">🟢 Online</div></div>
+      <span class="bdg b-ok">BS</span>
+    </div>
+    <div class="member-item">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#fef9c3;color:#854d0e">TL</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">S001 Thủy Linh</div><div style="font-size:10px;color:#15803d">🟢 Online</div></div>
+      <span class="bdg b-warn">Sale</span>
+    </div>
+    <div class="member-item">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#dbeafe;color:#1e40af">PL</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">T002 Phạm T. Linh</div><div style="font-size:10px;color:#15803d">🟢 Online</div></div>
+      <span class="bdg b-blue">Tele</span>
+    </div>
+    <div class="member-item">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#fce7f3;color:#be185d">KA</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">CS001 Kiều Anh</div><div style="font-size:10px;color:#15803d">🟢 Online</div></div>
+      <span class="bdg" style="background:#fce7f3;color:#be185d">CSKH</span>
+    </div>
+    <div class="member-item">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#fee2e2;color:#dc2626">QL</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">QL001 Quản lý</div><div style="font-size:10px;color:#15803d">🟢 Online</div></div>
+      <span class="bdg b-gray">Quản lý</span>
+    </div>
+
+    <!-- Away -->
+    <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:6px">Vắng mặt — 3</div>
+    <div class="member-item" style="opacity:.7">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#ede9fe;color:#5b21b6">PH</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">LT001 Phạm T. Hoa</div><div style="font-size:10px;color:#ca8a04">🟡 Nghỉ phép</div></div>
+      <span class="bdg b-purple">Lễ tân</span>
+    </div>
+    <div class="member-item" style="opacity:.7">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#dcfce7;color:#15803d">BH</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">BS HOÀN</div><div style="font-size:10px;color:#ca8a04">🟡 Đang khám</div></div>
+      <span class="bdg b-ok">BS</span>
+    </div>
+    <div class="member-item" style="opacity:.7">
+      <div class="channel-avatar" style="width:28px;height:28px;font-size:9px;background:#f1f5f9;color:#475569">LM</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:600">KT001 Lê T. Mai</div><div style="font-size:10px;color:#94a3b8">⚫ Ngoại tuyến</div></div>
+      <span class="bdg b-gray">KT</span>
+    </div>
+
+    <!-- Files đính kèm gần đây -->
+    <div style="padding:12px 14px 4px;border-top:1px solid #eef1f6;margin-top:8px">
+      <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">File đính kèm</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px;background:#f8fafc;border-radius:7px;cursor:pointer;margin-bottom:5px">
+        <i class="ti ti-file-spreadsheet" style="font-size:18px;color:#15803d"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Lich_PT_22-05.xlsx</div>
+          <div style="font-size:9px;color:#94a3b8">LT001 · 24 KB</div>
+        </div>
+      </div>
+    </div>
+  </div><!-- end chat-right -->
+
+</div><!-- end chat-layout -->
+
+<!-- Modal tạo nhóm -->
+<div style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center" id="m-new-channel">
+  <div style="background:#fff;border-radius:14px;padding:20px;width:440px">
+    <div style="font-size:14px;font-weight:700;color:#0f2044;margin-bottom:14px;display:flex;align-items:center;gap:7px">
+      <i class="ti ti-users-plus" style="color:#0891b2"></i> Tạo nhóm chat mới
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+      <label style="font-size:10px;font-weight:600;color:#64748b">Tên nhóm</label>
+      <input placeholder="VD: BS - KTV Ca chiều" style="border:1px solid #dde3ef;border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none"/>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+      <label style="font-size:10px;font-weight:600;color:#64748b">Thêm thành viên</label>
+      <select multiple style="border:1px solid #dde3ef;border-radius:7px;padding:7px;font-size:12px;font-family:inherit;outline:none;height:100px">
+        <option>BS KIÊN</option><option>BS HOÀN</option><option>BS HƯNG</option>
+        <option>KTV Lan</option><option>KTV Hà</option>
+        <option>S001 Thủy Linh</option><option>LT001 Phạm T. Hoa</option>
+        <option>T001 Nguyễn T. Trang</option><option>T002 Phạm T. Linh</option>
+        <option>CS001 Kiều Anh</option><option>KT001 Lê T. Mai</option>
+      </select>
+      <div style="font-size:10px;color:#94a3b8">Giữ Ctrl/Cmd để chọn nhiều người</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:7px;padding-top:12px;border-top:1px solid #eef1f6">
+      <button onclick="document.getElementById('m-new-channel').style.display='none'" style="padding:7px 14px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid #dde3ef;background:#fff;font-family:inherit">Hủy</button>
+      <button onclick="document.getElementById('m-new-channel').style.display='none';alert('Da tao nhom chat moi!')" style="padding:7px 14px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#0891b2;color:#fff;font-family:inherit">Tạo nhóm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showModal(id) { var el=document.getElementById(id); if(el) el.style.display='flex'; }
+document.getElementById('m-new-channel').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
+
+var rightOpen = true;
+function toggleRight() {
+  rightOpen = !rightOpen;
+  var r = document.getElementById('chat-right');
+  if (r) r.style.display = rightOpen ? 'flex' : 'none';
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMsg();
+  }
+}
+
+function insertMention() {
+  var inp = document.getElementById('msg-input');
+  if (inp) { inp.value += '@'; inp.focus(); }
+}
+
+var myNames = ['KT001 Lê T. Mai'];
+function sendMsg() {
+  var inp = document.getElementById('msg-input');
+  var text = (inp ? inp.value : '').trim();
+  if (!text) return;
+  var area = document.getElementById('msg-area');
+  if (!area) return;
+
+  var div = document.createElement('div');
+  div.className = 'msg-group me';
+  div.innerHTML =
+    '<div class="msg-av" style="background:#cffafe;color:#0e7490">KT</div>' +
+    '<div class="msg-content">' +
+      '<div class="msg-sender" style="text-align:right">KT001 Lê T. Mai <span style="font-weight:400;color:#94a3b8">Vừa xong</span></div>' +
+      '<div class="msg-bubble me">' + text.replace(/</g,'&lt;').replace(/\n/g,'<br>') + '</div>' +
+    '</div>';
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+}
+
+function openChannel(id) {
+  document.querySelectorAll('.channel-item').forEach(function(el){ el.classList.remove('active'); });
+  event.currentTarget.classList.add('active');
+  var titles = {
+    'chung':'# Phòng khám chung','letan-sale':'# Lễ tân — Sale',
+    'bs-ktv':'# BS / KTV','tele-sale':'# Tele — Sale',
+    'mkt':'# Marketing','quan-ly':'# Quản lý nội bộ'
+  };
+  var t = document.querySelector('.chat-title');
+  if (t && titles[id]) t.textContent = titles[id];
+  var inp = document.getElementById('msg-input');
+  if (inp) inp.placeholder = 'Nhắn tin tới ' + (titles[id]||id) + '...';
+}
+
+function openDM(id) {
+  document.querySelectorAll('.channel-item').forEach(function(el){ el.classList.remove('active'); });
+  event.currentTarget.classList.add('active');
+  var names = {'bs-kien':'BS KIÊN','lt001':'LT001 Phạm T. Hoa','s001':'S001 Thủy Linh','kt001':'KT001 Lê T. Mai'};
+  var t = document.querySelector('.chat-title');
+  if (t && names[id]) t.textContent = names[id];
+  var sub = document.querySelector('.chat-sub');
+  if (sub) sub.textContent = 'Nhắn tin trực tiếp';
+  var inp = document.getElementById('msg-input');
+  if (inp) inp.placeholder = 'Nhắn tin tới ' + (names[id]||id) + '...';
+}
+
+// Auto scroll to bottom
+document.getElementById('msg-area').scrollTop = 9999;
+
+function openChatSidebar() {
+  document.getElementById('chat-sidebar-panel')?.classList.add('open');
+  document.getElementById('chat-overlay')?.classList.add('open');
+}
+function closeChatSidebar() {
+  document.getElementById('chat-sidebar-panel')?.classList.remove('open');
+  document.getElementById('chat-overlay')?.classList.remove('open');
+}
+// Show sidebar btn on mobile
+if (window.innerWidth <= 768) {
+  var sbBtn = document.getElementById('btn-open-sidebar');
+  if (sbBtn) sbBtn.style.display = 'flex';
+  // Assign id to chat-left
+  var cl = document.querySelector('.chat-left');
+  if (cl) cl.id = 'chat-sidebar-panel';
+}
+</script>
+<div class="bottom-nav">
+    <button class="bn-item on" onclick="closeChatSidebar()">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-message-2" style="font-size:20px"></i>
+      </div>
+      <span>Chat</span>
+    </button>
+    <button class="bn-item" onclick="openChatSidebar()">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-layout-sidebar" style="font-size:20px"></i><span class="bn-badge">5</span>
+      </div>
+      <span>Kênh</span>
+    </button>
+    <button class="bn-item" onclick="alert('Thông báo...')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-bell" style="font-size:20px"></i>
+      </div>
+      <span>Thông báo</span>
+    </button>
+    <button class="bn-item" onclick="openChatSidebar()">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-users" style="font-size:20px"></i>
+      </div>
+      <span>Team</span>
+    </button>
+    <button class="bn-item" onclick="window.location='crm_DEMO_HOAN_CHINH.html'">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-home" style="font-size:20px"></i>
+      </div>
+      <span>Hub</span>
+    </button>
+    </div>
+</body>
+</html>
