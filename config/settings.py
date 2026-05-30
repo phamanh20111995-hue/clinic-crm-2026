@@ -45,7 +45,11 @@ DEFAULT_AUTO_FIELD='django.db.models.BigAutoField'
 AUTH_USER_MODEL='accounts.User'
 REST_FRAMEWORK={'DEFAULT_AUTHENTICATION_CLASSES':('rest_framework_simplejwt.authentication.JWTAuthentication',),'DEFAULT_PERMISSION_CLASSES':('rest_framework.permissions.IsAuthenticated',),'DEFAULT_PAGINATION_CLASS':'rest_framework.pagination.PageNumberPagination','PAGE_SIZE':20}
 SIMPLE_JWT={'ACCESS_TOKEN_LIFETIME':timedelta(minutes=config('ACCESS_TOKEN_LIFETIME_MINUTES',default=60,cast=int)),'REFRESH_TOKEN_LIFETIME':timedelta(days=config('REFRESH_TOKEN_LIFETIME_DAYS',default=7,cast=int)),'ROTATE_REFRESH_TOKENS':True,'BLACKLIST_AFTER_ROTATION':True,'UPDATE_LAST_LOGIN':True,'ALGORITHM':'HS256','AUTH_HEADER_TYPES':('Bearer',),'USER_ID_FIELD':'id','USER_ID_CLAIM':'user_id','TOKEN_OBTAIN_SERIALIZER':'apps.accounts.serializers.CustomTokenObtainPairSerializer'}
-CORS_ALLOWED_ORIGINS=config('CORS_ALLOWED_ORIGINS',default='http://localhost:3000').split(',')
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+]
 CORS_ALLOW_CREDENTIALS=True
 
 # Zalo OA
