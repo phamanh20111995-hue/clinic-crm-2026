@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CRM — Data / Trực page / Tele</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;background:#eef1f6;color:#1a2233}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:58px;background:#0f2044;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:2px;flex-shrink:0}
+.sb-logo{width:38px;height:38px;background:#6d28d9;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.sbi{width:46px;height:46px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a7fa8;cursor:pointer;gap:2px;transition:all .12s}
+.sbi.on{background:#6d28d9;color:#fff}
+.sbi i{font-size:18px}
+.sbi span{font-size:9px;font-weight:500}
+.sb-sp{flex:1}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+
+/* TOPBAR */
+.topbar{background:#fff;border-bottom:1px solid #dde3ef;padding:0 14px;height:46px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.role-btn{font-size:11px;padding:4px 12px;border-radius:7px;font-weight:600;cursor:pointer;border:1.5px solid #dde3ef;background:#f8fafc;color:#64748b;font-family:inherit;transition:all .12s;white-space:nowrap}
+.role-btn.on.truc{border-color:#6d28d9;background:#f5f3ff;color:#6d28d9}
+.role-btn.on.tele{border-color:#0369a1;background:#eff6ff;color:#0369a1}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #dde3ef;background:#fff;color:#374151;font-family:inherit;white-space:nowrap;transition:all .12s}
+.btn-p{background:#6d28d9;color:#fff;border-color:#6d28d9}
+.btn-p:hover{background:#5b21b6}
+.btn-tele{background:#0f2044;color:#fff;border-color:#0f2044}
+.btn-g{background:#15803d;color:#fff;border-color:#15803d}
+
+/* SUBNAV */
+.subnav{background:#fff;border-bottom:1px solid #dde3ef;padding:0 14px;display:flex;align-items:center;height:40px;flex-shrink:0;overflow-x:auto}
+.subnav::-webkit-scrollbar{display:none}
+.sntab{padding:0 12px;height:40px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;border:none;background:none;flex-shrink:0;font-family:inherit;white-space:nowrap;transition:all .12s}
+.sntab:hover{color:#374151}
+.sntab.on{border-bottom:2px solid #6d28d9;font-weight:600}
+.sntab.on.truc{color:#6d28d9}
+.sntab.on.tele{color:#0369a1;border-bottom-color:#0369a1}
+.sn-badge{border-radius:20px;padding:0 6px;font-size:9px;font-weight:700;margin-left:3px;color:#fff}
+.badge-red{background:#dc2626}
+.badge-green{background:#15803d}
+.badge-purple{background:#6d28d9}
+
+/* FILTER BAR */
+.filter-bar{background:#fff;border-bottom:1px solid #dde3ef;padding:6px 14px;display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto}
+.filter-bar::-webkit-scrollbar{display:none}
+.fi{border:1px solid #dde3ef;border-radius:7px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none;background:#fff;height:28px;cursor:pointer;flex-shrink:0;transition:border-color .12s}
+.fi:focus,.fi:hover{border-color:#6d28d9}
+.fi-search{width:160px;padding-left:26px;cursor:text}
+.fi-sep{width:1px;height:18px;background:#dde3ef;flex-shrink:0}
+.fi-reset{border:1px solid #dde3ef;border-radius:7px;padding:0 10px;font-size:10px;font-family:inherit;cursor:pointer;background:#fff;color:#64748b;height:28px;display:flex;align-items:center;gap:4px;flex-shrink:0;transition:all .12s;white-space:nowrap}
+.fi-reset:hover{border-color:#dc2626;color:#dc2626;background:#fef2f2}
+.fi-count{font-size:10px;color:#94a3b8;white-space:nowrap;flex-shrink:0}
+
+/* SCREENS — chỉ 1 screen on tại 1 thời điểm */
+.sc{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+.sc.on{display:flex}
+.cnt{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* INFO BAR */
+.info-bar{padding:8px 14px;font-size:10px;display:flex;align-items:flex-start;gap:6px;line-height:1.6;flex-shrink:0}
+.info-bar i{font-size:13px;flex-shrink:0;margin-top:1px}
+.ib-purple{background:#f5f3ff;border-bottom:1px solid #ddd6fe;color:#5b21b6}
+.ib-blue{background:#eff6ff;border-bottom:1px solid #bfdbfe;color:#1e40af}
+
+/* STATS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.stat{background:#fff;border:1px solid #dde3ef;border-radius:9px;padding:11px 13px}
+.stat .lbl{font-size:10px;color:#94a3b8;margin-bottom:4px}
+.stat .val{font-size:20px;font-weight:700;line-height:1}
+.stat .sub{font-size:10px;color:#94a3b8;margin-top:3px}
+.stat .badge-ok{display:inline-block;margin-top:5px;background:#f0fdf4;border-radius:4px;padding:2px 7px;font-size:9px;color:#15803d;font-weight:600}
+
+/* CARDS */
+.card{background:#fff;border:1px solid #dde3ef;border-radius:10px;overflow:hidden}
+.card-hd{padding:9px 14px;border-bottom:1px solid #eef1f6;display:flex;align-items:center;justify-content:space-between;background:#f8fafc;flex-shrink:0}
+.card-hd-l{font-size:12px;font-weight:600;color:#0f2044;display:flex;align-items:center;gap:6px}
+
+/* BADGES */
+.bdg{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;white-space:nowrap}
+.b-ok{background:#dcfce7;color:#15803d}
+.b-warn{background:#fef9c3;color:#854d0e}
+.b-err{background:#fee2e2;color:#991b1b}
+.b-blue{background:#dbeafe;color:#1e40af}
+.b-purple{background:#ede9fe;color:#5b21b6}
+.b-gray{background:#f1f5f9;color:#475569}
+.b-nong{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
+.b-hen{background:#dcfce7;color:#15803d}
+
+/* DATA ROWS */
+.data-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f1f5f9;transition:background .1s}
+.data-row:hover{background:#faf5ff}
+.data-row:last-child{border-bottom:none}
+.data-row.hot{border-left:3px solid #dc2626;background:#fffafa}
+.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.section-label{padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between}
+
+/* BẢNG */
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl thead th{background:#f8fafc;padding:7px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6;white-space:nowrap}
+.tbl thead th.r{text-align:right}
+.tbl tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.tbl tbody td.r{text-align:right}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tfoot td{padding:7px 12px;font-weight:700;background:#f0fdf4;border-top:2px solid #bbf7d0}
+.tbl tfoot td.r{text-align:right}
+
+/* PHỄU */
+.pheu-row{display:flex;align-items:center;gap:10px}
+.pheu-label{width:130px;font-size:11px;font-weight:600;color:#374151;flex-shrink:0}
+.pheu-bar-wrap{flex:1;background:#f1f5f9;border-radius:6px;overflow:hidden;height:26px}
+.pheu-bar{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 10px}
+.pheu-pct{width:48px;text-align:right;font-size:11px;font-weight:600;flex-shrink:0}
+
+/* BIỂU ĐỒ CỘT */
+.chart-bar-wrap{display:flex;gap:10px;align-items:flex-end;padding:14px}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.chart-col-num{font-size:11px;font-weight:700;color:#5b21b6}
+.chart-col-bar-wrap{width:100%;height:80px;background:#ede9fe;border-radius:6px;display:flex;align-items:flex-end;overflow:hidden}
+.chart-col-bar{width:100%;background:#6d28d9;border-radius:4px 4px 0 0}
+.chart-col-lbl{font-size:10px;color:#94a3b8}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:14px;padding:20px;width:500px;max-height:90vh;overflow-y:auto}
+.modal-wide{width:540px}
+.modal-hd{font-size:14px;font-weight:700;color:#0f2044;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.modal-ft{display:flex;justify-content:flex-end;gap:7px;margin-top:14px;padding-top:12px;border-top:1px solid #eef1f6}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.fg label{font-size:10px;font-weight:600;color:#64748b}
+.fg input,.fg select,.fg textarea{border:1px solid #dde3ef;border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none;background:#fff;width:100%;transition:border-color .12s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:#6d28d9}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* KQ MODAL */
+.kq-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center}
+.kq-modal.on{display:flex}
+.lan-chip{padding:4px 10px;border-radius:20px;border:1.5px solid #dde3ef;background:#f8fafc;color:#475569;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
+.lan-chip.on{background:#0f2044;color:#fff;border-color:#0f2044}
+.kq-opt{padding:9px 11px;border-radius:8px;border:1.5px solid #dde3ef;background:#fff;cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;display:flex;align-items:center;gap:7px;transition:all .12s;width:100%;text-align:left}
+.kq-opt:hover{border-color:#6d28d9;background:#f5f3ff}
+.kq-opt.on{border-color:#6d28d9;background:#f5f3ff;font-weight:700}
+.kq-opt.red{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+.kq-opt.red.on{border-color:#dc2626;background:#fee2e2}
+.kq-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tv-opt{padding:9px 11px;border-radius:8px;border:1.5px solid #dde3ef;cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;display:flex;align-items:center;gap:7px;transition:all .12s;width:100%;text-align:left;background:#fff}
+.tv-opt.on{font-weight:700}
+.tv-green{border-color:#bbf7d0;background:#f0fdf4}
+.tv-green.on{border-color:#16a34a;box-shadow:0 0 0 2px #16a34a}
+.tv-amber{border-color:#fde68a;background:#fffbeb}
+.tv-amber.on{border-color:#ca8a04;box-shadow:0 0 0 2px #ca8a04}
+.tv-purple{border-color:#ddd6fe;background:#f5f3ff}
+.tv-purple.on{border-color:#5b21b6;box-shadow:0 0 0 2px #5b21b6}
+.tv-red{border-color:#fecaca;background:#fef2f2}
+.tv-red.on{border-color:#dc2626;box-shadow:0 0 0 2px #dc2626}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+
+/* ════════════════════════════════════
+   RESPONSIVE — Mobile first
+   Breakpoint: <= 768px = mobile
+════════════════════════════════════ */
+
+/* Ẩn sidebar trên mobile, dùng bottom nav */
+@media (max-width: 768px) {
+
+  /* Layout chính */
+  .app { flex-direction: column; }
+  
+  .sidebar {
+    display: none !important;
+  }
+
+  .main {
+    padding-bottom: 56px; /* chỗ cho bottom nav */
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 0 10px;
+    height: 50px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .topbar .top-appname { font-size: 12px; }
+  .topbar .top-sep { display: none; }
+  .topbar .top-mod {
+    display: none;
+  }
+  .topbar .top-user .top-uname { display: none; }
+  .back-btn span { display: none; }
+  .back-btn { padding: 4px 7px; }
+
+  /* Subnav — scroll ngang */
+  .subnav, .modnav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 6px;
+    scrollbar-width: none;
+  }
+  .modnav { height: auto; flex-wrap: nowrap; }
+  .mnbtn { font-size: 9px; padding: 5px 7px; }
+  .sntab { font-size: 10px; padding: 0 9px; }
+
+  /* Filter bar — scroll ngang */
+  .filter-bar, .crm-filter-bar {
+    padding: 5px 10px;
+    gap: 5px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fi, .crm-fi { height: 30px; font-size: 11px; }
+  .fi-search, .crm-fi-search { width: 130px; }
+
+  /* Content area */
+  .cnt { padding: 10px; gap: 8px; }
+
+  /* Stat grids — 2 cột trên mobile */
+  .stat-row,
+  [style*="grid-template-columns:repeat(4"],
+  [style*="grid-template-columns:repeat(5"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  [style*="grid-template-columns:repeat(3"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* 2 cột → 1 cột */
+  .g2, .g3, .g4 {
+    grid-template-columns: 1fr !important;
+  }
+  [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Cards */
+  .card { border-radius: 8px; }
+  .card-hd { padding: 8px 11px; }
+  .card-hd-l { font-size: 11px; }
+
+  /* Table — scroll ngang */
+  .card > table,
+  .card > div > table,
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl { font-size: 10px; min-width: 500px; }
+  .tbl thead th, .tbl tbody td { padding: 6px 8px; }
+
+  /* Two-col layout → 1 cột */
+  .two-col {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto;
+    grid-template-rows: auto auto;
+  }
+
+  /* Data rows */
+  .data-row { padding: 8px 10px; gap: 8px; }
+  .data-row .av { width: 30px; height: 30px; font-size: 9px; }
+
+  /* Modal — full screen trên mobile */
+  .modal-bg { align-items: flex-end; }
+  .modal, .modal-wide {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 14px 14px 0 0 !important;
+    max-height: 92vh;
+    padding: 16px;
+  }
+
+  /* Stat vals */
+  .stat .val { font-size: 18px; }
+  .stat { padding: 9px 11px; }
+
+  /* Buttons */
+  .btn { padding: 5px 10px; font-size: 10px; }
+  .btn-p, .btn-g, .btn-r { padding: 6px 12px; }
+
+  /* KQ modal lần gọi chips */
+  #lan-wrap { gap: 4px; }
+  .lan-chip { padding: 3px 8px; font-size: 9px; }
+
+  /* Chat */
+  .chat-right { display: none !important; }
+  .chat-left { width: 240px; }
+
+  /* BS Mobile đã responsive sẵn */
+}
+
+/* ── BOTTOM NAV (chỉ mobile) ── */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    background: #0f2044;
+    border-top: 1px solid rgba(255,255,255,.1);
+    z-index: 100;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+  }
+}
+/* Ẩn bottom nav trên desktop */
+.bottom-nav { display: none; }
+
+.bn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #5a7fa8;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: all .12s;
+  flex: 1;
+}
+.bn-item.on { color: #60a5fa; }
+.bn-item i { font-size: 20px; }
+.bn-item span { font-size: 8px; font-weight: 500; white-space: nowrap; }
+.bn-badge {
+  position: absolute;
+  top: 2px; right: calc(50% - 16px);
+  background: #dc2626; color: #fff;
+  border-radius: 20px; padding: 0 5px;
+  font-size: 8px; font-weight: 700;
+}
+
+
+@media (max-width: 768px) {
+  .topbar { gap: 5px; padding: 0 8px; height: 48px; }
+  .topbar .role-btn { font-size: 9px; padding: 3px 8px; }
+  .top-right .btn span { display: none; }
+  .top-right { gap: 4px; }
+  .subnav { padding: 0 4px; }
+  .cnt { padding: 8px 10px; }
+  .stat-row { grid-template-columns: 1fr 1fr !important; gap: 6px; }
+  .stat .val { font-size: 16px; }
+  .data-row { padding: 8px 10px; }
+  .data-row .av { width: 28px; height: 28px; font-size: 9px; flex-shrink: 0; }
+  .section-label { font-size: 9px; padding: 5px 10px; }
+  .info-bar { padding: 7px 10px; font-size: 10px; }
+  /* Phễu */
+  .pheu-label { width: 90px; font-size: 10px; }
+  /* Modal */
+  .modal-bg { align-items: flex-end; }
+  .modal { border-radius: 14px 14px 0 0 !important; padding: 14px; }
+  #lan-wrap .lan-chip { padding: 3px 7px; font-size: 9px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-logo"><i class="ti ti-database" style="font-size:18px;color:#fff"></i></div>
+  <div class="sbi on"><i class="ti ti-database"></i><span>Data</span></div>
+  <div class="sbi"><i class="ti ti-users"></i><span>KH</span></div>
+  <div class="sbi"><i class="ti ti-chart-bar"></i><span>KPI</span></div>
+  <div class="sb-sp"></div>
+  <div class="sbi"><i class="ti ti-bell"></i></div>
+  <div class="sbi"><i class="ti ti-user-circle"></i></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <i class="ti ti-database" style="color:#6d28d9;font-size:16px"></i>
+    <span style="font-size:13px;font-weight:700;color:#0f2044">Data / Trực page</span>
+    <div style="width:1px;height:16px;background:#dde3ef;margin:0 2px"></div>
+    <button class="role-btn truc on" id="rbtn-truc" onclick="setRole('truc')">Trực page — D001 Nguyễn T. Hoa</button>
+    <button class="role-btn tele" id="rbtn-tele" onclick="setRole('tele')">Tele — T002 Phạm T. Linh</button>
+    <div class="top-right">
+      <span style="font-size:10px;color:#64748b;background:#f1f5f9;border-radius:6px;padding:3px 9px">Ca sáng 08:00–12:00</span>
+      <button class="btn btn-p" onclick="showM('m-nhap-data')"><i class="ti ti-plus" style="font-size:12px"></i> Nhập data mới</button>
+      <button class="btn btn-tele" onclick="openKQModal('KH','')"><i class="ti ti-phone" style="font-size:12px"></i> Gọi điện</button>
+    </div>
+  </div>
+
+  <!-- SUBNAV TRỰC PAGE -->
+  <div class="subnav" id="nav-truc">
+    <button class="sntab truc on" id="tab-truc-nhap" onclick="goTabTruc('nhap')"><i class="ti ti-database-plus"></i> Nhập data <span class="sn-badge badge-purple">8</span></button>
+    <!-- Phễu & KPI: xem tại module KPI tổng công ty -->
+  </div>
+
+  <!-- SUBNAV TELE (ẩn mặc định) -->
+  <div class="subnav" id="nav-tele" style="display:none">
+    <button class="sntab tele on" id="tab-tele-viec" onclick="goTabTele('viec')"><i class="ti ti-list-check"></i> Việc của tôi <span class="sn-badge badge-red">5</span></button>
+    <button class="sntab tele" id="tab-tele-hangcho" onclick="goTabTele('hangcho')"><i class="ti ti-users"></i> Hàng chờ Tele <span class="sn-badge badge-red">12</span></button>
+    <button class="sntab tele" id="tab-tele-lichsu" onclick="goTabTele('lichsu')"><i class="ti ti-history"></i> Lịch sử gọi</button>
+    <button class="sntab tele" id="tab-tele-lichhen" onclick="goTabTele('lichhen')"><i class="ti ti-calendar-check"></i> Lịch hẹn <span class="sn-badge badge-green">8</span></button>
+    <!-- KPI: xem tại mục KPI 10 vai trò -->
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div style="position:relative;flex-shrink:0">
+      <i class="ti ti-search" style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:12px;color:#94a3b8;pointer-events:none"></i>
+      <input class="fi fi-search" id="f-search" placeholder="Tên, SĐT..."/>
+    </div>
+    <div style="position:relative;flex-shrink:0">
+      <select class="fi" id="f-time" onchange="onTimeChange(this)">
+        <option value="">⏱ Thời gian</option>
+        <option>Hôm nay</option><option>Hôm qua</option><option>Tuần này</option>
+        <option>Tuần trước</option><option>Tháng này</option><option>Tháng trước</option>
+        <option>Quý này</option><option>Năm nay</option><option value="custom">📅 Tuỳ chọn...</option>
+      </select>
+      <div id="time-range" style="display:none;position:absolute;top:calc(100%+4px);left:0;background:#fff;border:1px solid #dde3ef;border-radius:8px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.1);z-index:100;gap:6px;align-items:center;white-space:nowrap">
+        <input type="date" style="border:1px solid #dde3ef;border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit;outline:none"/>
+        <span style="font-size:11px;color:#94a3b8">→</span>
+        <input type="date" style="border:1px solid #dde3ef;border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit;outline:none"/>
+        <button onclick="document.getElementById('time-range').style.display='none'" style="border:none;background:#0f2044;color:#fff;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;font-family:inherit">OK</button>
+      </div>
+    </div>
+    <div class="fi-sep"></div>
+    <select class="fi" id="f-status">
+      <option value="">Tất cả trạng thái</option>
+      <optgroup label="Kết quả cuộc gọi">
+        <option>Chưa gọi</option><option>Đã gọi</option><option>Không nghe máy</option>
+        <option>Thuê bao</option><option>Sai số</option><option>Từ chối</option><option>Hoàn số</option>
+      </optgroup>
+      <optgroup label="Kết quả tư vấn">
+        <option>Đặt lịch</option><option>Hẹn gọi lại</option>
+        <option>Cần tư vấn thêm</option><option>Không quan tâm</option>
+      </optgroup>
+      <optgroup label="Phân loại">
+        <option>Data nóng</option><option>Data âm</option>
+      </optgroup>
+    </select>
+    <select class="fi" id="f-nguon">
+      <option value="">Tất cả nguồn</option>
+      <option>📘 Facebook</option><option>🎵 TikTok</option><option>💬 Zalo</option>
+      <option>🗺️ Google / Maps</option><option>📸 Instagram</option>
+      <option>👥 Giới thiệu</option><option>🚶 Walk-in</option><option>❓ Không xác định</option>
+    </select>
+    <select class="fi" id="f-tele">
+      <option value="">Tất cả Tele</option>
+      <option>T001 Nguyễn T. Trang</option><option>T002 Phạm T. Linh</option><option>T003 Lê T. Hương</option>
+    </select>
+    <select class="fi" id="f-dv">
+      <option value="">Tất cả DV quan tâm</option>
+      <option>SEO rỗ</option><option>Điều trị mụn</option><option>Trẻ hoá da</option>
+      <option>Implant</option><option>Niềng răng</option>
+    </select>
+    <div class="fi-sep"></div>
+    <button class="fi-reset" onclick="resetFilter()"><i class="ti ti-x" style="font-size:11px"></i> Xoá lọc</button>
+  </div>
+
+  <!-- ═══ TRỰC PAGE: NHẬP DATA ═══ -->
+  <div class="sc on" id="sc-truc-nhap">
+    <div style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:6px 14px;font-size:10px;color:#15803d;display:flex;align-items:center;gap:6px;flex-shrink:0">
+      <i class="ti ti-chart-bar" style="font-size:13px;flex-shrink:0"></i>
+      <span>Phễu tương tác & KPI của Trực page/Tele → xem tại <b>module KPI — 10 vai trò</b></span>
+    </div>
+    <div class="info-bar ib-purple">
+      <i class="ti ti-info-circle"></i>
+      <span><b>Quy trình Trực page:</b> KH tương tác trên Pancake → Xin ảnh tình trạng trước → Được ảnh rồi mới xin SĐT → Nhập data → Vào hàng chờ Tele</span>
+    </div>
+    <div class="cnt">
+      <!-- Stat -->
+      <div class="stat-row">
+        <div class="stat" style="border-top:3px solid #6d28d9">
+          <div class="lbl">Data nhập hôm nay</div>
+          <div class="val" style="color:#6d28d9">8</div>
+          <div class="sub">D001 Nguyễn T. Hoa</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">Đã lấy được SĐT</div>
+          <div class="val" style="color:#15803d">6</div>
+          <div class="sub">75% tỷ lệ xin số</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">Đang chờ ảnh</div>
+          <div class="val" style="color:#854d0e">3</div>
+          <div class="sub">Chưa xin được ảnh</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">Data nóng hôm nay</div>
+          <div class="val" style="color:#dc2626">4</div>
+          <div class="sub">Cần Tele gọi sớm</div>
+        </div>
+      </div>
+
+      <!-- Danh sách -->
+      <div class="card" style="flex:1">
+        <div class="card-hd">
+          <div class="card-hd-l"><i class="ti ti-list" style="color:#6d28d9"></i> Data đang xử lý hôm nay</div>
+          <button class="btn btn-p" style="font-size:10px" onclick="showM('m-nhap-data')"><i class="ti ti-plus" style="font-size:12px"></i> Nhập data mới</button>
+        </div>
+
+        <!-- Nhóm 1: Theo dõi từ Pancake -->
+        <div class="section-label" style="color:#5b21b6;background:#faf5ff">
+          <span>THEO DÕI TRÊN PANCAKE — CHƯA CÓ SĐT</span>
+          <span style="font-size:9px;font-weight:400;color:#94a3b8">Nhập tay từ Pancake · Không tự đồng bộ</span>
+        </div>
+        <div style="padding:8px 14px;background:#faf5ff;border-bottom:1px solid #ede9fe;font-size:10px;color:#5b21b6;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-info-circle" style="font-size:12px;flex-shrink:0"></i>
+          Trực page thấy KH tương tác trên Pancake → <b>xin ảnh tình trạng trước</b> (ảnh là mồi câu, được ảnh rồi mới xin SĐT) → có SĐT thì bấm <b>"Có SĐT → Nhập"</b> → tạo data chính thức vào hàng chờ Tele
+        </div>
+
+        <div class="data-row">
+          <div class="av" style="background:#ede9fe;color:#5b21b6">MH</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Minh Hằng <span class="bdg b-purple">Comment FB</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">Hỏi giá SEO rỗ · Vừa comment trên Pancake · Đã reply mời gửi ảnh</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+            <span class="bdg b-warn">Chờ ảnh</span>
+            <button class="btn" style="font-size:9px;padding:3px 7px;border-color:#6d28d9;color:#6d28d9" onclick="showM('m-upload-anh-dp')"><i class="ti ti-camera" style="font-size:10px"></i> Up ảnh</button>
+            <button class="btn" style="font-size:9px;padding:3px 8px" onclick="showM('m-nhap-data')">Có SĐT</button>
+          </div>
+        </div>
+
+        <div class="data-row">
+          <div class="av" style="background:#ede9fe;color:#5b21b6">TL</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Thu Lê <span class="bdg b-purple">Mess TikTok</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">Hỏi điều trị mụn · Nhắn DM TikTok · Chưa gửi ảnh tình trạng</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+            <span class="bdg b-warn">Chờ ảnh</span>
+            <button class="btn" style="font-size:9px;padding:3px 7px;border-color:#6d28d9;color:#6d28d9" onclick="showM('m-upload-anh-dp')"><i class="ti ti-camera" style="font-size:10px"></i> Up ảnh</button>
+            <button class="btn" style="font-size:9px;padding:3px 8px" onclick="showM('m-nhap-data')">Có SĐT</button>
+          </div>
+        </div>
+
+        <div class="data-row" style="background:#f8fafc">
+          <div class="av" style="background:#f1f5f9;color:#94a3b8;font-size:18px;font-weight:400">+</div>
+          <div style="flex:1;font-size:11px;color:#94a3b8">Thấy KH tương tác trên Pancake mới?</div>
+          <button class="btn btn-p" style="font-size:9px;padding:3px 10px" onclick="showM('m-theo-doi')"><i class="ti ti-plus" style="font-size:11px"></i> Theo dõi nhanh</button>
+        </div>
+
+        <!-- Nhóm 2: Đã nhập data -->
+        <div class="section-label" style="color:#15803d;background:#f0fdf4;border-top:1px solid #eef1f6;margin-top:4px">
+          <span>ĐÃ NHẬP DATA — CHỜ TELE GỌI</span>
+        </div>
+
+        <div class="data-row hot">
+          <div class="av" style="background:#fee2e2;color:#dc2626">LM</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Lê Thị Mỹ <span class="bdg b-nong">🔥 NÓNG · 3 phút</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0903 567 xxx · Facebook · SEO rỗ · Tele T002 Linh đang xử lý</div>
+          </div>
+          <span class="bdg b-ok">Tele đang gọi</span>
+        </div>
+
+        <div class="data-row">
+          <div class="av" style="background:#fef9c3;color:#854d0e">HB</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Hoàng Văn Bình <span class="bdg b-blue">Âm</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0978 234 xxx · TikTok · Trẻ hoá da · Nhập 14:38</div>
+          </div>
+          <span class="bdg b-warn">Chờ Tele</span>
+        </div>
+
+        <div class="data-row">
+          <div class="av" style="background:#dcfce7;color:#15803d">PL</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Phạm Thị Lan <span class="bdg b-hen">✓ Đã hẹn</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0912 111 xxx · Zalo · Điều trị mụn · Hẹn 25/05 · 09:00</div>
+          </div>
+          <span class="bdg b-ok">Hoàn thành</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TRỰC PAGE: PHỄU & KPI ═══ -->
+  <div class="sc" id="sc-truc-pheu" style="display:none">
+    <div class="cnt">
+
+      <!-- 4 stat -->
+      <div class="stat-row">
+        <div class="stat" style="border-top:3px solid #6d28d9">
+          <div class="lbl">Data nhập tháng</div>
+          <div class="val" style="color:#6d28d9">156</div>
+          <div class="badge-ok">MT: 150 · ✓ 104%</div>
+        </div>
+        <div class="stat" style="border-top:3px solid #15803d">
+          <div class="lbl">Tỷ lệ lấy SĐT</div>
+          <div class="val" style="color:#15803d">44.2%</div>
+          <div class="badge-ok">MT: 40% · ✓ Vượt</div>
+        </div>
+        <div class="stat" style="border-top:3px solid #0369a1">
+          <div class="lbl">Chuyển đổi tổng</div>
+          <div class="val" style="color:#0369a1">14.1%</div>
+          <div class="badge-ok">MT: 12% · ✓ Vượt</div>
+        </div>
+        <div class="stat" style="border-top:3px solid #854d0e">
+          <div class="lbl">Data trùng</div>
+          <div class="val" style="color:#854d0e">4.2%</div>
+          <div class="badge-ok">MT: &lt;5% · ✓ Đạt</div>
+        </div>
+      </div>
+
+      <!-- Phễu thanh ngang -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-filter" style="color:#6d28d9"></i> Phễu tháng 05/2026 — D001 Nguyễn T. Hoa</div></div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:9px">
+          <div class="pheu-row">
+            <div class="pheu-label">Tương tác</div>
+            <div class="pheu-bar-wrap"><div class="pheu-bar" style="width:100%;background:#6d28d9"><span style="font-size:11px;font-weight:700;color:#fff">312</span></div></div>
+            <div class="pheu-pct" style="color:#94a3b8">100%</div>
+          </div>
+          <div class="pheu-row">
+            <div class="pheu-label">Xin được ảnh</div>
+            <div class="pheu-bar-wrap"><div class="pheu-bar" style="width:62%;background:#0369a1"><span style="font-size:11px;font-weight:700;color:#fff">194</span></div></div>
+            <div class="pheu-pct" style="color:#0369a1">62.2%</div>
+          </div>
+          <div class="pheu-row">
+            <div class="pheu-label">Lấy được SĐT</div>
+            <div class="pheu-bar-wrap"><div class="pheu-bar" style="width:44%;background:#0284c7"><span style="font-size:11px;font-weight:700;color:#fff">138</span></div></div>
+            <div class="pheu-pct" style="color:#0284c7">44.2%</div>
+          </div>
+          <div class="pheu-row">
+            <div class="pheu-label">Nhập data</div>
+            <div class="pheu-bar-wrap"><div class="pheu-bar" style="width:40%;background:#15803d"><span style="font-size:11px;font-weight:700;color:#fff">124</span></div></div>
+            <div class="pheu-pct" style="color:#15803d">89.9%</div>
+          </div>
+          <div class="pheu-row">
+            <div class="pheu-label">Tele gọi được</div>
+            <div class="pheu-bar-wrap"><div class="pheu-bar" style="width:27%;background:#854d0e"><span style="font-size:11px;font-weight:700;color:#fff">84</span></div></div>
+            <div class="pheu-pct" style="color:#854d0e">67.7%</div>
+          </div>
+          <div class="pheu-row">
+            <div class="pheu-label">Đặt lịch</div>
+            <div class="pheu-bar-wrap"><div class="pheu-bar" style="width:14%;background:#dc2626"><span style="font-size:11px;font-weight:700;color:#fff">44</span></div></div>
+            <div class="pheu-pct" style="color:#dc2626">52.4%</div>
+          </div>
+          <div style="padding:9px 12px;background:#f0fdf4;border-radius:8px;font-size:10px;color:#15803d;display:flex;align-items:center;gap:6px;border:1px solid #bbf7d0">
+            <i class="ti ti-trending-up" style="font-size:14px"></i>
+            312 tương tác → 44 đặt lịch = <b>14.1%</b> · Mục tiêu T05: 12% · <b>Vượt 2.1%</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- Theo nguồn -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-chart-bar" style="color:#6d28d9"></i> Tương tác theo nguồn — T05/2026</div></div>
+        <table class="tbl">
+          <thead><tr><th>Nguồn</th><th class="r">Tương tác</th><th class="r">Lấy SĐT</th><th class="r">Đặt lịch</th><th class="r">Tỷ lệ</th></tr></thead>
+          <tbody>
+            <tr><td>📘 Facebook</td><td class="r">142</td><td class="r">58</td><td class="r" style="font-weight:600;color:#15803d">21</td><td class="r"><span class="bdg b-ok">14.8%</span></td></tr>
+            <tr><td>🎵 TikTok</td><td class="r">98</td><td class="r">41</td><td class="r" style="font-weight:600;color:#15803d">13</td><td class="r"><span class="bdg b-ok">13.3%</span></td></tr>
+            <tr><td>💬 Zalo</td><td class="r">45</td><td class="r">24</td><td class="r" style="font-weight:600;color:#15803d">7</td><td class="r"><span class="bdg b-ok">15.6%</span></td></tr>
+            <tr><td>🗺️ Google/Maps</td><td class="r">27</td><td class="r">15</td><td class="r" style="font-weight:600;color:#15803d">3</td><td class="r"><span class="bdg b-warn">11.1%</span></td></tr>
+          </tbody>
+          <tfoot><tr><td>Tổng</td><td class="r">312</td><td class="r">138</td><td class="r" style="color:#15803d">44</td><td class="r"><span class="bdg b-ok">14.1%</span></td></tr></tfoot>
+        </table>
+      </div>
+
+      <!-- KPI chi tiết -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-list-check" style="color:#6d28d9"></i> Chi tiết KPI tháng 05/2026</div></div>
+        <table class="tbl">
+          <thead><tr><th>Chỉ số</th><th class="r">Thực tế</th><th class="r">Mục tiêu</th><th class="r">Tỷ lệ</th><th style="text-align:center">Đánh giá</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:500">Data nhập mới</td><td class="r" style="font-weight:600">156</td><td class="r" style="color:#94a3b8">150</td><td class="r" style="color:#15803d;font-weight:600">104%</td><td style="text-align:center"><span class="bdg b-ok">✓ Vượt</span></td></tr>
+            <tr><td style="font-weight:500">Data nóng</td><td class="r" style="font-weight:600">38</td><td class="r" style="color:#94a3b8">30</td><td class="r" style="color:#15803d;font-weight:600">126%</td><td style="text-align:center"><span class="bdg b-ok">✓ Vượt</span></td></tr>
+            <tr><td style="font-weight:500">Tỷ lệ xin được ảnh</td><td class="r" style="font-weight:600">62.2%</td><td class="r" style="color:#94a3b8">60%</td><td class="r" style="color:#15803d;font-weight:600">103%</td><td style="text-align:center"><span class="bdg b-ok">✓ Đạt</span></td></tr>
+            <tr><td style="font-weight:500">Tỷ lệ lấy SĐT</td><td class="r" style="font-weight:600">44.2%</td><td class="r" style="color:#94a3b8">40%</td><td class="r" style="color:#15803d;font-weight:600">110%</td><td style="text-align:center"><span class="bdg b-ok">✓ Vượt</span></td></tr>
+            <tr><td style="font-weight:500">Chuyển đổi tổng</td><td class="r" style="font-weight:600">14.1%</td><td class="r" style="color:#94a3b8">12%</td><td class="r" style="color:#15803d;font-weight:600">117%</td><td style="text-align:center"><span class="bdg b-ok">✓ Vượt</span></td></tr>
+            <tr><td style="font-weight:500">Tỷ lệ data trùng</td><td class="r" style="font-weight:600">4.2%</td><td class="r" style="color:#94a3b8">&lt;5%</td><td class="r" style="color:#15803d;font-weight:600">Đạt</td><td style="text-align:center"><span class="bdg b-ok">✓ Đạt</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Xu hướng tuần -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-trending-up" style="color:#6d28d9"></i> Xu hướng data nhập theo tuần — T05/2026</div></div>
+        <div class="chart-bar-wrap">
+          <div class="chart-col"><div class="chart-col-num">32</div><div class="chart-col-bar-wrap"><div class="chart-col-bar" style="height:70%"></div></div><div class="chart-col-lbl">Tuần 1</div></div>
+          <div class="chart-col"><div class="chart-col-num">38</div><div class="chart-col-bar-wrap"><div class="chart-col-bar" style="height:84%"></div></div><div class="chart-col-lbl">Tuần 2</div></div>
+          <div class="chart-col"><div class="chart-col-num">42</div><div class="chart-col-bar-wrap"><div class="chart-col-bar" style="height:93%"></div></div><div class="chart-col-lbl">Tuần 3</div></div>
+          <div class="chart-col"><div class="chart-col-num">44</div><div class="chart-col-bar-wrap"><div class="chart-col-bar" style="height:100%"></div></div><div class="chart-col-lbl">Tuần 4</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ TELE: VIỆC CỦA TÔI ═══ -->
+  <div class="sc" id="sc-tele-viec">
+    <div class="info-bar ib-blue">
+      <i class="ti ti-info-circle"></i>
+      <span>Chỉ hiển thị data được giao cho <b>T002 Phạm T. Linh</b>. Data nóng lên đầu, ưu tiên gọi trong 30 phút đầu. Gọi xong bấm <b>"Ghi KQ"</b>.</span>
+    </div>
+    <div class="cnt">
+      <div class="stat-row">
+        <div class="stat" style="border-top:3px solid #0369a1"><div class="lbl">Data được giao hôm nay</div><div class="val" style="color:#0369a1">8</div><div class="sub">Chỉ data của tôi</div></div>
+        <div class="stat"><div class="lbl">Đã gọi xong</div><div class="val" style="color:#15803d">3</div><div class="sub">3 ghi KQ rồi</div></div>
+        <div class="stat"><div class="lbl">Chưa gọi</div><div class="val" style="color:#dc2626">5</div><div class="sub">Cần gọi trong ca</div></div>
+        <div class="stat"><div class="lbl">Đã hẹn hôm nay</div><div class="val" style="color:#854d0e">2</div><div class="sub">Tỷ lệ: 66.7%</div></div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-hd">
+          <div class="card-hd-l"><i class="ti ti-list" style="color:#0369a1"></i> Data của tôi hôm nay</div>
+          <div style="display:flex;gap:5px">
+            <span class="bdg b-err" style="cursor:pointer">Chưa gọi (5)</span>
+            <span class="bdg b-ok" style="cursor:pointer">Đã xong (3)</span>
+          </div>
+        </div>
+        <div class="data-row hot">
+          <div class="av" style="background:#fee2e2;color:#dc2626">LM</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Lê Thị Mỹ <span class="bdg b-nong">🔥 NÓNG · 3 phút</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0903 567 xxx · Facebook · SEO rỗ · "Nhắn tin hỏi giá ngay"</div>
+          </div>
+          <button class="btn btn-tele" style="font-size:10px" onclick="openKQModal('Le Thi My','0903 567 xxx · Facebook · SEO ro')"><i class="ti ti-phone" style="font-size:11px"></i> Gọi ngay</button>
+        </div>
+        <div class="data-row">
+          <div class="av" style="background:#fef9c3;color:#854d0e">HB</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Hoàng Văn Bình <span class="bdg b-blue">Âm</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0978 234 xxx · TikTok · Trẻ hoá da · Nhập 14:38</div>
+          </div>
+          <button class="btn btn-tele" style="font-size:10px" onclick="openKQModal('Hoang Van Binh','0978 234 xxx · TikTok · Tre hoa da')"><i class="ti ti-phone" style="font-size:11px"></i> Gọi</button>
+        </div>
+        <div class="data-row">
+          <div class="av" style="background:#dbeafe;color:#1e40af">TV</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Trần Văn Nam <span class="bdg b-blue">Gọi lần 2</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0901 333 xxx · Facebook · SEO rỗ · Máy bận lần 1 lúc 11:30</div>
+          </div>
+          <button class="btn btn-tele" style="font-size:10px" onclick="openKQModal('Tran Van Nam','0901 333 xxx · Facebook · SEO ro')"><i class="ti ti-phone" style="font-size:11px"></i> Gọi lại</button>
+        </div>
+        <div class="data-row" style="opacity:.75">
+          <div class="av" style="background:#dcfce7;color:#15803d">PL</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Phạm Thị Lan <span class="bdg b-hen">✓ Đã hẹn</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0912 111 xxx · Hẹn 25/05 · 09:00 · Điều trị mụn · Gọi lúc 13:15</div>
+          </div>
+          <button class="btn" style="font-size:10px" onclick="openKQModal('Pham Thi Lan','0912 111 xxx · Da hen')">Ghi KQ</button>
+        </div>
+        <div class="data-row" style="opacity:.75">
+          <div class="av" style="background:#f1f5f9;color:#475569">NT</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Nguyễn Văn Tú <span class="bdg b-gray">Không quan tâm</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0956 xxx xxx · Zalo · Gọi lúc 10:30 · Ghi chú: không quan tâm</div>
+          </div>
+          <span style="font-size:10px;color:#94a3b8">Xong</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TELE: HÀNG CHỜ ═══ -->
+  <div class="sc" id="sc-tele-hangcho">
+    <div class="cnt">
+      <div class="card" style="flex:1">
+        <div class="card-hd">
+          <div class="card-hd-l"><i class="ti ti-users" style="color:#0369a1"></i> Hàng chờ — 12 data chưa được giao</div>
+          <button class="btn" style="font-size:10px;border-color:#0369a1;color:#0369a1" onclick="showM('m-chia-data')"><i class="ti ti-git-branch" style="font-size:12px"></i> Chia data</button>
+        </div>
+        <div class="data-row hot">
+          <div class="av" style="background:#fee2e2;color:#dc2626">NK</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Nguyễn T. Kim <span class="bdg b-nong">🔥 NÓNG</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0912 xxx xxx · TikTok · SEO rỗ · Nhập 14:50</div>
+          </div>
+          <button class="btn" style="font-size:9px" onclick="showM('m-chia-data')">Giao Tele</button>
+        </div>
+        <div class="data-row">
+          <div class="av" style="background:#ede9fe;color:#5b21b6">LH</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Lê Thị Hoa</div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0987 xxx xxx · Facebook · Trẻ hoá da · Nhập 13:20</div>
+          </div>
+          <button class="btn" style="font-size:9px" onclick="showM('m-chia-data')">Giao Tele</button>
+        </div>
+        <div class="data-row">
+          <div class="av" style="background:#dbeafe;color:#1e40af">TM</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600">Trần Văn Minh <span class="bdg b-gray">Walk-in</span></div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">0978 xxx xxx · Walk-in · Điều trị mụn · Nhập 11:00</div>
+          </div>
+          <button class="btn" style="font-size:9px" onclick="showM('m-chia-data')">Giao Tele</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TELE: LỊCH SỬ GỌI ═══ -->
+  <div class="sc" id="sc-tele-lichsu">
+    <div class="cnt">
+      <div class="card" style="flex:1">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-history" style="color:#0369a1"></i> Lịch sử gọi — T002 Phạm T. Linh</div></div>
+        <table class="tbl">
+          <thead><tr><th>Giờ</th><th>KH</th><th>Lần</th><th>KQ cuộc gọi</th><th>KQ tư vấn</th></tr></thead>
+          <tbody>
+            <tr><td>14:45</td><td><b>Lê Thị Mỹ</b></td><td>1</td><td><span class="bdg b-blue">Đã gọi</span></td><td><span class="bdg b-hen">Đặt lịch 25/05</span></td></tr>
+            <tr><td>13:15</td><td><b>Phạm Thị Lan</b></td><td>1</td><td><span class="bdg b-blue">Đã gọi</span></td><td><span class="bdg b-hen">Đặt lịch 25/05</span></td></tr>
+            <tr><td>11:30</td><td><b>Trần Văn Nam</b></td><td>1</td><td><span class="bdg b-warn">Máy bận</span></td><td>—</td></tr>
+            <tr><td>10:30</td><td><b>Nguyễn Văn Tú</b></td><td>1</td><td><span class="bdg b-blue">Đã gọi</span></td><td><span class="bdg b-gray">Không quan tâm</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TELE: LỊCH HẸN ═══ -->
+  <div class="sc" id="sc-tele-lichhen">
+    <div class="cnt">
+      <div class="card" style="flex:1">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-calendar-check" style="color:#15803d"></i> Lịch hẹn — T002 Phạm T. Linh</div></div>
+        <div class="data-row">
+          <div class="av" style="background:#dcfce7;color:#15803d">PL</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">Phạm Thị Lan <span class="bdg b-hen">Đã hẹn</span></div><div style="font-size:10px;color:#64748b;margin-top:2px">25/05 · 09:00 · Điều trị mụn · Chưa đến</div></div>
+          <span style="font-size:10px;color:#94a3b8">Chưa đến</span>
+        </div>
+        <div class="data-row">
+          <div class="av" style="background:#dcfce7;color:#15803d">LM</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">Lê Thị Mỹ <span class="bdg b-hen">Đã hẹn</span></div><div style="font-size:10px;color:#64748b;margin-top:2px">25/05 · 14:00 · SEO rỗ · Chưa đến</div></div>
+          <span style="font-size:10px;color:#94a3b8">Chưa đến</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Tele: xem tại KPI 10 vai trò -->
+  <div class="sc" id="sc-tele-kpi" style="display:none"></div>
+
+</div><!-- end main -->
+</div><!-- end app -->
+
+<!-- ═══════════ MODALS ═══════════ -->
+
+<!-- Nhập data mới -->
+<div class="modal-bg" id="m-nhap-data">
+  <div class="modal modal-wide">
+    <div class="modal-hd"><i class="ti ti-database-plus" style="color:#6d28d9"></i> Nhập data mới</div>
+    <div class="g2">
+      <div class="fg"><label>Họ tên KH</label><input placeholder="Nguyễn Thị..."/></div>
+      <div class="fg"><label>Số điện thoại <span style="color:#dc2626">*</span></label><input type="tel" placeholder="09xx xxx xxx"/></div>
+    </div>
+    <div class="g2">
+      <div class="fg">
+        <label>Nguồn <span style="color:#dc2626">*</span></label>
+        <select id="inp-nguon" onchange="onNguonChange(this)">
+          <option value="">-- Chọn nguồn --</option>
+          <option value="facebook">📘 Facebook</option>
+          <option value="tiktok">🎵 TikTok</option>
+          <option value="zalo">💬 Zalo</option>
+          <option value="google">🗺️ Google / Maps</option>
+          <option value="instagram">📸 Instagram</option>
+          <option value="gioi-thieu">👥 Giới thiệu từ KH cũ</option>
+          <option value="walkin">🚶 Walk-in — KH tự đến</option>
+          <option value="khac">❓ Không xác định</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>DV quan tâm</label>
+        <select>
+          <option value="">Chưa rõ</option>
+          <option>SEO rỗ AirFusion</option><option>Điều trị mụn</option>
+          <option>Trẻ hoá da</option><option>Implant</option><option>Niềng răng</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Phân loại</label>
+      <div style="display:flex;gap:8px">
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;cursor:pointer;background:#fef2f2;border:1.5px solid #fecaca;border-radius:7px;padding:7px;font-weight:400"><input type="radio" name="pl" style="width:auto"/> 🔥 Nóng</label>
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;cursor:pointer;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:7px;padding:7px;font-weight:400"><input type="radio" name="pl" style="width:auto"/> ❄️ Âm</label>
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;cursor:pointer;background:#f8fafc;border:1.5px solid #dde3ef;border-radius:7px;padding:7px;font-weight:400"><input type="radio" name="pl" checked style="width:auto"/> Thường</label>
+      </div>
+    </div>
+    <div class="fg"><label>Ghi chú</label><textarea rows="2" placeholder="Nội dung nhắn tin, tình trạng, lưu ý..."></textarea></div>
+
+    <!-- Ảnh (tuỳ chọn) -->
+    <div style="border:1px solid #dde3ef;border-radius:9px;overflow:hidden;margin-bottom:10px">
+      <div style="padding:7px 12px;background:#faf5ff;border-bottom:1px solid #ddd6fe;font-size:10px;font-weight:600;color:#5b21b6;display:flex;align-items:center;justify-content:space-between">
+        <span><i class="ti ti-camera" style="font-size:12px"></i> Ảnh KH gửi <span style="font-weight:400;color:#94a3b8">(tuỳ chọn — có thể cập nhật sau)</span></span>
+        <button onclick="toggleAnh()" id="btn-anh-toggle" style="border:1px solid #ddd6fe;border-radius:5px;padding:2px 8px;font-size:9px;color:#5b21b6;cursor:pointer;background:#fff;font-family:inherit">+ Thêm ảnh</button>
+      </div>
+      <div id="anh-panel" style="display:none;padding:10px 12px">
+        <div class="g2">
+          <div class="fg"><label>Kênh nhận ảnh</label><select><option>Mess Facebook</option><option>Zalo</option><option>Instagram DM</option><option>TikTok DM</option></select></div>
+          <div class="fg"><label>Loại ảnh</label><select><option>Ảnh tình trạng da/răng</option><option>Ảnh hỏi giá</option></select></div>
+        </div>
+        <div style="border:2px dashed #ddd6fe;border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:#faf5ff" onclick="alert('Chon anh hoac paste Ctrl+V...')">
+          <i class="ti ti-photo-up" style="font-size:26px;color:#6d28d9;display:block;margin-bottom:5px"></i>
+          <div style="font-size:11px;font-weight:500;color:#6d28d9">Chọn ảnh hoặc paste Ctrl+V từ Mess/Zalo</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>Giao cho Tele</label>
+      <select><option>🔄 Tự động — Lead Tele T001 chia</option><option>T001 Nguyễn T. Trang</option><option>T002 Phạm T. Linh</option><option>T003 Lê T. Hương</option></select>
+    </div>
+
+    <div id="walkin-note" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 12px;font-size:10px;color:#15803d;margin-bottom:10px">
+      <i class="ti ti-info-circle" style="font-size:12px"></i>
+      <b>Walk-in:</b> KH tự đến · Lễ tân sẽ được thông báo sắp xếp phòng tư vấn · Tele gọi chăm sóc sau khi KH về
+    </div>
+
+    <div class="modal-ft">
+      <button onclick="hideM('m-nhap-data')" style="padding:7px 14px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid #dde3ef;background:#fff;font-family:inherit">Hủy</button>
+      <button onclick="hideM('m-nhap-data');alert('Da nhap data moi!\nVao hang cho Tele\nLead Tele T001 nhan thong bao')" style="padding:7px 16px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#6d28d9;color:#fff;font-family:inherit;display:inline-flex;align-items:center;gap:5px">
+        <i class="ti ti-database-plus" style="font-size:12px"></i> Nhập data
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Theo dõi nhanh -->
+<div class="modal-bg" id="m-theo-doi">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-eye" style="color:#6d28d9"></i> Theo dõi nhanh từ Pancake</div>
+    <div style="background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:10px;color:#5b21b6;line-height:1.7">
+      Ghi nhanh KH đang tương tác trên Pancake. Chưa cần SĐT — khi xin được số thì bấm <b>"Có SĐT → Nhập"</b> để tạo data chính thức.
+    </div>
+    <div class="g2">
+      <div class="fg"><label>Tên / biệt danh KH</label><input placeholder="Nguyễn Thị A, Lan Hoa..."/></div>
+      <div class="fg"><label>Kênh</label><select><option>Facebook (Pancake)</option><option>TikTok DM</option><option>Zalo</option><option>Instagram DM</option></select></div>
+    </div>
+    <div class="fg"><label>DV quan tâm</label><select><option>Chưa rõ</option><option>SEO rỗ</option><option>Điều trị mụn</option><option>Trẻ hoá da</option><option>Implant</option></select></div>
+    <div class="fg"><label>Ghi chú nhanh</label><input placeholder="VD: Hỏi giá SEO rỗ, đã reply mời gửi ảnh..."/></div>
+    <div class="modal-ft">
+      <button onclick="hideM('m-theo-doi')" style="padding:7px 14px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid #dde3ef;background:#fff;font-family:inherit">Hủy</button>
+      <button onclick="hideM('m-theo-doi');alert('Da them vao danh sach theo doi!')" style="padding:7px 14px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#6d28d9;color:#fff;font-family:inherit">Theo dõi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chia data -->
+<div class="modal-bg" id="m-chia-data">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-git-branch" style="color:#0369a1"></i> Chia data cho Tele</div>
+    <div class="fg"><label>Data</label><select><option>Nguyễn T. Kim · TikTok · SEO rỗ · Nóng</option></select></div>
+    <div class="fg"><label>Giao cho</label><select><option>T001 Nguyễn T. Trang</option><option>T002 Phạm T. Linh</option><option>T003 Lê T. Hương</option></select></div>
+    <div class="modal-ft">
+      <button onclick="hideM('m-chia-data')" style="padding:7px 14px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid #dde3ef;background:#fff;font-family:inherit">Hủy</button>
+      <button onclick="hideM('m-chia-data');alert('Da giao data!\nT002 nhan thong bao ngay')" style="padding:7px 14px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#0369a1;color:#fff;font-family:inherit">Giao data</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ghi KQ gọi -->
+<div class="kq-modal" id="m-kq">
+  <div style="background:#fff;border-radius:14px;padding:20px;width:520px;max-height:90vh;overflow-y:auto">
+    <div style="font-size:14px;font-weight:700;color:#0f2044;margin-bottom:3px;display:flex;align-items:center;gap:7px">
+      <i class="ti ti-phone" style="color:#0369a1;font-size:16px"></i>
+      Ghi kết quả gọi — <span id="kq-name">KH</span>
+    </div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:14px" id="kq-info"></div>
+
+    <!-- Lần gọi -->
+    <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">Lần gọi thứ</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px" id="lan-wrap"></div>
+
+    <!-- KQ cuộc gọi -->
+    <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Kết quả cuộc gọi</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+      <button class="kq-opt" id="kq-chua-goi" onclick="selKQ('chua-goi')"><span class="kq-dot" style="background:#94a3b8"></span>Chưa gọi</button>
+      <button class="kq-opt" id="kq-da-goi" onclick="selKQ('da-goi')"><span class="kq-dot" style="background:#1e40af"></span>Đã gọi — ghi KQ tư vấn</button>
+      <button class="kq-opt" id="kq-khong-nghe" onclick="selKQ('khong-nghe')"><span class="kq-dot" style="background:#854d0e"></span>Không nghe máy</button>
+      <button class="kq-opt" id="kq-thue-bao" onclick="selKQ('thue-bao')"><span class="kq-dot" style="background:#475569"></span>Thuê bao / Không liên lạc</button>
+      <button class="kq-opt" id="kq-sai-so" onclick="selKQ('sai-so')"><span class="kq-dot" style="background:#475569"></span>Sai số</button>
+      <button class="kq-opt red" id="kq-hoan-so" onclick="selKQ('hoan-so')"><i class="ti ti-rotate-clockwise" style="font-size:13px;color:#dc2626"></i>Hoàn số <span style="font-size:9px;font-weight:400">(cần Leader duyệt)</span></button>
+    </div>
+
+    <!-- KQ tư vấn -->
+    <div id="panel-tuvan" style="display:none">
+      <div style="font-size:9px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Kết quả tư vấn</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        <button class="tv-opt tv-green" id="tv-dat-lich" onclick="selTV('dat-lich')"><span class="kq-dot" style="background:#15803d"></span><span style="color:#15803d;font-weight:600">Đặt lịch hẹn</span></button>
+        <button class="tv-opt tv-amber" id="tv-hen-goi" onclick="selTV('hen-goi')"><span class="kq-dot" style="background:#854d0e"></span>Hẹn gọi lại</button>
+        <button class="tv-opt tv-purple" id="tv-can-tv" onclick="selTV('can-tv')"><span class="kq-dot" style="background:#5b21b6"></span>Cần tư vấn thêm</button>
+        <button class="tv-opt tv-red" id="tv-khong-qt" onclick="selTV('khong-qt')"><span class="kq-dot" style="background:#dc2626"></span>Không quan tâm</button>
+      </div>
+      <div id="panel-dat-lich" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:11px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:600;color:#15803d;margin-bottom:8px">Thông tin lịch hẹn</div>
+        <div class="g3">
+          <div class="fg"><label>Ngày hẹn</label><input type="date"/></div>
+          <div class="fg"><label>Giờ hẹn</label><select><option>09:00</option><option>09:30</option><option>10:00</option><option>10:30</option><option>14:00</option><option>14:30</option><option>15:00</option><option>15:30</option><option>16:00</option><option>17:00</option></select></div>
+          <div class="fg"><label>Dịch vụ</label><select><option>SEO rỗ</option><option>Điều trị mụn</option><option>Trẻ hoá da</option><option>Implant</option></select></div>
+        </div>
+      </div>
+      <div id="panel-hen-goi" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:10px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:600;color:#854d0e;margin-bottom:8px">Hẹn gọi lại vào</div>
+        <div class="g2">
+          <div class="fg"><label>Ngày</label><input type="date"/></div>
+          <div class="fg"><label>Buổi</label><select><option>Sáng 8-12h</option><option>Chiều 13-17h</option><option>Tối 17-20h</option></select></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hoàn số -->
+    <div id="panel-hoan-so" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;border-radius:9px;padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#991b1b;margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-rotate-clockwise"></i>Yêu cầu hoàn số</div>
+      <div style="font-size:11px;background:#fff;border-radius:7px;padding:9px;margin-bottom:9px;border:1px solid #fecaca;line-height:1.8">
+        Hoàn số = data bị loại vì KH trêu / số không thật. Cần <b>file ghi âm</b> chứng minh.<br>
+        Leader xét duyệt. <b style="color:#15803d">KPI Tele KHÔNG bị ảnh hưởng</b> sau khi duyệt.
+      </div>
+      <div class="fg"><label>Lý do <span style="color:#dc2626">*</span></label>
+        <select id="hs-lydo" style="border-color:#fecaca">
+          <option value="">-- Chọn lý do --</option>
+          <option>KH trêu / số ảo — giọng rõ ràng trêu</option>
+          <option>Số điện thoại không tồn tại</option>
+          <option>KH không nhớ để lại số / nhầm số</option>
+          <option>Số trùng KH cũ — data nhập sai</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Upload file ghi âm <span style="color:#dc2626">*</span> <span style="font-size:9px;color:#94a3b8">(bắt buộc)</span></label>
+        <div style="border:2px dashed #fecaca;border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:#fff" onclick="alert('Chon file ghi am .mp3 / .m4a...')">
+          <i class="ti ti-microphone" style="font-size:24px;color:#dc2626;display:block;margin-bottom:5px"></i>
+          <div style="font-size:11px;color:#dc2626;font-weight:500">Chọn file ghi âm</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:3px">MP3 · M4A · WAV · Tối đa 50MB</div>
+        </div>
+      </div>
+      <div class="fg"><label>Ghi chú thêm</label><textarea rows="2" placeholder="Mô tả tình huống để Leader xét duyệt..."></textarea></div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:8px 10px;font-size:10px;color:#854d0e">
+        <i class="ti ti-info-circle" style="font-size:11px"></i>
+        Sau khi gửi: Lead Tele T001 nhận thông báo → xét duyệt trong 24h → Nếu duyệt: data trả về đội Trực page
+      </div>
+    </div>
+
+    <!-- Ghi chú -->
+    <div class="fg" style="margin-bottom:12px"><label>Ghi chú cuộc gọi</label><textarea rows="2" placeholder="Nội dung trao đổi, tình trạng KH, lưu ý..."></textarea></div>
+
+    <!-- Footer -->
+    <div style="display:flex;justify-content:flex-end;gap:7px;padding-top:12px;border-top:1px solid #eef1f6">
+      <button onclick="closeKQ()" style="padding:7px 14px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid #dde3ef;background:#fff;font-family:inherit">Hủy</button>
+      <button id="btn-luu" onclick="submitKQ()" style="padding:7px 16px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#0369a1;color:#fff;font-family:inherit;display:inline-flex;align-items:center;gap:5px">
+        <i class="ti ti-device-floppy" style="font-size:12px"></i> Lưu kết quả
+      </button>
+      <button id="btn-hoan" onclick="submitHoanSo()" style="padding:7px 16px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#dc2626;color:#fff;font-family:inherit;display:none;align-items:center;gap:5px">
+        <i class="ti ti-send" style="font-size:12px"></i> Gửi yêu cầu hoàn số
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ STATE ═══
+var curRole = 'truc';
+var curLan = 1;
+var curKQ = '';
+var curTV = '';
+
+// ═══ ROLE SWITCH ═══
+function setRole(r) {
+  curRole = r;
+  // Update buttons
+  document.getElementById('rbtn-truc').className = 'role-btn truc' + (r==='truc'?' on':'');
+  document.getElementById('rbtn-tele').className = 'role-btn tele' + (r==='tele'?' on':'');
+  // Show/hide navs
+  document.getElementById('nav-truc').style.display = r==='truc' ? 'flex' : 'none';
+  document.getElementById('nav-tele').style.display = r==='tele' ? 'flex' : 'none';
+  // Hide all screens
+  document.querySelectorAll('.sc').forEach(function(s){ s.classList.remove('on'); });
+  // Show default screen
+  if (r === 'truc') {
+    document.getElementById('sc-truc-nhap').classList.add('on');
+    document.querySelectorAll('#nav-truc .sntab').forEach(function(t){ t.classList.remove('on'); });
+    document.getElementById('tab-truc-nhap').classList.add('on');
+  } else {
+    document.getElementById('sc-tele-viec').classList.add('on');
+    document.querySelectorAll('#nav-tele .sntab').forEach(function(t){ t.classList.remove('on'); });
+    document.getElementById('tab-tele-viec').classList.add('on');
+  }
+}
+
+// ═══ TABS TRỰC PAGE ═══
+function goTabTruc(t) {
+  document.querySelectorAll('#nav-truc .sntab').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('tab-truc-'+t).classList.add('on');
+  document.querySelectorAll('.sc').forEach(function(s){ s.classList.remove('on'); });
+  document.getElementById('sc-truc-'+t).classList.add('on');
+}
+
+// ═══ TABS TELE ═══
+function goTabTele(t) {
+  document.querySelectorAll('#nav-tele .sntab').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('tab-tele-'+t).classList.add('on');
+  document.querySelectorAll('.sc').forEach(function(s){ s.classList.remove('on'); });
+  document.getElementById('sc-tele-'+t).classList.add('on');
+}
+
+// ═══ FILTER ═══
+function onTimeChange(sel) {
+  var r = document.getElementById('time-range');
+  if (r) r.style.display = sel.value === 'custom' ? 'flex' : 'none';
+}
+function resetFilter() {
+  ['f-search','f-time','f-status','f-nguon','f-tele','f-dv'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value='';
+  });
+}
+
+// ═══ MODAL NHẬP DATA ═══
+function toggleAnh() {
+  var p = document.getElementById('anh-panel');
+  var b = document.getElementById('btn-anh-toggle');
+  if (!p) return;
+  var show = p.style.display === 'none';
+  p.style.display = show ? 'block' : 'none';
+  if (b) b.textContent = show ? '- Ẩn' : '+ Thêm ảnh';
+}
+function onNguonChange(sel) {
+  var note = document.getElementById('walkin-note');
+  if (note) note.style.display = sel.value === 'walkin' ? 'flex' : 'none';
+}
+
+// ═══ MODALS ═══
+function showM(id) { var el=document.getElementById(id); if(el) el.classList.add('on'); }
+function hideM(id) { var el=document.getElementById(id); if(el) el.classList.remove('on'); }
+document.querySelectorAll('.modal-bg').forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('on'); });
+});
+
+// ═══ KQ MODAL ═══
+function buildLan() {
+  var w = document.getElementById('lan-wrap');
+  if (!w) return;
+  w.innerHTML = '';
+  for (var i=1; i<=20; i++) {
+    var btn = document.createElement('button');
+    btn.className = 'lan-chip' + (i===1?' on':'');
+    btn.textContent = 'Lần '+i;
+    btn.dataset.n = i;
+    btn.onclick = (function(n){ return function(){ selLan(n); }; })(i);
+    w.appendChild(btn);
+  }
+}
+
+function openKQModal(name, info) {
+  curLan=1; curKQ=''; curTV='';
+  var el=document.getElementById('m-kq'); if(el) el.classList.add('on');
+  var n=document.getElementById('kq-name'); if(n) n.textContent=name||'KH';
+  var i=document.getElementById('kq-info'); if(i) i.textContent=info||'';
+  buildLan();
+  resetKQPanels();
+  resetKQBtns();
+}
+function closeKQ() { var el=document.getElementById('m-kq'); if(el) el.classList.remove('on'); }
+
+document.getElementById('m-kq').addEventListener('click', function(e){ if(e.target===this) closeKQ(); });
+
+function resetKQPanels() {
+  ['panel-tuvan','panel-dat-lich','panel-hen-goi','panel-hoan-so'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  var bl=document.getElementById('btn-luu'); if(bl) bl.style.display='inline-flex';
+  var bh=document.getElementById('btn-hoan'); if(bh) bh.style.display='none';
+}
+function resetKQBtns() {
+  document.querySelectorAll('.kq-opt,.tv-opt').forEach(function(b){ b.classList.remove('on'); });
+}
+
+function selLan(n) {
+  curLan=n;
+  document.querySelectorAll('.lan-chip').forEach(function(b){
+    b.classList.toggle('on', parseInt(b.dataset.n)===n);
+  });
+}
+
+function selKQ(kq) {
+  curKQ=kq; curTV='';
+  resetKQBtns(); resetKQPanels();
+  var btn=document.getElementById('kq-'+kq); if(btn) btn.classList.add('on');
+  if (kq==='da-goi') {
+    var tv=document.getElementById('panel-tuvan'); if(tv) tv.style.display='block';
+  } else if (kq==='hoan-so') {
+    var hs=document.getElementById('panel-hoan-so'); if(hs) hs.style.display='block';
+    var bl=document.getElementById('btn-luu'); if(bl) bl.style.display='none';
+    var bh=document.getElementById('btn-hoan'); if(bh) bh.style.display='inline-flex';
+  }
+}
+
+function selTV(tv) {
+  curTV=tv;
+  document.querySelectorAll('.tv-opt').forEach(function(b){ b.classList.remove('on'); });
+  var btn=document.getElementById('tv-'+tv); if(btn) btn.classList.add('on');
+  var pdl=document.getElementById('panel-dat-lich'); if(pdl) pdl.style.display=tv==='dat-lich'?'block':'none';
+  var phg=document.getElementById('panel-hen-goi'); if(phg) phg.style.display=tv==='hen-goi'?'block':'none';
+}
+
+function submitKQ() {
+  if (!curKQ || curKQ==='chua-goi') { alert('Vui long chon ket qua cuoc goi'); return; }
+  closeKQ();
+  var msg = 'Da luu KQ Lan '+curLan;
+  if (curTV==='dat-lich') msg += '\n\nLich hen da tao!\nLe tan nhan thong bao\nKH vao danh sach hom nay';
+  alert(msg);
+}
+function submitHoanSo() {
+  var ly=document.getElementById('hs-lydo');
+  if (!ly||!ly.value) { alert('Vui long chon ly do hoan so'); return; }
+  closeKQ();
+  alert('Da gui yeu cau hoan so!\nLead Tele T001 nhan thong bao\nXet duyet trong 24h\nKPI Tele KHONG bi anh huong sau khi duyet');
+}
+
+// ═══ INIT ═══
+// Mặc định Trực page khi load
+document.addEventListener('DOMContentLoaded', function() {
+  setRole('truc');
+});
+</script>
+
+<!-- Modal upload ảnh — Trực page & Tele -->
+<div class="modal-bg" id="m-upload-anh-dp">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-camera" style="color:#6d28d9"></i> Upload ảnh tình trạng KH</div>
+    <div style="background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:10px;color:#5b21b6;line-height:1.7">
+      <i class="ti ti-info-circle" style="font-size:12px"></i>
+      <b>Trực page + Tele:</b> Upload ảnh tình trạng da/răng KH gửi qua chat (Mess/Zalo/TikTok DM).
+      Ảnh này tự vào hồ sơ KH → Sale + BS xem trước khi KH đến → tư vấn chính xác hơn.
+    </div>
+    <div class="g2">
+      <div class="fg">
+        <label>KH</label>
+        <select><option>Minh Hằng (đang theo dõi)</option><option>Thu Lê (đang theo dõi)</option><option>Tạo KH mới</option></select>
+      </div>
+      <div class="fg">
+        <label>Kênh nhận ảnh</label>
+        <select><option>Mess Facebook</option><option>Zalo</option><option>TikTok DM</option><option>Instagram DM</option></select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Loại ảnh</label>
+      <select><option>Ảnh tình trạng da/răng — trước khi hỏi SĐT</option><option>Ảnh KH gửi thêm khi tư vấn điện thoại</option></select>
+    </div>
+    <div style="border:2px dashed #ddd6fe;border-radius:10px;padding:22px;text-align:center;cursor:pointer;background:#faf5ff;margin-bottom:10px" onclick="alert('Chon anh hoac paste Ctrl+V tu Mess/Zalo/TikTok...')">
+      <i class="ti ti-photo-up" style="font-size:32px;color:#6d28d9;display:block;margin-bottom:8px"></i>
+      <div style="font-size:12px;font-weight:500;color:#6d28d9">Chọn ảnh hoặc paste Ctrl+V</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:4px">Hỗ trợ paste từ Mess/Zalo/TikTok · JPG · PNG</div>
+    </div>
+    <div style="font-size:10px;color:#94a3b8;margin-bottom:10px">
+      <i class="ti ti-info-circle" style="font-size:11px;color:#5b21b6"></i>
+      Ảnh tự vào hồ sơ KH ngay · Sale + BS có thể xem khi tư vấn · Không thay thế ảnh chụp tại phòng khám
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:7px;padding-top:10px;border-top:1px solid #eef1f6">
+      <button onclick="hideM('m-upload-anh-dp')" style="padding:7px 14px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid #dde3ef;background:#fff;font-family:inherit">Hủy</button>
+      <button onclick="hideM('m-upload-anh-dp');alert('Da upload anh!
+Anh vao ho so KH ngay
+Sale + BS co the xem khi tu van')" style="padding:7px 14px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#6d28d9;color:#fff;font-family:inherit;display:inline-flex;align-items:center;gap:4px">
+        <i class="ti ti-upload" style="font-size:12px"></i> Upload ảnh
+      </button>
+    </div>
+  </div>
+</div>
+<div class="bottom-nav">
+    <button class="bn-item on" onclick="setRole('truc')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-database" style="font-size:20px"></i><span class="bn-badge">8</span>
+      </div>
+      <span>Data</span>
+    </button>
+    <button class="bn-item" onclick="openKQModal('KH','')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-phone" style="font-size:20px"></i>
+      </div>
+      <span>Gọi</span>
+    </button>
+    <button class="bn-item" onclick="setRole('tele');goTabTele('lichhen')">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-calendar-check" style="font-size:20px"></i>
+      </div>
+      <span>Lịch hẹn</span>
+    </button>
+    <button class="bn-item" onclick="window.location='crm_kpi_demo.html'">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-chart-bar" style="font-size:20px"></i>
+      </div>
+      <span>KPI</span>
+    </button>
+    <button class="bn-item" onclick="window.location='crm_DEMO_HOAN_CHINH.html'">
+      <div style="position:relative;display:inline-block">
+        <i class="ti ti-home" style="font-size:20px"></i>
+      </div>
+      <span>Hub</span>
+    </button>
+    </div>
+</body>
+</html>

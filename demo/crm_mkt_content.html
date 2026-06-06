@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CRM — MKT Content Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;background:#eef1f6;color:#1a2233}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:58px;background:#0f2044;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:2px;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.sb-logo{width:38px;height:38px;background:#0284c7;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.sbi{width:46px;height:46px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a7fa8;cursor:pointer;gap:2px}
+.sbi.on{background:#0284c7;color:#fff}
+.sbi.off{opacity:.2;cursor:not-allowed}
+.sbi i{font-size:19px}.sbi span{font-size:9px;font-weight:500}
+.sb-sp{flex:1}
+/* Subnav */
+.subnav{background:#fff;border-bottom:1px solid #dde3ef;padding:0 14px;display:flex;align-items:center;height:40px;flex-shrink:0;overflow-x:auto;gap:0}
+.sntab{padding:0 11px;height:40px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;border-left:none;border-right:none;border-top:none;background:none;flex-shrink:0}
+.sntab:hover{color:#374151}
+.sntab.on{color:#0284c7;border-bottom-color:#0284c7}
+.sntab i{font-size:13px}
+.sn-badge{background:#dc2626;color:#fff;border-radius:20px;padding:0 6px;font-size:9px;font-weight:700;margin-left:3px}
+.sn-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+/* Toolbar */
+.tb{background:#fff;border-bottom:1px solid #dde3ef;padding:0 14px;height:46px;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.tb-title{font-size:14px;font-weight:600;color:#0f2044;display:flex;align-items:center;gap:6px}
+.tb-acts{margin-left:auto;display:flex;align-items:center;gap:6px}
+.sep{width:1px;height:18px;background:#dde3ef;margin:0 2px}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #dde3ef;background:#fff;color:#374151;font-family:inherit;white-space:nowrap;transition:all .12s}
+.btn i{font-size:13px}
+.btn-p{background:#0284c7;color:#fff;border-color:#0284c7}
+.btn-g{background:#16a34a;color:#fff;border-color:#16a34a}
+/* Screens */
+.sc{display:none;flex:1;flex-direction:column;overflow:hidden}
+.sc.on{display:flex}
+.cnt{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+/* Cards */
+.card{background:#fff;border:1px solid #dde3ef;border-radius:10px;overflow:hidden}
+.card-hd{padding:9px 14px;border-bottom:1px solid #eef1f6;display:flex;align-items:center;justify-content:space-between;background:#f8fafc;flex-shrink:0}
+.card-hd-l{font-size:12px;font-weight:600;color:#0f2044;display:flex;align-items:center;gap:6px}
+/* Badges */
+.bdg{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;white-space:nowrap}
+.b-todo{background:#f1f5f9;color:#475569}
+.b-doing{background:#dbeafe;color:#1e40af}
+.b-review{background:#fef9c3;color:#854d0e}
+.b-approved{background:#dcfce7;color:#15803d}
+.b-published{background:#ede9fe;color:#5b21b6}
+.b-rejected{background:#fee2e2;color:#991b1b}
+/* Type badges */
+.type-content{background:#eff6ff;color:#1e40af}
+.type-design{background:#fdf4ff;color:#7e22ce}
+.type-video{background:#fff7ed;color:#c2410c}
+.type-freelance{background:#f0fdf4;color:#15803d}
+/* Kanban */
+.kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;flex:1;overflow:hidden;padding:12px 14px}
+.k-col{display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.k-col-hd{font-size:10px;font-weight:600;padding:6px 10px;border-radius:7px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.k-col-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.k-card{background:#fff;border:1px solid #dde3ef;border-radius:8px;padding:10px;cursor:pointer;transition:all .12s}
+.k-card:hover{border-color:#0284c7;transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.07)}
+.k-card-title{font-size:11px;font-weight:600;color:#1a2233;margin-bottom:5px;line-height:1.4}
+.k-card-meta{font-size:10px;color:#94a3b8;display:flex;flex-direction:column;gap:3px}
+.k-card-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.k-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:7px;border-top:1px solid #f1f5f9}
+.av-sm{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
+.av-group{display:flex;gap:-4px}
+/* Deadline color */
+.dl-ok{color:#15803d}
+.dl-soon{color:#854d0e}
+.dl-late{color:#dc2626;font-weight:600}
+/* Content calendar */
+.cal-grid{display:grid;grid-template-columns:60px repeat(7,1fr);gap:1px;background:#dde3ef;border-radius:8px;overflow:hidden}
+.cal-cell{background:#fff;padding:4px 6px;font-size:10px;min-height:60px}
+.cal-hd{background:#f8fafc;font-weight:600;text-align:center;font-size:10px;min-height:auto;padding:6px}
+.cal-time{background:#f8fafc;font-weight:500;color:#94a3b8;display:flex;align-items:flex-start;padding-top:8px;justify-content:center}
+.cal-item{border-radius:4px;padding:2px 5px;margin-bottom:2px;font-size:9px;font-weight:500;cursor:pointer;line-height:1.4}
+/* Form */
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.fg label{font-size:10px;font-weight:600;color:#64748b}
+.fg label .req{color:#dc2626}
+.fg input,.fg select,.fg textarea{border:1px solid #dde3ef;border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none;background:#fff;width:100%}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:#0284c7}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:14px;padding:22px;width:560px;max-height:90vh;overflow-y:auto}
+.modal-hd{font-size:15px;font-weight:600;color:#0f2044;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.modal-hd i{color:#0284c7;font-size:18px}
+.modal-ft{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #eef1f6}
+/* Vòng duyệt */
+.duyet-step{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;margin-bottom:6px}
+.duyet-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+/* Progress bar */
+.prog-bar{height:5px;background:#f1f5f9;border-radius:10px;overflow:hidden;margin-top:5px}
+.prog-fill{height:100%;border-radius:10px}
+/* Stats */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:#fff;border:1px solid #dde3ef;border-radius:10px;padding:12px 14px}
+.stat .lbl{font-size:10px;color:#94a3b8;margin-bottom:5px}
+.stat .val{font-size:20px;font-weight:700}
+.stat .sub{font-size:10px;color:#94a3b8;margin-top:2px}
+/* File chips */
+.file-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:10px;background:#f8fafc;border:1px solid #dde3ef;cursor:pointer}
+.file-chip:hover{border-color:#0284c7;color:#0284c7}
+/* Comment */
+.cmt{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.cmt:last-child{border-bottom:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+
+/* ════════════════════════════════════
+   RESPONSIVE — Mobile first
+   Breakpoint: <= 768px = mobile
+════════════════════════════════════ */
+
+/* Ẩn sidebar trên mobile, dùng bottom nav */
+@media (max-width: 768px) {
+
+  /* Layout chính */
+  .app { flex-direction: column; }
+  
+  .sidebar {
+    display: none !important;
+  }
+
+  .main {
+    padding-bottom: 56px; /* chỗ cho bottom nav */
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 0 10px;
+    height: 50px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .topbar .top-appname { font-size: 12px; }
+  .topbar .top-sep { display: none; }
+  .topbar .top-mod {
+    display: none;
+  }
+  .topbar .top-user .top-uname { display: none; }
+  .back-btn span { display: none; }
+  .back-btn { padding: 4px 7px; }
+
+  /* Subnav — scroll ngang */
+  .subnav, .modnav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 6px;
+    scrollbar-width: none;
+  }
+  .modnav { height: auto; flex-wrap: nowrap; }
+  .mnbtn { font-size: 9px; padding: 5px 7px; }
+  .sntab { font-size: 10px; padding: 0 9px; }
+
+  /* Filter bar — scroll ngang */
+  .filter-bar, .crm-filter-bar {
+    padding: 5px 10px;
+    gap: 5px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fi, .crm-fi { height: 30px; font-size: 11px; }
+  .fi-search, .crm-fi-search { width: 130px; }
+
+  /* Content area */
+  .cnt { padding: 10px; gap: 8px; }
+
+  /* Stat grids — 2 cột trên mobile */
+  .stat-row,
+  [style*="grid-template-columns:repeat(4"],
+  [style*="grid-template-columns:repeat(5"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  [style*="grid-template-columns:repeat(3"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* 2 cột → 1 cột */
+  .g2, .g3, .g4 {
+    grid-template-columns: 1fr !important;
+  }
+  [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Cards */
+  .card { border-radius: 8px; }
+  .card-hd { padding: 8px 11px; }
+  .card-hd-l { font-size: 11px; }
+
+  /* Table — scroll ngang */
+  .card > table,
+  .card > div > table,
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl { font-size: 10px; min-width: 500px; }
+  .tbl thead th, .tbl tbody td { padding: 6px 8px; }
+
+  /* Two-col layout → 1 cột */
+  .two-col {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto;
+    grid-template-rows: auto auto;
+  }
+
+  /* Data rows */
+  .data-row { padding: 8px 10px; gap: 8px; }
+  .data-row .av { width: 30px; height: 30px; font-size: 9px; }
+
+  /* Modal — full screen trên mobile */
+  .modal-bg { align-items: flex-end; }
+  .modal, .modal-wide {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 14px 14px 0 0 !important;
+    max-height: 92vh;
+    padding: 16px;
+  }
+
+  /* Stat vals */
+  .stat .val { font-size: 18px; }
+  .stat { padding: 9px 11px; }
+
+  /* Buttons */
+  .btn { padding: 5px 10px; font-size: 10px; }
+  .btn-p, .btn-g, .btn-r { padding: 6px 12px; }
+
+  /* KQ modal lần gọi chips */
+  #lan-wrap { gap: 4px; }
+  .lan-chip { padding: 3px 8px; font-size: 9px; }
+
+  /* Chat */
+  .chat-right { display: none !important; }
+  .chat-left { width: 240px; }
+
+  /* BS Mobile đã responsive sẵn */
+}
+
+/* ── BOTTOM NAV (chỉ mobile) ── */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    background: #0f2044;
+    border-top: 1px solid rgba(255,255,255,.1);
+    z-index: 100;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+  }
+}
+/* Ẩn bottom nav trên desktop */
+.bottom-nav { display: none; }
+
+.bn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #5a7fa8;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: all .12s;
+  flex: 1;
+}
+.bn-item.on { color: #60a5fa; }
+.bn-item i { font-size: 20px; }
+.bn-item span { font-size: 8px; font-weight: 500; white-space: nowrap; }
+.bn-badge {
+  position: absolute;
+  top: 2px; right: calc(50% - 16px);
+  background: #dc2626; color: #fff;
+  border-radius: 20px; padding: 0 5px;
+  font-size: 8px; font-weight: 700;
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+<div class="sidebar">
+  <div class="sb-logo"><i class="ti ti-speakerphone" style="font-size:18px;color:#fff"></i></div>
+  <div class="sbi off"><i class="ti ti-chart-bar"></i><span>Ads</span></div>
+  <div class="sbi on"><i class="ti ti-pencil"></i><span>Content</span></div>
+  <div class="sbi off"><i class="ti ti-tag"></i><span>KM</span></div>
+  <div class="sbi off"><i class="ti ti-chart-pie"></i><span>KPI</span></div>
+  <div class="sb-sp"></div>
+  <div class="sbi"><i class="ti ti-bell"></i></div>
+  <div class="sbi"><i class="ti ti-user-circle"></i></div>
+</div>
+
+<div class="main">
+<div class="subnav">
+  <button class="sntab on" id="sntab-board" onclick="goSc('board')"><i class="ti ti-layout-board"></i> Kanban</button>
+  <button class="sntab" id="sntab-calendar" onclick="goSc('calendar')"><i class="ti ti-calendar-month"></i> Content calendar</button>
+  <button class="sntab" id="sntab-duyet" onclick="goSc('duyet')"><i class="ti ti-checks"></i> Vòng duyệt <span class="sn-badge">3</span></button>
+  <button class="sntab" id="sntab-freelance" onclick="goSc('freelance')"><i class="ti ti-users"></i> Freelancer</button>
+  <button class="sntab" id="sntab-tong" onclick="goSc('tong')"><i class="ti ti-chart-bar"></i> Tổng quan</button>
+  <div class="sn-right">
+    <select style="border:1px solid #dde3ef;border-radius:7px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none;background:#fff">
+      <option>Campaign: SEO rỗ T05/2026</option>
+      <option>Campaign: Trẻ hoá T05/2026</option>
+      <option>Tất cả campaign</option>
+    </select>
+    <button class="btn btn-p" onclick="showModal('modal-task')"><i class="ti ti-plus"></i> Tạo task</button>
+  </div>
+</div>
+
+<!-- ══ KANBAN ══ -->
+<div class="sc on" id="sc-board">
+  <div class="tb">
+    <div class="tb-title"><i class="ti ti-layout-board" style="color:#0284c7"></i> Kanban công việc MKT</div>
+    <div class="tb-acts">
+      <div style="display:flex;gap:5px">
+        <span class="bdg type-content" style="cursor:pointer">Content</span>
+        <span class="bdg type-design" style="cursor:pointer">Thiết kế</span>
+        <span class="bdg type-video" style="cursor:pointer">Video/Phim</span>
+        <span class="bdg type-freelance" style="cursor:pointer">Freelance</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="kanban">
+    <!-- CỘT 1: Chờ brief -->
+    <div class="k-col">
+      <div class="k-col-hd" style="background:#f1f5f9;color:#475569">
+        <span>Chờ brief</span><span style="background:#475569;color:#fff;border-radius:20px;padding:1px 7px;font-size:9px">2</span>
+      </div>
+      <div class="k-col-body">
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Video Reel — Hành trình điều trị sẹo 30 ngày</div>
+          <div class="k-card-tags">
+            <span class="bdg type-video">Video</span>
+            <span class="bdg" style="background:#fff7ed;color:#c2410c;font-size:8px">TikTok + Reels</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-speakerphone" style="font-size:10px"></i> Campaign: SEO rỗ T05</span>
+            <span><i class="ti ti-user" style="font-size:10px"></i> Chưa giao — cần brief</span>
+          </div>
+          <div class="k-card-footer">
+            <span class="dl-late" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL: 25/05</span>
+            <div style="display:flex;gap:4px">
+              <div class="av-sm" style="background:#fee2e2;color:#991b1b">?</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Banner KV — Chương trình tháng 6</div>
+          <div class="k-card-tags">
+            <span class="bdg type-design">Thiết kế</span>
+            <span class="bdg" style="background:#fdf4ff;color:#7e22ce;font-size:8px">Facebook + Zalo</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-speakerphone" style="font-size:10px"></i> Campaign: T06 prep</span>
+            <span><i class="ti ti-user" style="font-size:10px"></i> Chưa giao</span>
+          </div>
+          <div class="k-card-footer">
+            <span class="dl-ok" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL: 05/06</span>
+            <div class="av-sm" style="background:#f1f5f9;color:#475569">?</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CỘT 2: Đang làm -->
+    <div class="k-col">
+      <div class="k-col-hd" style="background:#dbeafe;color:#1e40af">
+        <span>Đang làm</span><span style="background:#1e40af;color:#fff;border-radius:20px;padding:1px 7px;font-size:9px">4</span>
+      </div>
+      <div class="k-col-body">
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Caption + Hashtag — 10 post SEO rỗ T05</div>
+          <div class="k-card-tags">
+            <span class="bdg type-content">Content</span>
+            <span class="bdg" style="background:#eff6ff;color:#1e40af;font-size:8px">Facebook</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-user" style="font-size:10px"></i> Content: Nguyễn T. Hà</span>
+            <span><i class="ti ti-check" style="font-size:10px"></i> Xong 6/10 post</span>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" style="width:60%;background:#1d4ed8"></div></div>
+          <div class="k-card-footer">
+            <span class="dl-soon" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL: 23/05</span>
+            <div class="av-sm" style="background:#dbeafe;color:#1e40af">NH</div>
+          </div>
+        </div>
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Thumbnail video — Trẻ hoá da Thermage</div>
+          <div class="k-card-tags">
+            <span class="bdg type-design">Thiết kế</span>
+            <span class="bdg type-video">Video</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-user" style="font-size:10px"></i> Design: Trần Minh Tú</span>
+            <span><i class="ti ti-brand-figma" style="font-size:10px"></i> Đang dựng trong Figma</span>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" style="width:40%;background:#7e22ce"></div></div>
+          <div class="k-card-footer">
+            <span class="dl-ok" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL: 26/05</span>
+            <div class="av-sm" style="background:#fdf4ff;color:#7e22ce">MT</div>
+          </div>
+        </div>
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Script video "1 ngày tại phòng khám" 60s</div>
+          <div class="k-card-tags">
+            <span class="bdg type-content">Content</span>
+            <span class="bdg type-video">Video</span>
+            <span class="bdg type-freelance">Freelance</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-user" style="font-size:10px"></i> Freelancer: Lê Văn Khoa (đạo diễn)</span>
+            <span><i class="ti ti-currency-dong" style="font-size:10px"></i> Fee: 3.500.000đ</span>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" style="width:75%;background:#c2410c"></div></div>
+          <div class="k-card-footer">
+            <span class="dl-soon" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL: 24/05</span>
+            <div class="av-sm" style="background:#fff7ed;color:#c2410c">LK</div>
+          </div>
+        </div>
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Story Instagram — Before/After sẹo rỗ</div>
+          <div class="k-card-tags">
+            <span class="bdg type-design">Thiết kế</span>
+            <span class="bdg" style="background:#fce7f3;color:#be185d;font-size:8px">Instagram</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-user" style="font-size:10px"></i> Design: Trần Minh Tú</span>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" style="width:20%;background:#7e22ce"></div></div>
+          <div class="k-card-footer">
+            <span class="dl-ok" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL: 28/05</span>
+            <div class="av-sm" style="background:#fdf4ff;color:#7e22ce">MT</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CỘT 3: Chờ duyệt nội bộ -->
+    <div class="k-col">
+      <div class="k-col-hd" style="background:#fef9c3;color:#854d0e">
+        <span>Chờ duyệt nội bộ</span><span style="background:#854d0e;color:#fff;border-radius:20px;padding:1px 7px;font-size:9px">3</span>
+      </div>
+      <div class="k-col-body">
+
+        <div class="k-card" style="border-color:#fde68a" onclick="showModal('modal-duyet-task')">
+          <div style="font-size:9px;font-weight:600;color:#854d0e;margin-bottom:4px"><i class="ti ti-alert-triangle" style="font-size:10px"></i> Chờ Lead MKT duyệt</div>
+          <div class="k-card-title">Post FB — "5 lý do chọn AirFusion" (có caption + visual)</div>
+          <div class="k-card-tags">
+            <span class="bdg type-content">Content</span>
+            <span class="bdg type-design">Thiết kế</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-user" style="font-size:10px"></i> Content: Nguyễn T. Hà · Design: Trần Minh Tú</span>
+            <span><i class="ti ti-file" style="font-size:10px"></i> 2 file đính kèm</span>
+          </div>
+          <div class="k-card-footer">
+            <span class="dl-late" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL đăng: 22/05 ⚠</span>
+            <button class="btn" style="font-size:9px;padding:2px 7px;border-color:#854d0e;color:#854d0e" onclick="event.stopPropagation();showModal('modal-duyet-task')">Duyệt</button>
+          </div>
+        </div>
+
+        <div class="k-card" style="border-color:#fde68a" onclick="showModal('modal-duyet-task')">
+          <div style="font-size:9px;font-weight:600;color:#854d0e;margin-bottom:4px"><i class="ti ti-alert-triangle" style="font-size:10px"></i> Chờ Quản lý duyệt</div>
+          <div class="k-card-title">Video Reels 30s — Quy trình điều trị SEO rỗ (cut xong)</div>
+          <div class="k-card-tags">
+            <span class="bdg type-video">Video</span>
+            <span class="bdg type-freelance">Freelance edit</span>
+          </div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-user" style="font-size:10px"></i> Freelancer: Lê Văn Khoa (edit)</span>
+            <span><i class="ti ti-link" style="font-size:10px"></i> Link Drive: video_seoro_v2.mp4</span>
+          </div>
+          <div class="k-card-footer">
+            <span class="dl-soon" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL đăng: 25/05</span>
+            <button class="btn" style="font-size:9px;padding:2px 7px;border-color:#854d0e;color:#854d0e" onclick="event.stopPropagation();showModal('modal-duyet-task')">Duyệt</button>
+          </div>
+        </div>
+
+        <div class="k-card" style="border-color:#fde68a" onclick="showModal('modal-duyet-task')">
+          <div style="font-size:9px;font-weight:600;color:#854d0e;margin-bottom:4px">Chờ Lead MKT duyệt</div>
+          <div class="k-card-title">TikTok script — "Hỏi đáp về sẹo rỗ" series 5 tập</div>
+          <div class="k-card-tags">
+            <span class="bdg type-content">Content</span>
+            <span class="bdg" style="background:#f1f5f9;color:#475569;font-size:8px">TikTok</span>
+          </div>
+          <div class="k-card-footer">
+            <span class="dl-ok" style="font-size:10px"><i class="ti ti-clock" style="font-size:10px"></i> DL: 30/05</span>
+            <button class="btn" style="font-size:9px;padding:2px 7px;border-color:#854d0e;color:#854d0e" onclick="event.stopPropagation();showModal('modal-duyet-task')">Duyệt</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CỘT 4: Đã duyệt / Chờ đăng -->
+    <div class="k-col">
+      <div class="k-col-hd" style="background:#dcfce7;color:#15803d">
+        <span>Đã duyệt · Chờ đăng</span><span style="background:#15803d;color:#fff;border-radius:20px;padding:1px 7px;font-size:9px">2</span>
+      </div>
+      <div class="k-col-body">
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Post FB — "Trước & Sau 10 buổi điều trị mụn"</div>
+          <div class="k-card-tags"><span class="bdg type-content">Content</span><span class="bdg type-design">Thiết kế</span></div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-calendar" style="font-size:10px"></i> Đăng: 23/05 · 10:00</span>
+            <span style="color:#15803d"><i class="ti ti-check" style="font-size:10px"></i> Lead MKT đã duyệt lúc 14:20</span>
+          </div>
+          <div class="k-card-footer">
+            <span style="font-size:10px;color:#15803d">Sẵn sàng lên lịch</span>
+            <button class="btn btn-g" style="font-size:9px;padding:2px 7px">Lên lịch đăng</button>
+          </div>
+        </div>
+
+        <div class="k-card" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Story Zalo OA — Flash sale 24h giảm 15%</div>
+          <div class="k-card-tags"><span class="bdg type-design">Thiết kế</span></div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-calendar" style="font-size:10px"></i> Đăng: 24/05 · 08:00</span>
+            <span style="color:#15803d"><i class="ti ti-check" style="font-size:10px"></i> Quản lý đã duyệt</span>
+          </div>
+          <div class="k-card-footer">
+            <span style="font-size:10px;color:#15803d">Sẵn sàng</span>
+            <button class="btn btn-g" style="font-size:9px;padding:2px 7px">Lên lịch đăng</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CỘT 5: Đã đăng -->
+    <div class="k-col">
+      <div class="k-col-hd" style="background:#ede9fe;color:#5b21b6">
+        <span>Đã đăng</span><span style="background:#5b21b6;color:#fff;border-radius:20px;padding:1px 7px;font-size:9px">8</span>
+      </div>
+      <div class="k-col-body">
+
+        <div class="k-card" style="opacity:.75" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Post TikTok — "3 lầm tưởng về sẹo rỗ" (viral 245K views)</div>
+          <div class="k-card-tags"><span class="bdg type-video">Video</span></div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span style="color:#5b21b6"><i class="ti ti-trending-up" style="font-size:10px"></i> 245K views · 1.2K share · 3.4K like</span>
+            <span><i class="ti ti-calendar" style="font-size:10px"></i> Đăng 18/05</span>
+          </div>
+        </div>
+
+        <div class="k-card" style="opacity:.65" onclick="showModal('modal-task-detail')">
+          <div class="k-card-title">Post FB — "Gặp gỡ BS KIÊN" (giới thiệu bác sĩ)</div>
+          <div class="k-card-tags"><span class="bdg type-content">Content</span><span class="bdg type-design">Thiết kế</span></div>
+          <div class="k-card-meta" style="margin-top:6px">
+            <span><i class="ti ti-eye" style="font-size:10px"></i> Reach: 12.400 · 89 comment</span>
+          </div>
+        </div>
+
+        <div style="text-align:center;padding:8px;font-size:10px;color:#94a3b8">+ 6 bài khác</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONTENT CALENDAR ══ -->
+<div class="sc" id="sc-calendar">
+  <div class="tb">
+    <div class="tb-title"><i class="ti ti-calendar-month" style="color:#0284c7"></i> Content Calendar — Tuần 19-25/05/2026</div>
+    <div class="tb-acts">
+      <button class="btn"><i class="ti ti-chevron-left"></i></button>
+      <button class="btn"><i class="ti ti-chevron-right"></i></button>
+      <div class="sep"></div>
+      <button class="btn btn-p" onclick="showModal('modal-task')"><i class="ti ti-plus"></i> Thêm lịch đăng</button>
+    </div>
+  </div>
+  <div class="cnt">
+    <div class="cal-grid" style="flex:1">
+      <!-- Header -->
+      <div class="cal-cell cal-hd"></div>
+      <div class="cal-cell cal-hd">T2<br><span style="font-weight:400;color:#94a3b8">19/05</span></div>
+      <div class="cal-cell cal-hd">T3<br><span style="font-weight:400;color:#94a3b8">20/05</span></div>
+      <div class="cal-cell cal-hd">T4<br><span style="font-weight:400;color:#94a3b8">21/05</span></div>
+      <div class="cal-cell cal-hd" style="background:#fffbeb">T5<br><span style="font-weight:700;color:#854d0e">22/05 ◀</span></div>
+      <div class="cal-cell cal-hd">T6<br><span style="font-weight:400;color:#94a3b8">23/05</span></div>
+      <div class="cal-cell cal-hd">T7<br><span style="font-weight:400;color:#94a3b8">24/05</span></div>
+      <div class="cal-cell cal-hd" style="background:#fafafa">CN<br><span style="font-weight:400;color:#94a3b8">25/05</span></div>
+      <!-- 08:00 -->
+      <div class="cal-cell cal-time">08:00</div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell"><div class="cal-item" style="background:#dbeafe;color:#1e40af" onclick="showModal('modal-task-detail')">📘 Post FB: Sẹo rỗ trước-sau</div></div>
+      <div class="cal-cell" style="background:#fffbeb"></div>
+      <div class="cal-cell"><div class="cal-item" style="background:#dcfce7;color:#15803d" onclick="showModal('modal-task-detail')">✅ Post FB: 5 lý do AirFusion</div></div>
+      <div class="cal-cell"><div class="cal-item" style="background:#fce7f3;color:#be185d" onclick="showModal('modal-task-detail')">📸 Story Zalo: Flash sale</div></div>
+      <div class="cal-cell" style="background:#fafafa"></div>
+      <!-- 10:00 -->
+      <div class="cal-cell cal-time">10:00</div>
+      <div class="cal-cell"><div class="cal-item" style="background:#ede9fe;color:#5b21b6">🎬 TikTok: Quy trình điều trị</div></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell" style="background:#fffbeb"><div class="cal-item" style="background:#fef9c3;color:#854d0e">⏳ Chờ duyệt...</div></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell" style="background:#fafafa"><div class="cal-item" style="background:#ede9fe;color:#5b21b6">🎬 Reels: Hành trình 30 ngày</div></div>
+      <!-- 14:00 -->
+      <div class="cal-cell cal-time">14:00</div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell"><div class="cal-item" style="background:#fff7ed;color:#c2410c">🎬 TikTok: BS KIÊN Q&A</div></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell" style="background:#fffbeb"></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell"><div class="cal-item" style="background:#dbeafe;color:#1e40af">📘 Post FB: Trẻ hoá da</div></div>
+      <div class="cal-cell" style="background:#fafafa"></div>
+      <!-- 19:00 -->
+      <div class="cal-cell cal-time">19:00</div>
+      <div class="cal-cell"><div class="cal-item" style="background:#fce7f3;color:#be185d">📸 Story IG: Before/After</div></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell"><div class="cal-item" style="background:#ede9fe;color:#5b21b6">🎬 TikTok: Hỏi đáp sẹo rỗ T1</div></div>
+      <div class="cal-cell" style="background:#fffbeb"></div>
+      <div class="cal-cell"><div class="cal-item" style="background:#fce7f3;color:#be185d">📸 Story IG: Tip dưỡng da</div></div>
+      <div class="cal-cell"></div>
+      <div class="cal-cell" style="background:#fafafa"><div class="cal-item" style="background:#dbeafe;color:#1e40af">📘 Post FB: Tổng kết tuần</div></div>
+    </div>
+    <!-- Legend -->
+    <div style="display:flex;gap:10px;font-size:10px;padding:4px 0">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#dbeafe;border-radius:3px;display:inline-block"></span>Facebook</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#ede9fe;border-radius:3px;display:inline-block"></span>TikTok</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#fce7f3;border-radius:3px;display:inline-block"></span>Instagram/Story</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#fef9c3;border-radius:3px;display:inline-block"></span>Chờ duyệt</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#dcfce7;border-radius:3px;display:inline-block"></span>Đã duyệt</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VÒNG DUYỆT ══ -->
+<div class="sc" id="sc-duyet">
+  <div class="tb">
+    <div class="tb-title"><i class="ti ti-checks" style="color:#0284c7"></i> Vòng duyệt nội dung — 3 chờ duyệt</div>
+  </div>
+  <div class="cnt">
+    <!-- Quy trình duyệt -->
+    <div class="card">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-git-branch" style="color:#0284c7"></i> Quy trình duyệt chuẩn</div></div>
+      <div style="display:flex;align-items:center;padding:12px 14px;gap:0;flex-wrap:wrap">
+        <div style="text-align:center;min-width:80px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;font-size:14px;color:#5b21b6"><i class="ti ti-pencil"></i></div>
+          <div style="font-size:10px;color:#5b21b6;font-weight:500">Thực hiện</div>
+          <div style="font-size:9px;color:#94a3b8">Content/Design/Video</div>
+        </div>
+        <div style="flex:1;height:2px;background:#dde3ef;min-width:20px"></div>
+        <div style="text-align:center;min-width:80px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#fef9c3;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;font-size:14px;color:#854d0e"><i class="ti ti-user-check"></i></div>
+          <div style="font-size:10px;color:#854d0e;font-weight:500">Lead MKT duyệt</div>
+          <div style="font-size:9px;color:#94a3b8">Nội dung + tone</div>
+        </div>
+        <div style="flex:1;height:2px;background:#dde3ef;min-width:20px"></div>
+        <div style="text-align:center;min-width:80px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#fef9c3;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;font-size:14px;color:#854d0e"><i class="ti ti-stethoscope"></i></div>
+          <div style="font-size:10px;color:#854d0e;font-weight:500">BS duyệt <span style="font-size:8px;color:#94a3b8">(nếu có ảnh KH)</span></div>
+          <div style="font-size:9px;color:#94a3b8">Y tế + hình ảnh</div>
+        </div>
+        <div style="flex:1;height:2px;background:#dde3ef;min-width:20px"></div>
+        <div style="text-align:center;min-width:80px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;font-size:14px;color:#15803d"><i class="ti ti-check"></i></div>
+          <div style="font-size:10px;color:#15803d;font-weight:500">Đã duyệt</div>
+          <div style="font-size:9px;color:#94a3b8">Lên lịch đăng</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Danh sách chờ duyệt -->
+    <div class="card" style="flex:1">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-clock" style="color:#854d0e"></i> Nội dung chờ bạn duyệt</div></div>
+
+      <!-- Item 1 -->
+      <div style="padding:14px;border-bottom:1px solid #f1f5f9">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px">
+              <span style="font-size:13px;font-weight:600">Post FB — "5 lý do chọn AirFusion"</span>
+              <span class="bdg b-review">Chờ Lead MKT</span>
+              <span class="bdg type-content">Content</span>
+              <span class="bdg type-design">Thiết kế</span>
+            </div>
+            <div style="font-size:10px;color:#64748b;margin-bottom:8px">
+              Nộp bởi: Nguyễn T. Hà + Trần Minh Tú · 21/05 16:30 · DL đăng: <span style="color:#dc2626;font-weight:600">22/05 (HÔM NAY)</span>
+            </div>
+            <!-- File đính kèm -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+              <div class="file-chip"><i class="ti ti-file-text" style="font-size:12px;color:#1e40af"></i> caption_v2.docx</div>
+              <div class="file-chip"><i class="ti ti-photo" style="font-size:12px;color:#7e22ce"></i> visual_airfusion.jpg</div>
+              <div class="file-chip"><i class="ti ti-brand-figma" style="font-size:12px;color:#c2410c"></i> Link Figma</div>
+            </div>
+            <!-- Preview nội dung -->
+            <div style="background:#f8fafc;border-radius:7px;padding:10px 12px;font-size:11px;color:#374151;line-height:1.7;border-left:3px solid #0284c7;margin-bottom:10px">
+              <b>Caption:</b> "✨ 5 lý do hàng nghìn KH tin tưởng chọn AirFusion để trị sẹo rỗ tại [Phòng khám]:<br>
+              1️⃣ Công nghệ tiên tiến nhất 2026...<br>
+              2️⃣ BS KIÊN 15 năm kinh nghiệm...<br>
+              <span style="color:#94a3b8">[xem đầy đủ →]</span>"
+            </div>
+            <!-- Comment duyệt -->
+            <div style="display:flex;flex-direction:column;gap:0">
+              <div class="cmt">
+                <div class="av-sm" style="background:#dbeafe;color:#1e40af;flex-shrink:0">NH</div>
+                <div style="flex:1"><div style="font-size:10px;font-weight:500">Nguyễn T. Hà <span style="color:#94a3b8;font-weight:400">21/05 16:30</span></div>
+                <div style="font-size:10px;color:#374151;margin-top:2px">Em đã sửa theo feedback lần trước, thêm CTA rõ hơn ở cuối caption.</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+            <button class="btn btn-g" onclick="showModal('modal-duyet-ok')"><i class="ti ti-check"></i> Duyệt</button>
+            <button class="btn" style="border-color:#dc2626;color:#dc2626" onclick="showModal('modal-duyet-reject')"><i class="ti ti-arrow-back"></i> Trả lại</button>
+            <button class="btn" onclick="showModal('modal-comment')"><i class="ti ti-message-circle"></i> Comment</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 2 -->
+      <div style="padding:14px;border-bottom:1px solid #f1f5f9;opacity:.85">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px">
+              <span style="font-size:13px;font-weight:600">Video Reels 30s — Quy trình điều trị SEO rỗ</span>
+              <span class="bdg" style="background:#fef9c3;color:#854d0e">Chờ Quản lý</span>
+              <span class="bdg type-video">Video</span>
+              <span class="bdg type-freelance">Freelance edit</span>
+            </div>
+            <div style="font-size:10px;color:#64748b;margin-bottom:8px">Nộp: 21/05 · Freelancer Lê Văn Khoa · Fee: 3.500.000đ · DL: 25/05</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <div class="file-chip"><i class="ti ti-brand-youtube" style="font-size:12px;color:#dc2626"></i> video_seoro_v2.mp4 (Drive)</div>
+              <div class="file-chip"><i class="ti ti-file" style="font-size:12px"></i> caption_video.txt</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+            <button class="btn btn-g" onclick="alert('✅ Đã duyệt video!\n→ Chuyển sang Đã duyệt · Chờ đăng\n→ Lên lịch TikTok 25/05 10:00')"><i class="ti ti-check"></i> Duyệt</button>
+            <button class="btn" style="border-color:#dc2626;color:#dc2626"><i class="ti ti-arrow-back"></i> Trả lại</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ FREELANCER ══ -->
+<div class="sc" id="sc-freelance">
+  <div class="tb">
+    <div class="tb-title"><i class="ti ti-users" style="color:#0284c7"></i> Quản lý Freelancer</div>
+    <div class="tb-acts">
+      <button class="btn btn-p" onclick="showModal('modal-freelancer')"><i class="ti ti-plus"></i> Thêm freelancer</button>
+    </div>
+  </div>
+  <div class="cnt">
+    <div class="stat-row">
+      <div class="stat"><div class="lbl">Freelancer đang làm việc</div><div class="val" style="color:#0284c7">3</div><div class="sub">T05/2026</div></div>
+      <div class="stat"><div class="lbl">Chi phí freelance T05</div><div class="val" style="font-size:16px;color:#854d0e">9.5tr đ</div><div class="sub">Ngân sách: 15tr</div></div>
+      <div class="stat"><div class="lbl">Task đang giao</div><div class="val" style="color:#1e40af">4</div><div class="sub">2 chờ duyệt</div></div>
+      <div class="stat"><div class="lbl">Task hoàn thành T05</div><div class="val" style="color:#15803d">6</div><div class="sub">Đúng deadline: 5/6</div></div>
+    </div>
+
+    <div class="card" style="flex:1">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-users" style="color:#0284c7"></i> Danh sách freelancer</div></div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Họ tên</th>
+          <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Chuyên môn</th>
+          <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Task đang làm</th>
+          <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Fee T05</th>
+          <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Trạng thái</th>
+          <th style="padding:8px 12px;border-bottom:1px solid #eef1f6"></th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:10px 14px"><b>Lê Văn Khoa</b><div style="font-size:9px;color:#94a3b8">0912 345 xxx · le.khoa@gmail.com</div></td>
+            <td style="padding:10px 12px"><span class="bdg type-video">Quay phim · Dựng phim</span></td>
+            <td style="padding:10px 12px;font-size:10px">
+              Video Reels 30s (chờ duyệt)<br>
+              Script series TikTok 5 tập
+            </td>
+            <td style="padding:10px 12px;text-align:right;font-weight:600;color:#854d0e">7.000.000đ</td>
+            <td style="padding:10px 12px"><span class="bdg b-review">Đang làm · 2 task</span></td>
+            <td style="padding:10px 12px"><button class="btn" style="font-size:9px;padding:3px 8px">Xem task</button></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:10px 14px"><b>Nguyễn Thu Hằng</b><div style="font-size:9px;color:#94a3b8">0934 567 xxx · Photographer</div></td>
+            <td style="padding:10px 12px"><span class="bdg type-design">Chụp ảnh · Retouch</span></td>
+            <td style="padding:10px 12px;font-size:10px">Ảnh before/after T05 (8 ca)</td>
+            <td style="padding:10px 12px;text-align:right;font-weight:600;color:#854d0e">1.600.000đ</td>
+            <td style="padding:10px 12px"><span class="bdg b-approved">Hoàn thành</span></td>
+            <td style="padding:10px 12px"><button class="btn" style="font-size:9px;padding:3px 8px">Xem task</button></td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px"><b>Trần Đức Minh</b><div style="font-size:9px;color:#94a3b8">0978 123 xxx · Voice over</div></td>
+            <td style="padding:10px 12px"><span class="bdg type-content">Voiceover · Dẫn chương trình</span></td>
+            <td style="padding:10px 12px;font-size:10px">Voiceover video Reels 30s</td>
+            <td style="padding:10px 12px;text-align:right;font-weight:600;color:#854d0e">900.000đ</td>
+            <td style="padding:10px 12px"><span class="bdg b-approved">Nộp xong · Chờ check</span></td>
+            <td style="padding:10px 12px"><button class="btn" style="font-size:9px;padding:3px 8px">Xem task</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="padding:9px 14px;background:#eff6ff;border-top:1px solid #dde3ef;font-size:10px;color:#1e40af;display:flex;gap:5px">
+        <i class="ti ti-info-circle" style="font-size:12px"></i>
+        Chi phí freelance tự động ghi vào khoản mục "Chi phí MKT — Sáng tạo nội dung" cho Kế toán khi xác nhận task hoàn thành.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TỔNG QUAN ══ -->
+<div class="sc" id="sc-tong">
+  <div class="tb"><div class="tb-title"><i class="ti ti-chart-bar" style="color:#0284c7"></i> Tổng quan Content MKT — T05/2026</div></div>
+  <div class="cnt">
+    <div class="stat-row">
+      <div class="stat"><div class="lbl">Tổng task T05</div><div class="val" style="color:#0284c7">19</div><div class="sub">Content: 8 · Design: 6 · Video: 5</div></div>
+      <div class="stat"><div class="lbl">Đã hoàn thành</div><div class="val" style="color:#15803d">8</div><div class="sub">Đúng deadline: 7/8</div></div>
+      <div class="stat"><div class="lbl">Đang chờ duyệt</div><div class="val" style="color:#854d0e">3</div><div class="sub">Cần duyệt hôm nay: 1</div></div>
+      <div class="stat"><div class="lbl">Tổng bài đã đăng</div><div class="val" style="color:#5b21b6">8 bài</div><div class="sub">FB: 4 · TikTok: 3 · IG: 1</div></div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-hd"><div class="card-hd-l"><i class="ti ti-trending-up" style="color:#0284c7"></i> Hiệu quả nội dung đã đăng</div></div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:7px 14px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Bài đăng</th>
+          <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Nền tảng</th>
+          <th style="padding:7px 12px;text-align:right;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Reach</th>
+          <th style="padding:7px 12px;text-align:right;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Tương tác</th>
+          <th style="padding:7px 12px;text-align:right;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Mess</th>
+          <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #eef1f6">Người thực hiện</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:8px 14px"><b>3 lầm tưởng về sẹo rỗ</b></td>
+            <td style="padding:8px 12px"><span class="bdg type-video" style="font-size:8px">TikTok</span></td>
+            <td style="padding:8px 12px;text-align:right;color:#5b21b6;font-weight:600">245K</td>
+            <td style="padding:8px 12px;text-align:right">4.6K</td>
+            <td style="padding:8px 12px;text-align:right;color:#15803d;font-weight:600">89</td>
+            <td style="padding:8px 12px;font-size:10px">Video: Lê V. Khoa (FL) · Content: Nguyễn T. Hà</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:8px 14px"><b>Gặp gỡ BS KIÊN</b></td>
+            <td style="padding:8px 12px"><span class="bdg type-content" style="font-size:8px">Facebook</span></td>
+            <td style="padding:8px 12px;text-align:right">12.4K</td>
+            <td style="padding:8px 12px;text-align:right">340</td>
+            <td style="padding:8px 12px;text-align:right;color:#15803d;font-weight:600">24</td>
+            <td style="padding:8px 12px;font-size:10px">Content: Nguyễn T. Hà · Design: Trần Minh Tú</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 14px"><b>Before/After sẹo rỗ KH</b></td>
+            <td style="padding:8px 12px"><span class="bdg" style="background:#fce7f3;color:#be185d;font-size:8px">Instagram</span></td>
+            <td style="padding:8px 12px;text-align:right">8.2K</td>
+            <td style="padding:8px 12px;text-align:right">520</td>
+            <td style="padding:8px 12px;text-align:right;color:#15803d;font-weight:600">31</td>
+            <td style="padding:8px 12px;font-size:10px">Ảnh: Nguyễn T. Hằng (FL) · Design: Trần Minh Tú</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- MODAL: Tạo task -->
+<div class="modal-bg" id="modal-task">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-plus"></i> Tạo task mới</div>
+    <div class="fg"><label>Tiêu đề task <span class="req">*</span></label><input placeholder="VD: Caption + visual post FB — Trẻ hoá da T06"/></div>
+    <div class="fr">
+      <div class="fg"><label>Loại công việc <span class="req">*</span></label>
+        <select>
+          <option>Content (copywriting, caption, script)</option>
+          <option>Thiết kế (banner, visual, thumbnail)</option>
+          <option>Video / Dựng phim</option>
+          <option>Ảnh chụp / Retouch</option>
+          <option>Tổng hợp (nhiều loại)</option>
+        </select>
+      </div>
+      <div class="fg"><label>Nền tảng đăng</label>
+        <select>
+          <option>Facebook</option><option>TikTok</option>
+          <option>Instagram</option><option>Zalo OA</option>
+          <option>Nhiều nền tảng</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Gắn vào campaign</label>
+      <select>
+        <option>Campaign: SEO rỗ T05/2026</option>
+        <option>Campaign: Trẻ hoá T05/2026</option>
+        <option>Không thuộc campaign</option>
+      </select>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>Giao cho</label>
+        <select>
+          <option>Nội bộ: Nguyễn T. Hà</option>
+          <option>Nội bộ: Trần Minh Tú</option>
+          <option>Freelance: Lê V. Khoa</option>
+          <option>Freelance mới</option>
+        </select>
+      </div>
+      <div class="fg"><label>Deadline <span class="req">*</span></label><input type="date" value="2026-05-30"/></div>
+      <div class="fg"><label>Ngày đăng dự kiến</label><input type="date" value="2026-06-01"/></div>
+    </div>
+    <div class="fg"><label>Vòng duyệt</label>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer"><input type="checkbox" checked/> Lead MKT duyệt nội dung</label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer"><input type="checkbox"/> BS/Quản lý duyệt (nếu có ảnh KH hoặc nội dung y tế)</label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer"><input type="checkbox"/> Quản lý duyệt cuối trước khi đăng</label>
+      </div>
+    </div>
+    <div class="fg"><label>Brief / Ghi chú</label>
+      <textarea rows="3" placeholder="Mô tả yêu cầu, tone, reference, cần có gì..."></textarea>
+    </div>
+    <div class="fg"><label>File đính kèm (brief, reference)</label>
+      <div style="border:2px dashed #dde3ef;border-radius:8px;padding:14px;text-align:center;cursor:pointer;font-size:11px;color:#94a3b8">
+        <i class="ti ti-upload" style="font-size:20px;display:block;margin-bottom:4px"></i>
+        Kéo thả hoặc click để đính kèm
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-task')">Hủy</button>
+      <button class="btn btn-p" onclick="hideModal('modal-task');alert('✅ Task đã tạo!\n→ Thông báo đến người thực hiện\n→ Hiện trên Kanban cột Chờ brief')">
+        <i class="ti ti-check"></i> Tạo task
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Duyệt OK -->
+<div class="modal-bg" id="modal-duyet-ok">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-check" style="color:#15803d"></i> Xác nhận duyệt nội dung</div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;font-size:11px;margin-bottom:14px;line-height:1.8">
+      <b>Post FB — "5 lý do chọn AirFusion"</b><br>
+      → Nội dung + visual đã được kiểm tra<br>
+      → Task chuyển sang <b>Đã duyệt · Chờ đăng</b><br>
+      → Nguyễn T. Hà + Trần Minh Tú nhận thông báo<br>
+      → Lên lịch đăng: 22/05 10:00
+    </div>
+    <div class="fg"><label>Comment cho người thực hiện (tuỳ chọn)</label>
+      <input placeholder="Tốt! Nhớ thêm hashtag khi đăng..."/>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-duyet-ok')">Hủy</button>
+      <button class="btn btn-g" onclick="hideModal('modal-duyet-ok');alert('✅ Đã duyệt!\n→ Nguyễn T. Hà + Trần Minh Tú nhận thông báo\n→ Chuyển sang lên lịch đăng')">
+        <i class="ti ti-check"></i> Duyệt
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Trả lại -->
+<div class="modal-bg" id="modal-duyet-reject">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-arrow-back" style="color:#dc2626"></i> Trả lại để chỉnh sửa</div>
+    <div class="fg"><label>Lý do trả lại <span class="req">*</span></label>
+      <select id="sel-reject">
+        <option value="">-- Chọn lý do --</option>
+        <option>Tone chưa đúng brand — cần nhẹ nhàng hơn</option>
+        <option>Caption quá dài — cắt ngắn lại</option>
+        <option>Visual chưa đúng brand color</option>
+        <option>Nội dung y tế cần BS kiểm tra lại</option>
+        <option>CTA chưa rõ — cần ghi rõ hành động</option>
+        <option>Lý do khác</option>
+      </select>
+    </div>
+    <div class="fg"><label>Ghi chú chi tiết</label>
+      <textarea rows="3" placeholder="Hướng dẫn cụ thể để người thực hiện biết cần sửa gì..."></textarea>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-duyet-reject')">Hủy</button>
+      <button class="btn btn-r" onclick="hideModal('modal-duyet-reject');alert('↩ Đã trả lại!\n→ Nguyễn T. Hà + Trần Minh Tú nhận thông báo\n→ Task về cột Đang làm để sửa')">
+        <i class="ti ti-arrow-back"></i> Trả lại
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Thêm freelancer -->
+<div class="modal-bg" id="modal-freelancer">
+  <div class="modal">
+    <div class="modal-hd"><i class="ti ti-user-plus"></i> Thêm freelancer</div>
+    <div class="fr"><div class="fg"><label>Họ tên <span class="req">*</span></label><input placeholder="Nguyễn Văn A"/></div><div class="fg"><label>SĐT / Zalo</label><input placeholder="0901 234 567"/></div></div>
+    <div class="fg"><label>Email</label><input placeholder="email@gmail.com" type="email"/></div>
+    <div class="fg"><label>Chuyên môn</label>
+      <select><option>Quay phim · Dựng phim</option><option>Thiết kế đồ họa</option><option>Chụp ảnh · Retouch</option><option>Copywriting</option><option>Voiceover</option><option>Social media manager</option></select>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Fee thường (đ/task)</label><input type="number" placeholder="3500000"/></div>
+      <div class="fg"><label>Hình thức thanh toán</label><select><option>Chuyển khoản sau khi xong</option><option>50% trước 50% sau</option><option>Hàng tháng</option></select></div>
+    </div>
+    <div class="fg"><label>Link portfolio</label><input placeholder="behance.net/... hoặc drive.google.com/..."/></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-freelancer')">Hủy</button>
+      <button class="btn btn-p" onclick="hideModal('modal-freelancer');alert('✅ Đã thêm freelancer!\n→ Chi phí freelance tự ghi vào khoản mục MKT khi xác nhận task hoàn thành')">
+        <i class="ti ti-check"></i> Thêm
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-task-detail"><div class="modal"><div class="modal-hd"><i class="ti ti-pencil"></i> Chi tiết task</div><p style="font-size:12px;color:#64748b">Chi tiết đầy đủ: brief, file đính kèm, lịch sử comment, vòng duyệt...</p><div class="modal-ft"><button class="btn" onclick="hideModal('modal-task-detail')">Đóng</button></div></div></div>
+<div class="modal-bg" id="modal-duyet-task"><div class="modal"><div class="modal-hd"><i class="ti ti-checks"></i> Duyệt nội dung</div><p style="font-size:12px;color:#64748b">Xem nội dung, file đính kèm rồi duyệt hoặc trả lại...</p><div class="modal-ft"><button class="btn" onclick="hideModal('modal-duyet-task')">Đóng</button><button class="btn btn-g" onclick="hideModal('modal-duyet-task')"><i class="ti ti-check"></i> Duyệt</button></div></div></div>
+<div class="modal-bg" id="modal-comment"><div class="modal"><div class="modal-hd"><i class="ti ti-message-circle"></i> Thêm comment</div><div class="fg"><label>Nội dung</label><textarea rows="3" placeholder="Góp ý, câu hỏi..."></textarea></div><div class="modal-ft"><button class="btn" onclick="hideModal('modal-comment')">Hủy</button><button class="btn btn-p" onclick="hideModal('modal-comment')">Gửi</button></div></div></div>
+
+<script>
+function goSc(s){
+  ['board','calendar','duyet','freelance','tong'].forEach(x=>{
+    document.getElementById('sc-'+x)?.classList.remove('on');
+    document.getElementById('sntab-'+x)?.classList.remove('on');
+  });
+  document.getElementById('sc-'+s)?.classList.add('on');
+  document.getElementById('sntab-'+s)?.classList.add('on');
+}
+function showModal(id){document.getElementById(id).classList.add('on');}
+function hideModal(id){document.getElementById(id).classList.remove('on');}
+document.querySelectorAll('.modal-bg').forEach(m=>{
+  m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('on'); });
+});
+</script>

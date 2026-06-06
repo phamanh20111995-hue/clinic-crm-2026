@@ -1,37 +1,210 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens (CSS variables) ──────────────────────────────── */
+:root {
+  --navy:       #0f2044;
+  --violet:     #6d28d9;
+  --violet-h:   #5b21b6;
+  --appbg:      #eef1f6;
+  --cborder:    #dde3ef;
+  --sidebar-w:  58px;
+  --topbar-h:   46px;
+  --subnav-h:   40px;
+}
+
+/* ── Base ────────────────────────────────────────────────────────── */
 @layer base {
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Inter', sans-serif; background: #f8fafc; }
+  body {
+    margin: 0;
+    font-family: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    background: var(--appbg);
+    color: #1e293b;
+  }
   #root { width: 100%; min-height: 100vh; }
 }
 
+/* ── Components (v1 + v2) ────────────────────────────────────────── */
 @layer components {
+
+  /* Buttons */
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-purple-700 text-white px-4 py-2 font-medium transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed text-sm;
+    border-radius: 7px;
   }
+  .btn-primary:hover { background-color: #5b21b6; }
+
   .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition-colors;
+    @apply bg-white text-gray-700 px-4 py-2 font-medium border transition-colors text-sm;
+    border-color: var(--cborder);
+    border-radius: 7px;
   }
+  .btn-secondary:hover { background-color: #f9fafb; }
+
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors;
+    @apply bg-red-600 text-white px-4 py-2 font-medium transition-colors text-sm;
+    border-radius: 7px;
   }
+  .btn-danger:hover { background-color: #b91c1c; }
+
+  .btn-ghost {
+    @apply text-gray-600 px-3 py-1.5 transition-colors text-sm;
+    border-radius: 7px;
+  }
+  .btn-ghost:hover { background-color: #f3f4f6; }
+
+  /* Cards */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+    @apply bg-white p-5;
+    border-radius: 10px;
+    border: 1px solid var(--cborder);
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
   }
+  .card-flat {
+    @apply bg-white p-5;
+    border-radius: 10px;
+    border: 1px solid var(--cborder);
+  }
+
+  /* Inputs */
   .input {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 text-sm bg-white
+           focus:outline-none focus:ring-2 focus:ring-purple-500;
+    border: 1px solid var(--cborder);
+    border-radius: 7px;
   }
+  .input:focus { border-color: transparent; }
+
+  /* Badges */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
   }
+  .badge-ok     { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700; }
+  .badge-warn   { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700; }
+  .badge-err    { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700; }
+  .badge-blue   { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700; }
+  .badge-purple { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700; }
+  .badge-gray   { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600; }
+
+  /* Table */
   .table-th {
-    @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider;
+    @apply px-4 py-2.5 text-left text-xs font-semibold text-gray-500
+           uppercase tracking-wider bg-gray-50;
   }
   .table-td {
     @apply px-4 py-3 text-sm text-gray-700;
+  }
+  .table-row {
+    @apply transition-colors;
+    border-top: 1px solid var(--cborder);
+  }
+  .table-row:hover { background: rgba(249,250,251,.6); }
+
+  /* ── v2 Sidebar (58px icon-only, navy) ── */
+  .sidebar-v2 {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    background: var(--navy);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 40;
+    box-shadow: 2px 0 8px rgba(0,0,0,.12);
+    overflow: hidden;
+  }
+
+  .sidebar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 0;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    color: #94a3b8;
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    position: relative;
+  }
+  .sidebar-item:hover {
+    background: rgba(255,255,255,.07);
+    color: #fff;
+  }
+  .sidebar-item.active {
+    background: var(--violet);
+    color: #fff;
+  }
+
+  .sidebar-item-label {
+    font-size: 9px;
+    margin-top: 3px;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  /* ── v2 Topbar (46px) ── */
+  .topbar-v2 {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: var(--sidebar-w);
+    height: var(--topbar-h);
+    background: #fff;
+    border-bottom: 1px solid var(--cborder);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    z-index: 30;
+  }
+
+  /* ── v2 Subnav (40px) ── */
+  .subnav-v2 {
+    height: var(--subnav-h);
+    background: #fff;
+    border-bottom: 1px solid var(--cborder);
+    display: flex;
+    align-items: flex-end;
+    padding: 0 20px;
+    gap: 4px;
+  }
+
+  .subnav-tab {
+    padding: 0 12px 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .subnav-tab:hover { color: #1f2937; }
+  .subnav-tab.active {
+    color: var(--violet);
+    border-bottom-color: var(--violet);
+  }
+
+  /* ── v2 Content areas ── */
+  .app-content {
+    margin-left: var(--sidebar-w);
+    padding-top: var(--topbar-h);
+    min-height: 100vh;
+  }
+  .app-content-with-subnav {
+    margin-left: var(--sidebar-w);
+    padding-top: calc(var(--topbar-h) + var(--subnav-h));
+    min-height: 100vh;
   }
 }

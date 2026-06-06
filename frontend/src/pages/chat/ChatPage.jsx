@@ -20,7 +20,7 @@ export default function ChatPage() {
   const [channelName, setChannelName] = useState('')
   const wsRef = useRef(null)
   const bottomRef = useRef(null)
-  const BASE_WS = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8001'
+  const BASE_WS = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000'
 
   useEffect(() => {
     api.get('/api/chat/channels/')
@@ -201,3 +201,4 @@ export default function ChatPage() {
     </DashboardLayout>
   )
 }
+

@@ -18,8 +18,10 @@ export default function LoginPage() {
       const { data } = await login(form.email, form.password)
       localStorage.setItem('access_token', data.access)
       localStorage.setItem('refresh_token', data.refresh)
+      // backend wraps user fields under data.user
+      const u = data.user ?? data
       setAuth(
-        { email: data.email, display_name: data.display_name, role: data.role },
+        { id: u.id, email: u.email, display_name: u.display_name, role: u.role, role_display: u.role_display, avatar: u.avatar },
         data.access,
         data.refresh
       )

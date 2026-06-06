@@ -8,6 +8,7 @@ import { getAppointments, checkinAppointment } from '../../api/appointments'
 import { fmtDateTime, fmtPhone } from '../../utils/format'
 import toast from 'react-hot-toast'
 import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
 
 const STATUS = {
   pending:     { label: 'Chờ xác nhận', color: 'yellow' },
@@ -48,7 +49,7 @@ export default function AppointmentsPage() {
     }
   }
 
-  const isLeTan = ['LE_TAN', 'QUAN_LY', 'CHU_DN'].includes(user?.role)
+  const isLeTan = ['LE_TAN', 'QUAN_LY', 'CHU_DN'].includes(getUserRole(user))
 
   return (
     <DashboardLayout title="Lịch hẹn">

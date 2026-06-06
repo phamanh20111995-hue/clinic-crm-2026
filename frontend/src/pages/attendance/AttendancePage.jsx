@@ -5,6 +5,7 @@ import Badge from '../../components/ui/Badge'
 import api from '../../api/client'
 import { fmtDate } from '../../utils/format'
 import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
 import toast from 'react-hot-toast'
 
 const STATUS_COLOR = {
@@ -26,7 +27,7 @@ export default function AttendancePage() {
   const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', leave_type: 'annual', reason: '' })
   const [leaveLoading, setLeaveLoading] = useState(false)
 
-  const isHR = ['KE_TOAN','QUAN_LY','CHU_DN'].includes(user?.role)
+  const isHR = ['KE_TOAN','QUAN_LY','CHU_DN'].includes(getUserRole(user))
 
   const loadMonthly = () => {
     setLoading(true)

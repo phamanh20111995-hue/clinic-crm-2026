@@ -5,6 +5,7 @@ import Badge from '../../components/ui/Badge'
 import api from '../../api/client'
 import { fmtMoney, fmtDateTime } from '../../utils/format'
 import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
 import toast from 'react-hot-toast'
 
 const ST_COLOR = { draft: 'gray', approved: 'green', paid: 'blue' }
@@ -19,7 +20,7 @@ export default function SalaryPage() {
   const [loading, setLoading] = useState(true)
   const [calcLoading, setCalcLoading] = useState(false)
 
-  const isHR = ['KE_TOAN','QUAN_LY','CHU_DN'].includes(user?.role)
+  const isHR = ['KE_TOAN','QUAN_LY','CHU_DN'].includes(getUserRole(user))
 
   const load = () => {
     setLoading(true)

@@ -9,6 +9,7 @@ import ContractFormModal from './ContractFormModal'
 import { getContracts, submitContract, approveContract, rejectContract } from '../../api/contracts'
 import { fmtMoney, fmtDateTime } from '../../utils/format'
 import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
 import toast from 'react-hot-toast'
 
 const APPROVAL = {
@@ -46,8 +47,8 @@ export default function ContractsPage() {
 
   useEffect(() => { load() }, [load])
 
-  const canCreate = ['SALE','CSKH','LEAD_SALE','LEAD_CSKH','QUAN_LY','CHU_DN'].includes(user?.role)
-  const isKT = ['KE_TOAN','QUAN_LY','CHU_DN'].includes(user?.role)
+  const canCreate = ['SALE','CSKH','LEAD_SALE','LEAD_CSKH','QUAN_LY','CHU_DN'].includes(getUserRole(user))
+  const isKT = ['KE_TOAN','QUAN_LY','CHU_DN'].includes(getUserRole(user))
 
   const handleSubmit = async (id, e) => {
     e.stopPropagation()

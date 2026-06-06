@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Xác nhận tua — BS HOÀN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;background:#f3f4f6;color:#1a2233}
+.page{max-width:480px;margin:0 auto;padding:20px 14px;min-height:100vh;display:flex;flex-direction:column;gap:14px}
+.header{background:linear-gradient(135deg,#0f2044,#1e40af);border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px}
+.logo{width:48px;height:48px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hdr-name{font-size:15px;font-weight:700;color:#fff}
+.hdr-sub{font-size:11px;color:#93c5fd;margin-top:3px}
+.card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-hd{padding:11px 16px;border-bottom:1px solid #f1f5f9;background:#f8fafc;font-size:11px;font-weight:600;color:#374151;display:flex;align-items:center;gap:6px}
+.card-hd i{font-size:14px;color:#5b21b6}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid #f8fafc;font-size:12px}
+.info-row:last-child{border-bottom:none}
+.info-row .lbl{color:#64748b}
+.info-row .val{font-weight:600;color:#1a2233}
+.total-box{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:12px;padding:16px;text-align:center}
+.total-box .amount{font-size:32px;font-weight:700;color:#15803d}
+.total-box .lbl{font-size:11px;color:#64748b;margin-top:4px}
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl thead th{padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #f1f5f9;background:#f8fafc}
+.tbl thead th.r{text-align:right}
+.tbl tbody td{padding:8px 12px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.tbl tbody td.r{text-align:right}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tfoot td{padding:9px 12px;font-weight:700;background:#f0fdf4;border-top:2px solid #bbf7d0}
+.tbl tfoot td.r{text-align:right;color:#15803d}
+.btn-confirm{width:100%;padding:15px;border-radius:12px;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#15803d,#16a34a);color:#fff;box-shadow:0 4px 14px rgba(21,128,61,.35);transition:all .15s}
+.btn-confirm:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(21,128,61,.4)}
+.btn-deny{width:100%;padding:13px;border-radius:12px;font-size:13px;font-weight:600;border:2px solid #dde3ef;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;color:#64748b;transition:all .15s}
+.btn-deny:hover{border-color:#dc2626;color:#dc2626}
+.step{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px}
+.step.done{background:#f0fdf4}
+.step.wait{background:#f8fafc;opacity:.5}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.confirmed-banner{background:linear-gradient(135deg,#15803d,#16a34a);border-radius:12px;padding:20px;text-align:center;color:#fff;display:none}
+.confirmed-banner.show{display:block}
+.ib{border-radius:8px;padding:10px 14px;font-size:11px;line-height:1.7;display:flex;gap:8px;align-items:flex-start}
+.ib i{font-size:16px;flex-shrink:0;margin-top:1px}
+.ib-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo"><i class="ti ti-building-hospital" style="font-size:24px;color:#fff"></i></div>
+    <div>
+      <div class="hdr-name">Phòng Khám Da Liễu</div>
+      <div class="hdr-sub"><i class="ti ti-coin" style="font-size:11px"></i> Phiếu xác nhận tua làm việc</div>
+    </div>
+  </div>
+
+  <!-- Thông tin người nhận -->
+  <div class="card">
+    <div class="card-hd"><i class="ti ti-user-check"></i> Người nhận phiếu</div>
+    <div class="info-row"><span class="lbl">Họ tên</span><span class="val">BS HOÀN</span></div>
+    <div class="info-row"><span class="lbl">Mã nhân sự</span><span class="val">BS001</span></div>
+    <div class="info-row"><span class="lbl">Chức vụ</span><span class="val">Bác sĩ điều trị</span></div>
+    <div class="info-row"><span class="lbl">Tháng tính</span><span class="val" style="color:#5b21b6">Tháng 05/2026</span></div>
+  </div>
+
+  <!-- Tổng tua -->
+  <div class="total-box">
+    <div style="font-size:11px;color:#64748b;margin-bottom:6px">TỔNG TUA THÁNG 05/2026</div>
+    <div class="amount">12.600.000 đ</div>
+    <div class="lbl">28 buổi × 450.000đ/buổi</div>
+    <div style="margin-top:10px;font-size:10px;color:#64748b;background:rgba(255,255,255,.6);border-radius:6px;padding:5px 10px;display:inline-block">
+      Lương cứng: 10.000.000đ + Tua: 12.600.000đ = Tổng: <b style="color:#15803d">22.600.000đ</b>
+    </div>
+  </div>
+
+  <!-- Chi tiết buổi -->
+  <div class="card">
+    <div class="card-hd"><i class="ti ti-list"></i> Chi tiết buổi điều trị</div>
+    <table class="tbl">
+      <thead><tr><th>Ngày</th><th>Khách hàng</th><th>Dịch vụ</th><th class="r">Tua</th></tr></thead>
+      <tbody>
+        <tr><td>03/05</td><td>Kathy Le</td><td style="font-size:10px">Mụn BL · BS KIÊN</td><td class="r">450.000đ</td></tr>
+        <tr><td>03/05</td><td>Dat Huynh</td><td style="font-size:10px">SEO rỗ</td><td class="r">450.000đ</td></tr>
+        <tr><td>05/05</td><td>Thảo Vi</td><td style="font-size:10px">Trẻ hoá da</td><td class="r">450.000đ</td></tr>
+        <tr><td>07/05</td><td>Phạm M. Đức</td><td style="font-size:10px">Điều trị mụn</td><td class="r">450.000đ</td></tr>
+        <tr><td>08/05</td><td>Dat Huynh</td><td style="font-size:10px">SEO rỗ B2</td><td class="r">450.000đ</td></tr>
+        <tr style="color:#94a3b8;font-style:italic"><td colspan="3" style="font-size:10px;text-align:center">... 23 buổi khác</td><td class="r">10.350.000đ</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="3">Tổng <span style="font-size:10px;color:#64748b;font-weight:400">(28 buổi)</span></td><td class="r">12.600.000đ</td></tr></tfoot>
+    </table>
+  </div>
+
+  <!-- Quy trình xác nhận -->
+  <div class="card" id="step-card">
+    <div class="card-hd"><i class="ti ti-git-branch"></i> Quy trình xác nhận</div>
+    <div style="padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+      <div class="step done">
+        <div class="step-dot" style="background:#dcfce7;color:#15803d"><i class="ti ti-check" style="font-size:13px"></i></div>
+        <div style="flex:1;font-size:11px"><b>Lễ tân chia tua</b><br><span style="color:#64748b">LT001 Phạm T. Hoa · 25/05/2026 10:00</span></div>
+      </div>
+      <div class="step done">
+        <div class="step-dot" style="background:#dcfce7;color:#15803d"><i class="ti ti-check" style="font-size:13px"></i></div>
+        <div style="flex:1;font-size:11px"><b>Kế toán gửi link</b><br><span style="color:#64748b">KT001 Lê T. Mai · 25/05/2026 11:30</span></div>
+      </div>
+      <div class="step" id="step-bs" style="background:#fffbeb;border:1px dashed #fde68a">
+        <div class="step-dot" style="background:#fef9c3;color:#854d0e"><i class="ti ti-clock" style="font-size:13px"></i></div>
+        <div style="flex:1;font-size:11px"><b style="color:#854d0e">BS HOÀN xác nhận</b><br><span style="color:#64748b">Đang chờ bạn bấm Đồng ý</span></div>
+      </div>
+      <div class="step wait" id="step-kt">
+        <div class="step-dot" style="background:#f1f5f9;color:#94a3b8"><i class="ti ti-calculator" style="font-size:13px"></i></div>
+        <div style="flex:1;font-size:11px"><b>Kế toán ghi lương chính thức</b><br><span style="color:#94a3b8">Sau khi tất cả BS/KTV xác nhận</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div class="ib ib-blue">
+    <i class="ti ti-info-circle"></i>
+    <div>Link này chỉ dùng 1 lần và hết hạn sau <b>7 ngày</b>. Sau khi xác nhận, Kế toán sẽ nhận thông báo và tiến hành ghi lương tháng 05/2026.</div>
+  </div>
+
+  <!-- Nút xác nhận -->
+  <div id="action-btns" style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn-confirm" onclick="xacNhan()">
+      <i class="ti ti-check-circle" style="font-size:20px"></i>
+      Đồng ý — Xác nhận 12.600.000đ
+    </button>
+    <button class="btn-deny" onclick="khieuNai()">
+      <i class="ti ti-alert-triangle" style="font-size:16px"></i>
+      Không đồng ý — Cần kiểm tra lại
+    </button>
+  </div>
+
+  <!-- Banner sau khi xác nhận -->
+  <div class="confirmed-banner" id="confirmed-banner">
+    <i class="ti ti-circle-check" style="font-size:48px;display:block;margin-bottom:12px;opacity:.9"></i>
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px">Đã xác nhận thành công!</div>
+    <div style="font-size:12px;opacity:.85">12.600.000đ · Tháng 05/2026</div>
+    <div style="margin-top:10px;font-size:11px;opacity:.75">Kế toán KT001 Lê T. Mai đã nhận thông báo và sẽ ghi lương chính thức trong hôm nay.</div>
+  </div>
+
+  <div style="text-align:center;font-size:10px;color:#94a3b8;padding-bottom:10px">
+    Phòng Khám Da Liễu SG · Hỗ trợ: 028.xxxx.xxxx
+  </div>
+</div>
+
+<script>
+function xacNhan(){
+  document.getElementById('action-btns').style.display='none';
+  document.getElementById('confirmed-banner').classList.add('show');
+  // Cập nhật bước 3
+  const step3 = document.getElementById('step-bs');
+  step3.className='step done';
+  step3.querySelector('.step-dot').style.cssText='background:#dcfce7;color:#15803d;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0';
+  step3.querySelector('.step-dot').innerHTML='<i class="ti ti-check" style="font-size:13px"></i>';
+  step3.querySelector('b').textContent='BS HOÀN đã xác nhận ✓';
+  step3.querySelector('span').textContent='25/05/2026 lúc '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  // Bước 4
+  document.getElementById('step-kt').classList.remove('wait');
+}
+function khieuNai(){
+  const reason = prompt('Vui lòng mô tả buổi nào bạn thấy không chính xác:');
+  if(reason) alert('✅ Đã gửi phản hồi cho Kế toán!\nNội dung: '+reason+'\n\nKế toán sẽ kiểm tra và liên hệ lại trong ngày.');
+}
+</script>
+</body>
+</html>

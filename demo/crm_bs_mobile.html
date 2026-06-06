@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>BS/KTV — Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;background:#f3f4f6;color:#1a2233}
+.page{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+
+/* Header */
+.hdr{background:linear-gradient(135deg,#0f2044,#1e3a6e);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.hdr-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.hdr-name{font-size:14px;font-weight:700;color:#fff}
+.hdr-role{font-size:11px;color:#93c5fd;margin-top:2px}
+.hdr-time{margin-left:auto;font-size:11px;color:#93c5fd;text-align:right}
+
+/* Tab bar */
+.tabbar{background:#fff;border-bottom:1px solid #e5e7eb;display:flex;overflow-x:auto;flex-shrink:0}
+.tabbar::-webkit-scrollbar{display:none}
+.tb{flex:1;min-width:80px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;border-bottom:2px solid transparent;cursor:pointer;border:none;background:none;font-family:inherit;transition:all .12s}
+.tb i{font-size:19px;color:#94a3b8}
+.tb span{font-size:9px;color:#94a3b8;font-weight:500;white-space:nowrap}
+.tb.on i,.tb.on span{color:#0f2044}
+.tb.on{border-bottom:2px solid #1e40af}
+.tb-badge{position:absolute;top:6px;right:calc(50% - 16px);background:#dc2626;color:#fff;border-radius:20px;padding:0 5px;font-size:8px;font-weight:700}
+
+/* Content */
+.cnt{flex:1;overflow-y:auto;padding:14px}
+.sc{display:none;flex-direction:column;gap:12px}
+.sc.on{display:flex}
+
+/* Cards */
+.card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-hd{padding:11px 14px;border-bottom:1px solid #f1f5f9;background:#f8fafc;font-size:12px;font-weight:600;color:#0f2044;display:flex;align-items:center;justify-content:space-between}
+.card-hd-l{display:flex;align-items:center;gap:6px}
+
+/* KH row */
+.kh-row{padding:11px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;cursor:pointer}
+.kh-row:last-child{border-bottom:none}
+.kh-row:active{background:#f0f9ff}
+.av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.bdg{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:600;white-space:nowrap}
+.b-ok{background:#dcfce7;color:#15803d}
+.b-warn{background:#fef9c3;color:#854d0e}
+.b-err{background:#fee2e2;color:#991b1b}
+.b-blue{background:#dbeafe;color:#1e40af}
+.b-purple{background:#ede9fe;color:#5b21b6}
+.b-gray{background:#f1f5f9;color:#475569}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .14s;width:100%}
+.btn-p{background:#1e40af;color:#fff}
+.btn-g{background:#15803d;color:#fff}
+.btn-o{background:#d97706;color:#fff}
+.btn-red{background:#dc2626;color:#fff}
+.btn-out{background:#fff;border:1.5px solid #dde3ef;color:#374151}
+.btn:active{opacity:.85;transform:scale(.98)}
+
+/* Upload zone */
+.upload-zone{border:2px dashed #bfdbfe;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;background:#eff6ff;transition:all .14s}
+.upload-zone:active{background:#dbeafe}
+
+/* Form */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.fg label{font-size:11px;font-weight:600;color:#64748b}
+.fg select,.fg input,.fg textarea{border:1.5px solid #e5e7eb;border-radius:9px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;background:#fff;width:100%}
+.fg select:focus,.fg input:focus,.fg textarea:focus{border-color:#1e40af}
+
+/* Photo grid */
+.photo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.photo-item{border-radius:9px;overflow:hidden;border:1px solid #e5e7eb;cursor:pointer;position:relative}
+.photo-item-img{aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.photo-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:8px;font-weight:600;padding:3px 6px;text-align:center}
+
+/* Tổng kết HĐ */
+.hd-sum{background:#f0fdf4;border:1.5px solid #16a34a;border-radius:12px;padding:13px}
+.hd-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,.05)}
+.hd-row:last-child{border-bottom:none}
+.hd-total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:10px;border-top:1.5px dashed #bbf7d0;margin-top:6px}
+
+/* Star rating */
+.stars{display:flex;gap:6px;justify-content:center;margin:10px 0}
+.star-btn{font-size:28px;cursor:pointer;transition:transform .1s;color:#e5e7eb;background:none;border:none;line-height:1}
+.star-btn.on{color:#f59e0b}
+.star-btn:active{transform:scale(1.2)}
+
+/* Tua confirm box */
+.tua-box{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #16a34a;border-radius:12px;padding:14px;text-align:center}
+.tua-amount{font-size:28px;font-weight:700;color:#15803d}
+
+/* Info box */
+.ib{border-radius:9px;padding:10px 13px;font-size:11px;line-height:1.6;display:flex;gap:8px}
+.ib i{font-size:16px;flex-shrink:0;margin-top:1px}
+.ib-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.ib-green{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.ib-amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+
+/* Bottom safe area */
+.safe-bottom{height:20px;flex-shrink:0}
+</style>
+<!-- PWA Support -->
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="PK BS/KTV"/>
+<meta name="theme-color" content="#0f2044"/>
+<link rel="manifest" href="manifest_bs.json"/>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-av" style="background:#991b1b;color:#fff">BK</div>
+    <div>
+      <div class="hdr-name">BS KIÊN</div>
+      <div class="hdr-role">BS002 · Phòng Khám Da Liễu</div>
+    </div>
+    <div class="hdr-time" id="hdr-clock">14:35<br><span style="font-size:10px">22/05/2026</span></div>
+    <button id="install-btn" onclick="installPWA()" style="display:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:5px 10px;color:#fff;font-size:10px;font-family:inherit;cursor:pointer;flex-shrink:0;margin-left:8px">
+      <i class="ti ti-download" style="font-size:12px"></i><br>Cài app
+    </button>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tabbar">
+    <button class="tb on" id="tb-kh" onclick="goSc('kh')">
+      <i class="ti ti-stethoscope"></i>
+      <span>KH hôm nay</span>
+    </button>
+    <button class="tb" id="tb-anh" onclick="goSc('anh')">
+      <i class="ti ti-camera"></i>
+      <span>Ảnh ĐT</span>
+    </button>
+    <button class="tb" id="tb-hd" onclick="goSc('hd')">
+      <i class="ti ti-file-invoice"></i>
+      <span>Tạo HĐ</span>
+    </button>
+    <button class="tb" id="tb-tua" onclick="goSc('tua')">
+      <i class="ti ti-coin"></i>
+      <span>Tua tháng</span>
+    </button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="cnt">
+
+    <!-- ══ KH HÔM NAY ══ -->
+    <div class="sc on" id="sc-kh">
+      <div class="ib ib-blue"><i class="ti ti-info-circle"></i><div>Danh sách KH hôm nay của BS KIÊN. Bấm vào từng KH để xem chi tiết, upload ảnh hoặc tạo HĐ.</div></div>
+
+      <!-- Đang điều trị -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-stethoscope" style="color:#dc2626"></i> Đang điều trị</div><span class="bdg b-err">2 KH</span></div>
+
+        <div class="kh-row" onclick="showDetail('kathy')">
+          <div class="av" style="background:#dbeafe;color:#1e40af">KL</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Kathy Le <span class="bdg b-err" style="font-size:8px">Đang ĐT</span></div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">Điều trị mụn BL · Buổi 3/10 · Ph.1 · ~5p còn</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:#94a3b8;font-size:16px"></i>
+        </div>
+
+        <div class="kh-row" onclick="showDetail('ngan')">
+          <div class="av" style="background:#ede9fe;color:#5b21b6">TN</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Trần Thu Ngân <span class="bdg b-err" style="font-size:8px">Đang ĐT</span></div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">SEO rỗ AirFusion · Buổi 1/11 · Ph.2 · vừa bắt đầu</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:#94a3b8;font-size:16px"></i>
+        </div>
+      </div>
+
+      <!-- Chờ tư vấn -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-clock" style="color:#854d0e"></i> Chờ tư vấn</div><span class="bdg b-warn">1 KH</span></div>
+        <div class="kh-row" onclick="showDetail('muoi')">
+          <div class="av" style="background:#f1f5f9;color:#475569">NM</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Nguyễn Vũ Mười <span class="bdg b-blue" style="font-size:8px">KH mới · Tele hẹn</span></div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">Implant Giai đoạn 2 · 15:00 · Hồ sơ cũ: 2024</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:#94a3b8;font-size:16px"></i>
+        </div>
+      </div>
+
+      <!-- Đã xong -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-check" style="color:#15803d"></i> Đã xong hôm nay</div></div>
+        <div class="kh-row" style="opacity:.65">
+          <div class="av" style="background:#f1f5f9;color:#475569">DH</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Dat Huynh <span class="bdg b-ok" style="font-size:8px">Xong · 13:45</span></div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">SEO rỗ · Buổi 5/11 · Tua 450.000đ đã tính</div>
+          </div>
+          <span style="font-size:11px;color:#15803d;font-weight:600">4.8⭐</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ẢNH ĐIỀU TRỊ ══ -->
+    <div class="sc" id="sc-anh">
+      <div class="fg">
+        <label>Chọn KH</label>
+        <select>
+          <option>Kathy Le — Mụn BL Buổi 3/10</option>
+          <option>Trần Thu Ngân — SEO rỗ Buổi 1/11</option>
+          <option>Dat Huynh — SEO rỗ Buổi 5/11 (đã xong)</option>
+        </select>
+      </div>
+
+      <!-- Loại ảnh -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <button onclick="selLoaiAnh(this,'truoc')" id="la-truoc" style="padding:12px;border-radius:10px;border:2px solid #dc2626;background:#fef2f2;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <i class="ti ti-camera" style="font-size:22px;color:#dc2626"></i>
+          <span style="font-size:11px;font-weight:600;color:#dc2626">Ảnh TRƯỚC</span>
+        </button>
+        <button onclick="selLoaiAnh(this,'sau')" id="la-sau" style="padding:12px;border-radius:10px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <i class="ti ti-camera-check" style="font-size:22px;color:#94a3b8"></i>
+          <span style="font-size:11px;font-weight:600;color:#94a3b8">Ảnh SAU</span>
+        </button>
+        <button onclick="selLoaiAnh(this,'trong')" id="la-trong" style="padding:12px;border-radius:10px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <i class="ti ti-camera-filled" style="font-size:22px;color:#94a3b8"></i>
+          <span style="font-size:11px;font-weight:600;color:#94a3b8">Ảnh TRONG</span>
+        </button>
+        <button onclick="selLoaiAnh(this,'danh-gia')" id="la-danh-gia" style="padding:12px;border-radius:10px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <i class="ti ti-star" style="font-size:22px;color:#94a3b8"></i>
+          <span style="font-size:11px;font-weight:600;color:#94a3b8">Kiểm tra</span>
+        </button>
+      </div>
+
+      <!-- Upload zone -->
+      <div class="upload-zone" onclick="alert('Mở camera...\n(thiết bị thật sẽ mở camera trực tiếp)')">
+        <i class="ti ti-camera-plus" style="font-size:44px;color:#1e40af;display:block;margin-bottom:10px"></i>
+        <div style="font-size:14px;font-weight:600;color:#1e40af">Chụp ảnh TRƯỚC điều trị</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:5px">Bấm để mở camera · Chụp xong tự upload</div>
+      </div>
+
+      <!-- Ảnh đã có -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-photo" style="color:#1e40af"></i> Ảnh Kathy Le — Buổi 1-3</div></div>
+        <div style="padding:10px">
+          <div class="photo-grid">
+            <div class="photo-item" onclick="alert('Xem ảnh Trước B1...')">
+              <div class="photo-item-img" style="background:linear-gradient(135deg,#fee2e2,#fca5a5)">
+                <i class="ti ti-camera" style="font-size:22px;color:#991b1b;opacity:.4"></i>
+              </div>
+              <div class="photo-label">TRƯỚC B1</div>
+            </div>
+            <div class="photo-item" onclick="alert('Xem ảnh Sau B1...')">
+              <div class="photo-item-img" style="background:linear-gradient(135deg,#dcfce7,#86efac)">
+                <i class="ti ti-camera" style="font-size:22px;color:#15803d;opacity:.4"></i>
+              </div>
+              <div class="photo-label">SAU B1</div>
+            </div>
+            <div class="photo-item" onclick="alert('Xem ảnh Sau B2...')">
+              <div class="photo-item-img" style="background:linear-gradient(135deg,#dcfce7,#a7f3d0)">
+                <i class="ti ti-camera" style="font-size:22px;color:#15803d;opacity:.4"></i>
+              </div>
+              <div class="photo-label">SAU B2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Đánh giá sau buổi -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-star" style="color:#f59e0b"></i> Đánh giá KH sau buổi</div></div>
+        <div style="padding:14px;text-align:center">
+          <div style="font-size:12px;color:#64748b;margin-bottom:8px">Kathy Le cảm thấy thế nào sau buổi 3?</div>
+          <div class="stars" id="stars">
+            <button class="star-btn" onclick="rateStar(1)">★</button>
+            <button class="star-btn" onclick="rateStar(2)">★</button>
+            <button class="star-btn" onclick="rateStar(3)">★</button>
+            <button class="star-btn" onclick="rateStar(4)">★</button>
+            <button class="star-btn" onclick="rateStar(5)">★</button>
+          </div>
+          <div style="font-size:11px;color:#94a3b8" id="star-label">Chưa đánh giá</div>
+          <textarea placeholder="Nhận xét thêm... (tuỳ chọn)" style="border:1.5px solid #e5e7eb;border-radius:9px;padding:10px;font-size:12px;font-family:inherit;outline:none;width:100%;margin-top:10px;resize:none" rows="2"></textarea>
+          <button class="btn btn-g" style="margin-top:10px" onclick="alert('✅ Đã lưu đánh giá 5⭐!\n→ CSKH CS001 Kiều Anh nhận thông báo\n→ Vào hồ sơ KH Kathy Le')">
+            <i class="ti ti-check"></i> Lưu đánh giá
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TẠO HĐ NHÁP ══ -->
+    <div class="sc" id="sc-hd">
+      <div class="ib ib-amber"><i class="ti ti-info-circle"></i><div>BS/KTV tạo HĐ nháp sau khi tư vấn hoặc điều trị xong. HĐ gửi thẳng cho Kế toán duyệt — giống Sale nhập.</div></div>
+
+      <div class="fg">
+        <label>Khách hàng</label>
+        <select>
+          <option>Nguyễn Vũ Mười — Tư vấn mới</option>
+          <option>Kathy Le — Mua thêm DV</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Loại giao dịch</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <button onclick="selLoaiGD(this,'moi')" style="padding:10px 8px;border-radius:9px;border:2px solid #1e40af;background:#eff6ff;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;color:#1e40af">DV mới</button>
+          <button onclick="selLoaiGD(this,'them')" style="padding:10px 8px;border-radius:9px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;color:#94a3b8">Thêm DV</button>
+          <button onclick="selLoaiGD(this,'tang')" style="padding:10px 8px;border-radius:9px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;color:#94a3b8">Tặng kèm</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Dịch vụ</label>
+        <select><option>Implant · Giai đoạn 2 · Trồng răng</option><option>SEO rỗ AirFusion · 10 buổi</option><option>Điều trị mụn BL · 10 buổi</option></select>
+      </div>
+      <div class="fg">
+        <label>Loại DV</label>
+        <select><option>Bệnh lý — Miễn VAT (cần hồ sơ)</option><option>Thẩm mỹ — VAT 10%</option></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg">
+          <label>Giá trị HĐ (đ)</label>
+          <input type="number" value="45000000" id="hd-gia" oninput="calcHD()"/>
+        </div>
+        <div class="fg">
+          <label>Thanh toán đợt 1 (đ)</label>
+          <input type="number" value="20000000" id="hd-dot1" oninput="calcHD()"/>
+        </div>
+      </div>
+
+      <!-- Hình thức TT -->
+      <div class="fg">
+        <label>Hình thức thanh toán</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <button onclick="selHTTT(this,'ck')" id="httt-ck" style="padding:10px 6px;border-radius:9px;border:2px solid #1e40af;background:#eff6ff;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px">
+            <i class="ti ti-building-bank" style="font-size:18px;color:#1e40af"></i>
+            <span style="font-size:10px;font-weight:600;color:#1e40af">CK</span>
+          </button>
+          <button onclick="selHTTT(this,'tm')" id="httt-tm" style="padding:10px 6px;border-radius:9px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px">
+            <i class="ti ti-cash" style="font-size:18px;color:#94a3b8"></i>
+            <span style="font-size:10px;font-weight:600;color:#94a3b8">Tiền mặt</span>
+          </button>
+          <button onclick="selHTTT(this,'kh')" id="httt-kh" style="padding:10px 6px;border-radius:9px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px">
+            <i class="ti ti-arrows-split-2" style="font-size:18px;color:#94a3b8"></i>
+            <span style="font-size:10px;font-weight:600;color:#94a3b8">Kết hợp</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CK status -->
+      <div id="ck-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button onclick="selTT(this,'chua')" id="tt-chua" style="padding:10px;border-radius:9px;border:2px solid #fde68a;background:#fffbeb;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#854d0e">⏳ Chưa nhận</button>
+        <button onclick="selTT(this,'roi')" id="tt-roi" style="padding:10px;border-radius:9px;border:2px solid #e5e7eb;background:#f8fafc;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#94a3b8">✓ Đã nhận</button>
+      </div>
+
+      <!-- Tổng kết -->
+      <div class="hd-sum" id="hd-sum">
+        <div class="hd-row"><span style="color:#64748b">Giá trị HĐ</span><span id="sum-gia">45.000.000đ</span></div>
+        <div class="hd-row"><span style="color:#64748b">Đã thanh toán đợt 1</span><span style="color:#15803d" id="sum-dot1">20.000.000đ</span></div>
+        <div class="hd-row"><span style="color:#64748b">Còn nợ</span><span style="color:#dc2626" id="sum-no">25.000.000đ</span></div>
+        <div class="hd-row"><span style="color:#64748b">Hình thức</span><span style="color:#1e40af" id="sum-httt">Chuyển khoản · Chưa nhận</span></div>
+      </div>
+
+      <div class="fg" style="margin-top:12px">
+        <label>Ghi chú</label>
+        <textarea rows="2" placeholder="Tình trạng KH, phác đồ, lưu ý..." style="border:1.5px solid #e5e7eb;border-radius:9px;padding:10px;font-size:12px;font-family:inherit;outline:none;width:100%;resize:none"></textarea>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn btn-out" onclick="alert('💾 Lưu bản nháp\n→ HĐ-2026-043 tạm lưu\n→ Gửi duyệt khi sẵn sàng')">
+          <i class="ti ti-device-floppy"></i> Lưu nháp
+        </button>
+        <button class="btn btn-g" onclick="guiKT()">
+          <i class="ti ti-send"></i> Gửi KT duyệt
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ TUA THÁNG ══ -->
+    <div class="sc" id="sc-tua">
+      <div class="tua-box">
+        <div style="font-size:12px;color:#64748b;margin-bottom:6px">TUA THÁNG 05/2026 — BS KIÊN</div>
+        <div class="tua-amount">10.800.000đ</div>
+        <div style="font-size:12px;color:#64748b;margin-top:5px">24 buổi × 450.000đ</div>
+        <div style="margin-top:12px;background:rgba(255,255,255,.6);border-radius:8px;padding:8px 12px;font-size:11px;color:#374151;display:inline-block">
+          Lương cứng 10tr + Tua 10.8tr = <b style="color:#15803d">20.800.000đ</b>
+        </div>
+      </div>
+
+      <div style="background:#fef9c3;border:1.5px solid #fde68a;border-radius:10px;padding:11px 14px;font-size:12px;color:#854d0e;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-clock" style="font-size:18px;flex-shrink:0"></i>
+        <div>Lễ tân đã gửi link xác nhận qua Zalo. Vui lòng xác nhận tua bên dưới.</div>
+      </div>
+
+      <!-- Chi tiết buổi -->
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><i class="ti ti-list" style="color:#5b21b6"></i> Chi tiết buổi T05</div></div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #f1f5f9">Ngày</th>
+              <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #f1f5f9">KH</th>
+              <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;color:#64748b;border-bottom:1px solid #f1f5f9">Tua</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f8fafc"><td style="padding:7px 12px">03/05</td><td style="padding:7px 12px">Kathy Le</td><td style="padding:7px 12px;text-align:right;color:#5b21b6">450k</td></tr>
+            <tr style="border-bottom:1px solid #f8fafc"><td style="padding:7px 12px">05/05</td><td style="padding:7px 12px">Anh Khoi LE</td><td style="padding:7px 12px;text-align:right;color:#5b21b6">450k</td></tr>
+            <tr style="border-bottom:1px solid #f8fafc"><td style="padding:7px 12px">08/05</td><td style="padding:7px 12px">Dat Huynh</td><td style="padding:7px 12px;text-align:right;color:#5b21b6">450k</td></tr>
+            <tr style="color:#94a3b8"><td style="padding:7px 12px" colspan="2">... 21 buổi khác</td><td style="padding:7px 12px;text-align:right">9.450k</td></tr>
+          </tbody>
+          <tfoot>
+            <tr style="background:#f0fdf4;border-top:2px solid #bbf7d0">
+              <td style="padding:9px 12px;font-weight:700">Tổng · 24 buổi</td>
+              <td></td>
+              <td style="padding:9px 12px;text-align:right;font-weight:700;color:#15803d">10.800.000đ</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div style="font-size:11px;color:#64748b;line-height:1.6;background:#f8fafc;border-radius:9px;padding:10px 12px">
+        <i class="ti ti-info-circle" style="font-size:13px;color:#1e40af"></i>
+        Sau khi xác nhận: Kế toán KT001 Lê T. Mai nhận thông báo và ghi tua vào bảng lương chính thức. Không thể sửa sau khi đã xác nhận.
+      </div>
+
+      <button class="btn btn-g" onclick="xacNhanTua()">
+        <i class="ti ti-check-circle" style="font-size:18px"></i>
+        Đồng ý — Xác nhận 10.800.000đ
+      </button>
+      <button class="btn btn-out" style="margin-top:-4px" onclick="alert('Phản hồi đã gửi về Lễ tân và Kế toán.\nCác bên sẽ liên hệ kiểm tra lại.')">
+        <i class="ti ti-alert-triangle" style="font-size:14px;color:#dc2626"></i>
+        <span style="color:#dc2626">Không đồng ý — Cần kiểm tra lại</span>
+      </button>
+
+      <div class="safe-bottom"></div>
+    </div>
+
+  </div><!-- end cnt -->
+
+  <!-- DETAIL PANEL (overlay) -->
+  <div id="detail-panel" style="display:none;position:fixed;inset:0;background:#f3f4f6;z-index:200;flex-direction:column;max-width:430px;margin:0 auto">
+    <div style="background:#0f2044;padding:13px 16px;display:flex;align-items:center;gap:10px">
+      <button onclick="closeDetail()" style="background:none;border:none;color:#93c5fd;font-size:16px;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit;padding:0">
+        <i class="ti ti-arrow-left" style="font-size:18px"></i> Quay lại
+      </button>
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-left:4px" id="detail-title">Chi tiết KH</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px" id="detail-body"></div>
+  </div>
+
+</div><!-- end page -->
+
+<script>
+// Clock
+function tick(){
+  const n=new Date();
+  const el=document.getElementById('hdr-clock');
+  if(el) el.innerHTML=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+'<br><span style="font-size:10px">'+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+'</span>';
+}
+tick(); setInterval(tick,30000);
+
+// Tabs
+const TABS=['kh','anh','hd','tua'];
+function goSc(s){
+  TABS.forEach(t=>{document.getElementById('sc-'+t)?.classList.remove('on');document.getElementById('tb-'+t)?.classList.remove('on');});
+  document.getElementById('sc-'+s)?.classList.add('on');
+  document.getElementById('tb-'+s)?.classList.add('on');
+}
+
+// Ảnh loại
+let curLA='truoc';
+function selLoaiAnh(btn,type){
+  ['truoc','sau','trong','danh-gia'].forEach(t=>{
+    const b=document.getElementById('la-'+t);
+    if(!b)return;
+    b.style.borderColor='#e5e7eb';b.style.background='#f8fafc';
+    b.querySelector('i').style.color='#94a3b8';b.querySelector('span').style.color='#94a3b8';
+  });
+  const colors={truoc:'#dc2626',sau:'#15803d',trong:'#d97706','danh-gia':'#f59e0b'};
+  const bgs={truoc:'#fef2f2',sau:'#f0fdf4',trong:'#fffbeb','danh-gia':'#fffbeb'};
+  const c=colors[type],bg=bgs[type];
+  btn.style.borderColor=c;btn.style.background=bg;
+  btn.querySelector('i').style.color=c;btn.querySelector('span').style.color=c;
+  const ub=document.querySelector('.upload-zone');
+  if(ub){const lbl={truoc:'Chụp ảnh TRƯỚC điều trị',sau:'Chụp ảnh SAU điều trị',trong:'Chụp ảnh TRONG điều trị','danh-gia':'Chụp ảnh kiểm tra kết quả'};ub.querySelector('div').textContent=lbl[type];}
+}
+
+// Loại GD
+function selLoaiGD(btn,type){
+  btn.parentElement.querySelectorAll('button').forEach(b=>{b.style.borderColor='#e5e7eb';b.style.background='#f8fafc';b.style.color='#94a3b8';});
+  btn.style.borderColor='#1e40af';btn.style.background='#eff6ff';btn.style.color='#1e40af';
+}
+
+// HTTT
+function selHTTT(btn,type){
+  ['ck','tm','kh'].forEach(t=>{
+    const b=document.getElementById('httt-'+t);
+    if(!b)return;
+    b.style.borderColor='#e5e7eb';b.style.background='#f8fafc';
+    b.querySelector('i').style.color='#94a3b8';b.querySelector('span').style.color='#94a3b8';
+  });
+  const c={ck:'#1e40af',tm:'#d97706',kh:'#5b21b6'};
+  const bg={ck:'#eff6ff',tm:'#fffbeb',kh:'#f5f3ff'};
+  btn.style.borderColor=c[type];btn.style.background=bg[type];
+  btn.querySelector('i').style.color=c[type];btn.querySelector('span').style.color=c[type];
+  const lbl=document.getElementById('sum-httt');
+  if(lbl){const ls={ck:'Chuyển khoản · Chưa nhận',tm:'Tiền mặt · Chờ KT xác nhận',kh:'CK + Tiền mặt kết hợp'};lbl.textContent=ls[type];}
+}
+
+function selTT(btn,type){
+  ['chua','roi'].forEach(t=>{
+    const b=document.getElementById('tt-'+t);
+    if(!b)return;
+    b.style.borderColor='#e5e7eb';b.style.background='#f8fafc';b.style.color='#94a3b8';
+  });
+  const c={chua:'#854d0e',roi:'#15803d'};
+  const bc={chua:'#fde68a',roi:'#16a34a'};
+  const bg={chua:'#fffbeb',roi:'#f0fdf4'};
+  btn.style.borderColor=bc[type];btn.style.background=bg[type];btn.style.color=c[type];
+  const lbl=document.getElementById('sum-httt');
+  if(lbl)lbl.textContent='Chuyển khoản · '+(type==='roi'?'Đã nhận ✓':'Chưa nhận ⏳');
+}
+
+// Calc HĐ
+function calcHD(){
+  const gia=parseInt(document.getElementById('hd-gia')?.value||0);
+  const dot1=parseInt(document.getElementById('hd-dot1')?.value||0);
+  const no=Math.max(0,gia-dot1);
+  const fmt=n=>n.toLocaleString('vi-VN')+'đ';
+  const sg=document.getElementById('sum-gia');if(sg)sg.textContent=fmt(gia);
+  const sd=document.getElementById('sum-dot1');if(sd)sd.textContent=fmt(dot1);
+  const sn=document.getElementById('sum-no');if(sn){sn.textContent=fmt(no);sn.style.color=no>0?'#dc2626':'#15803d';}
+}
+
+// Stars
+let curStar=0;
+function rateStar(n){
+  curStar=n;
+  const labels={1:'😞 Không hài lòng',2:'😐 Tạm được',3:'🙂 Ổn',4:'😊 Hài lòng',5:'🤩 Rất hài lòng!'};
+  document.querySelectorAll('.star-btn').forEach((b,i)=>{b.classList.toggle('on',i<n);});
+  const lbl=document.getElementById('star-label');
+  if(lbl)lbl.textContent=labels[n]||'';
+}
+
+// Gửi KT
+function guiKT(){
+  alert('✅ Đã gửi HĐ cho Kế toán!\n\nHĐ-2026-043 · Nguyễn Vũ Mười · Implant GĐ2\n45.000.000đ · CK chưa nhận\n\n→ KT001 Lê T. Mai nhận thông báo in-app ngay\n→ Trạng thái: Chờ KT duyệt\n→ DT ghi sau khi KT xác nhận');
+}
+
+// Xác nhận tua
+function xacNhanTua(){
+  document.querySelector('.tua-box').innerHTML='<i class="ti ti-circle-check" style="font-size:48px;display:block;margin-bottom:10px;color:#15803d"></i><div style="font-size:18px;font-weight:700;color:#15803d">Đã xác nhận!</div><div style="font-size:13px;color:#64748b;margin-top:6px">10.800.000đ · T05/2026</div><div style="font-size:11px;color:#94a3b8;margin-top:8px">KT001 Lê T. Mai đã nhận thông báo</div>';
+}
+
+// KH detail
+const KH_DATA={
+  kathy:{name:'Kathy Le',role:'Điều trị mụn BL · Buổi 3/10',content:`
+    <div style="background:#fef2f2;border-radius:10px;padding:12px;font-size:12px;line-height:1.8">
+      <b>Tình trạng:</b> Mụn trứng cá mủ độ II<br>
+      <b>Phác đồ:</b> Laser CO2 + serum đặc trị<br>
+      <b>Buổi hôm nay:</b> 3/10 · Lần 3 liên tiếp tuần này
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px">
+      <button onclick="goSc('anh');closeDetail()" style="padding:11px;border-radius:10px;border:2px solid #1e40af;background:#eff6ff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#1e40af;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-camera" style="font-size:16px"></i> Chụp ảnh
+      </button>
+      <button onclick="goSc('hd');closeDetail()" style="padding:11px;border-radius:10px;border:2px solid #15803d;background:#f0fdf4;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#15803d;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-file-invoice" style="font-size:16px"></i> Tạo HĐ
+      </button>
+    </div>`},
+  ngan:{name:'Trần Thu Ngân',role:'SEO rỗ AirFusion · Buổi 1/11',content:`
+    <div style="background:#eff6ff;border-radius:10px;padding:12px;font-size:12px;line-height:1.8">
+      <b>Tình trạng:</b> Sẹo rỗ độ II · Da nhạy cảm<br>
+      <b>Phác đồ:</b> AirFusion 10 buổi · Tuần 1 lần<br>
+      <b>Lưu ý:</b> Dị ứng nhẹ với một số loại serum
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px">
+      <button onclick="goSc('anh');closeDetail()" style="padding:11px;border-radius:10px;border:2px solid #1e40af;background:#eff6ff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#1e40af;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-camera"></i> Chụp ảnh TRƯỚC
+      </button>
+      <button onclick="goSc('hd');closeDetail()" style="padding:11px;border-radius:10px;border:2px solid #15803d;background:#f0fdf4;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#15803d;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-file-invoice"></i> Tạo HĐ
+      </button>
+    </div>`},
+  muoi:{name:'Nguyễn Vũ Mười',role:'Implant Giai đoạn 2 · KH cũ 2024',content:`
+    <div style="background:#f0fdf4;border-radius:10px;padding:12px;font-size:12px;line-height:1.8">
+      <b>Lịch sử:</b> Cấy implant GĐ1 tháng 08/2024<br>
+      <b>Hôm nay:</b> Giai đoạn 2 — gắn mão răng<br>
+      <b>Kế hoạch:</b> Dự kiến 45.000.000đ · TK đợt đầu 20tr
+    </div>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:10px;font-size:11px;color:#854d0e">
+      <i class="ti ti-info-circle" style="font-size:13px"></i> KH chưa tạo HĐ GĐ2 — BS tạo HĐ nháp sau khi tư vấn xong.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="goSc('anh');closeDetail()" style="padding:11px;border-radius:10px;border:2px solid #1e40af;background:#eff6ff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#1e40af;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-camera"></i> Chụp ảnh
+      </button>
+      <button onclick="goSc('hd');closeDetail()" style="padding:11px;border-radius:10px;border:2px solid #15803d;background:#f0fdf4;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#15803d;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-file-invoice"></i> Tạo HĐ nháp
+      </button>
+    </div>`}
+};
+
+function showDetail(id){
+  const kh=KH_DATA[id];if(!kh)return;
+  document.getElementById('detail-title').textContent=kh.name+' — '+kh.role;
+  document.getElementById('detail-body').innerHTML=kh.content;
+  document.getElementById('detail-panel').style.display='flex';
+}
+function closeDetail(){document.getElementById('detail-panel').style.display='none';}
+</script>
+</body>
+</html>
