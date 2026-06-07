@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { IconDoorEnter, IconPlus } from '@tabler/icons-react'
 import AppLayout from '../../components/layout/AppLayout'
 import HoMnayTab from './tabs/HoMnayTab'
@@ -7,6 +8,7 @@ import ChiaTuaTab from './tabs/ChiaTuaTab'
 import AnhDieuTriTab from './tabs/AnhDieuTriTab'
 import LichTuanTab from './tabs/LichTuanTab'
 import WalkInModal from './modals/WalkInModal'
+import AppointmentsTab from '../shared/AppointmentsTab'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 
@@ -16,14 +18,20 @@ const TABS = [
   { key: 'chiatua',  label: 'Chia tua' },
   { key: 'anhdieurt',label: 'Ảnh điều trị' },
   { key: 'lichtuan', label: 'Lịch tuần' },
+  { key: 'lichhens', label: 'Lịch hẹn' },
 ]
 
-const ALLOWED_ROLES = ['LE_TAN', 'QUAN_LY', 'CHU_DN']
+const ALLOWED_ROLES = ['LE_TAN', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN']
 
 export default function LetanPage() {
   const { user } = useAuthStore()
-  const [activeTab, setActiveTab] = useState('homnay')
   const [showWalkIn, setShowWalkIn] = useState(false)
+
+  const VALID_TABS = TABS.map(t => t.key)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawTab = searchParams.get('tab')
+  const activeTab = VALID_TABS.includes(rawTab) ? rawTab : 'homnay'
+  const setActiveTab = (k) => setSearchParams({ tab: k }, { replace: true })
 
   if (user && !ALLOWED_ROLES.includes(getUserRole(user))) {
     return (
@@ -57,6 +65,7 @@ export default function LetanPage() {
       {activeTab === 'chiatua'   && <ChiaTuaTab />}
       {activeTab === 'anhdieurt' && <AnhDieuTriTab />}
       {activeTab === 'lichtuan'  && <LichTuanTab />}
+      {activeTab === 'lichhens'  && <AppointmentsTab accent="#b45309" />}
 
       {showWalkIn && (
         <WalkInModal onClose={() => setShowWalkIn(false)} onDone={() => {

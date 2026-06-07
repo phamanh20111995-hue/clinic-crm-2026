@@ -12,6 +12,7 @@ from .serializers import (
 )
 from apps.accounts.models import MANAGEMENT_ROLES
 from apps.accounts.permissions import IsKeToan
+from apps.chat.notifications import send_notification, send_notification_to_roles
 
 
 def _contract_queryset(user):
@@ -105,6 +106,13 @@ def submit_contract(request, pk):
     contract.customer.status = 'dat_lich'
     contract.customer.save(update_fields=['status', 'updated_at'])
 
+    send_notification_to_roles(
+        ['KE_TOAN'],
+        'hd_pending_kt',
+        f'HĐ {contract.contract_no} cần duyệt',
+        body=f'KH: {contract.customer.full_name} — {contract.final_amount:,.0f} VNĐ',
+        data={'contract_id': contract.id},
+    )
     return Response(ContractDetailSerializer(contract).data)
 
 
@@ -134,10 +142,21 @@ def approve_contract(request, pk):
             contract.payment_status = 'received'
         contract.save()
 
-        # Cập nhật customer status → đã ký HĐ
-        contract.customer.status = 'dat_lich'
-        contract.customer.save(update_fields=['status', 'updated_at'])
+        # Chuyển KH vào hàng chờ CSKH hoặc đang chăm sóc nếu đã phân CSKH
+        customer = contract.customer
+        if customer.cskh_id:
+            customer.status = 'dang_cham_soc'
+        else:
+            customer.status = 'cho_phan_cskh'
+        customer.save(update_fields=['status', 'updated_at'])
 
+    send_notification(
+        contract.created_by,
+        'hd_approved',
+        f'HĐ {contract.contract_no} đã được duyệt',
+        body=f'KH: {contract.customer.full_name}',
+        data={'contract_id': contract.id},
+    )
     return Response(ContractDetailSerializer(contract).data)
 
 
@@ -168,6 +187,13 @@ def reject_contract(request, pk):
     contract.notes = (contract.notes + f'\n[Từ chối: {reason}]').strip()
     contract.save()
 
+    send_notification(
+        contract.created_by,
+        'hd_rejected',
+        f'HĐ {contract.contract_no} bị từ chối',
+        body=reason,
+        data={'contract_id': contract.id},
+    )
     return Response(ContractDetailSerializer(contract).data)
 
 

@@ -12,6 +12,9 @@ from .serializers import (
 )
 from apps.accounts.models import FULL_ACCESS_ROLES
 from apps.accounts.permissions import IsLeTan
+from apps.chat.notifications import send_notification_to_roles
+
+LETAN_ROLES = ('LE_TAN', 'QUAN_LY', 'CHU_DN')
 
 
 def _appointment_queryset(user):
@@ -20,11 +23,11 @@ def _appointment_queryset(user):
     - LE_TAN / FULL_ACCESS_ROLES → tất cả
     - SALE      → appointment KH của mình
     - CSKH      → appointment KH của mình
-    - doctor/ktv → appointment được assign cho mình (role không cố định)
-    - TELE      → chỉ đọc, xem tất cả (nhận thông báo walk-in)
+    - doctor/ktv → appointment được assign cho mình
+    - TELE      → chỉ đọc, xem tất cả
     """
     qs = Appointment.objects.select_related(
-        'customer', 'service', 'room', 'booked_by', 'doctor', 'ktv'
+        'customer', 'service', 'room', 'booked_by', 'doctor', 'ktv', 'sale'
     )
     if user.role in FULL_ACCESS_ROLES or user.role == 'TELE':
         return qs
@@ -32,14 +35,13 @@ def _appointment_queryset(user):
         return qs.filter(customer__sale=user)
     if user.role == 'CSKH':
         return qs.filter(customer__sale=user) | qs.filter(ktv=user)
-    # BS/KTV (không có role cố định — dùng assignment)
     return qs.filter(doctor=user) | qs.filter(ktv=user)
 
 
 class AppointmentListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/appointments/         — Danh sách (filter theo role)
-    POST /api/appointments/         — Tạo lịch hẹn mới
+    GET  /api/appointments/  — Danh sách (filter theo role)
+    POST /api/appointments/  — Tạo lịch hẹn mới
     Query: date (YYYY-MM-DD), status, customer_id, room_id
     """
     permission_classes = [IsAuthenticated]
@@ -99,10 +101,9 @@ class AppointmentDetailView(generics.RetrieveUpdateAPIView):
 def checkin_view(request, pk):
     """
     POST /api/appointments/{id}/checkin/
-    Lễ tân check-in KH đến. → status = 'confirmed', ghi nhận thời gian.
-    Cập nhật customer.status = 'dat_lich' (đã đến).
+    Lễ tân check-in KH đến → status = 'confirmed'.
     """
-    if request.user.role not in ('LE_TAN', 'QUAN_LY', 'CHU_DN'):
+    if request.user.role not in LETAN_ROLES:
         return Response({'detail': 'Chỉ Lễ tân mới check-in được.'}, status=403)
 
     appt = Appointment.objects.filter(pk=pk).select_related('customer').first()
@@ -115,9 +116,74 @@ def checkin_view(request, pk):
         appt.status = 'confirmed'
         appt.notes = (appt.notes + f'\n[Check-in {timezone.now():%H:%M %d/%m/%Y} bởi {request.user.display_name}]').strip()
         appt.save()
-        # Cập nhật trạng thái KH
         appt.customer.status = 'dat_lich'
         appt.customer.save(update_fields=['status', 'updated_at'])
+
+    send_notification_to_roles(
+        ['QUAN_LY', 'CHU_DN', 'LEAD_CSKH'],
+        'kh_checkin',
+        f'KH {appt.customer.full_name} vừa check-in',
+        body=f'Lịch hẹn #{appt.id} — {appt.scheduled_at:%H:%M %d/%m/%Y}',
+        data={'appointment_id': appt.id, 'customer_id': appt.customer_id},
+    )
+    return Response(AppointmentListSerializer(appt).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def enqueue(request, pk):
+    """
+    POST /api/appointments/{id}/enqueue/
+    Lễ tân chọn loại lượt và đưa KH vào hàng chờ.
+    Chỉ gọi được khi status='confirmed'.
+    Body: { visit_type: 'tu_van' | 'dieu_tri' | 'tai_kham' | 'khieu_nai' }
+    → dieu_tri  : status='waiting_treat'
+    → còn lại   : status='waiting_consult'
+    """
+    if request.user.role not in LETAN_ROLES:
+        return Response({'detail': 'Chỉ Lễ tân mới thực hiện được.'}, status=403)
+
+    appt = Appointment.objects.filter(pk=pk).select_related('customer').first()
+    if not appt:
+        return Response({'detail': 'Không tìm thấy lịch hẹn.'}, status=404)
+    if appt.status != 'confirmed':
+        return Response({'detail': 'Khách chưa xác nhận đến.'}, status=400)
+
+    visit_type = request.data.get('visit_type')
+    valid_types = [c[0] for c in Appointment.VISIT_TYPE_CHOICES]
+    if not visit_type or visit_type not in valid_types:
+        return Response({'detail': f'visit_type không hợp lệ. Chọn một trong: {valid_types}'}, status=400)
+
+    appt.visit_type = visit_type
+    appt.status = 'waiting_treat' if visit_type == 'dieu_tri' else 'waiting_consult'
+    appt.save(update_fields=['visit_type', 'status'])
+
+    return Response(AppointmentListSerializer(appt).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def to_treatment(request, pk):
+    """
+    POST /api/appointments/{id}/to-treatment/
+    Sale/Lễ tân chốt liệu trình, chuyển KH từ tư vấn sang chờ điều trị.
+    Chỉ gọi được khi status='consulting'.
+    → visit_type='dieu_tri', status='waiting_treat', room=None (giải phóng phòng tư vấn).
+    """
+    allowed = ('SALE', 'LEAD_SALE') + LETAN_ROLES
+    if request.user.role not in allowed:
+        return Response({'detail': 'Không có quyền thực hiện.'}, status=403)
+
+    appt = Appointment.objects.filter(pk=pk).first()
+    if not appt:
+        return Response({'detail': 'Không tìm thấy lịch hẹn.'}, status=404)
+    if appt.status != 'consulting':
+        return Response({'detail': 'Chỉ chuyển điều trị khi đang tư vấn.'}, status=400)
+
+    appt.visit_type = 'dieu_tri'
+    appt.status     = 'waiting_treat'
+    appt.room       = None   # giải phóng phòng tư vấn
+    appt.save(update_fields=['visit_type', 'status', 'room'])
 
     return Response(AppointmentListSerializer(appt).data)
 
@@ -127,7 +193,7 @@ def checkin_view(request, pk):
 def confirm_tua(request, pk):
     """
     POST /api/appointments/{id}/confirm-tua/
-    Xác nhận tua sau điều trị. Lễ tân hoặc BS/KTV xác nhận.
+    Xác nhận tua sau điều trị.
     Body: {"via_zalo": true/false}
     """
     if request.user.role not in ('LE_TAN', 'QUAN_LY', 'CHU_DN', 'CSKH', 'LEAD_CSKH'):
@@ -140,7 +206,7 @@ def confirm_tua(request, pk):
         return Response({'detail': 'Chỉ xác nhận tua khi đang/đã điều trị.'}, status=400)
 
     via_zalo = request.data.get('via_zalo', False)
-    appt.tua_confirmed = True
+    appt.tua_confirmed          = True
     appt.tua_confirmed_via_zalo = via_zalo
     appt.status = 'done'
     appt.save()
@@ -153,18 +219,52 @@ def confirm_tua(request, pk):
 def assign_room(request, pk):
     """
     POST /api/appointments/{id}/assign-room/
-    Lễ tân phân phòng điều trị.
+    Lễ tân phân phòng: ghi room, doctor, ktv, sale, visit_type.
+    Chỉ cho phân khi KH đang trong hàng chờ (waiting_consult / waiting_treat).
+    Status tự động: dieu_tri → in_progress; còn lại → consulting.
     """
-    if request.user.role not in ('LE_TAN', 'QUAN_LY', 'CHU_DN'):
+    if request.user.role not in LETAN_ROLES:
         return Response({'detail': 'Chỉ Lễ tân mới phân phòng được.'}, status=403)
 
-    appt = Appointment.objects.filter(pk=pk).first()
+    appt = Appointment.objects.select_related(
+        'customer', 'service', 'room', 'booked_by', 'doctor', 'ktv', 'sale'
+    ).filter(pk=pk).first()
     if not appt:
         return Response({'detail': 'Không tìm thấy lịch hẹn.'}, status=404)
+    if appt.status not in ('waiting_consult', 'waiting_treat'):
+        return Response({'detail': 'Khách chưa ở hàng chờ. Chỉ phân phòng khi trạng thái là "Chờ tư vấn" hoặc "Chờ điều trị".'}, status=400)
 
     s = AssignRoomSerializer(appt, data=request.data, partial=True)
     s.is_valid(raise_exception=True)
     s.save()
+    appt.refresh_from_db()
+    return Response(AppointmentListSerializer(appt).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def checkout(request, pk):
+    """
+    POST /api/appointments/{id}/checkout/
+    KH về: set status='done', checked_out_at=now(), room=None (giải phóng phòng).
+    Chỉ gọi được khi status in ('consulting', 'in_progress').
+    """
+    if request.user.role not in LETAN_ROLES:
+        return Response({'detail': 'Chỉ Lễ tân mới cho KH về được.'}, status=403)
+
+    appt = Appointment.objects.filter(pk=pk).select_related('customer').first()
+    if not appt:
+        return Response({'detail': 'Không tìm thấy lịch hẹn.'}, status=404)
+    if appt.status not in ('consulting', 'in_progress'):
+        return Response({'detail': f'Không thể cho về khi trạng thái là {appt.get_status_display()}.'}, status=400)
+
+    now = timezone.now()
+    appt.status         = 'done'
+    appt.checked_out_at = now
+    appt.room           = None   # giải phóng phòng
+    appt.notes = (appt.notes + f'\n[Khách về {now:%H:%M %d/%m/%Y} — ghi bởi {request.user.display_name}]').strip()
+    appt.save(update_fields=['status', 'checked_out_at', 'room', 'notes'])
+
     return Response(AppointmentListSerializer(appt).data)
 
 
@@ -174,9 +274,8 @@ def walkin_create(request):
     """
     POST /api/appointments/walkin/
     Lễ tân tạo KH walk-in + lịch hẹn cùng lúc.
-    Trước tiên kiểm tra phone — nếu đã có KH thì chỉ tạo appointment.
     """
-    if request.user.role not in ('LE_TAN', 'QUAN_LY', 'CHU_DN'):
+    if request.user.role not in LETAN_ROLES:
         return Response({'detail': 'Chỉ Lễ tân mới tạo walk-in.'}, status=403)
 
     s = WalkInSerializer(data=request.data)
@@ -186,7 +285,6 @@ def walkin_create(request):
     from apps.customers.models import Customer
 
     with transaction.atomic():
-        # Kiểm tra KH có sẵn theo SĐT
         customer = Customer.objects.filter(phone=data['phone'], is_deleted=False).first()
         created_customer = False
         if not customer:
@@ -200,11 +298,9 @@ def walkin_create(request):
             )
             created_customer = True
         else:
-            # KH cũ đến walk-in — cập nhật trạng thái
             customer.status = 'dat_lich'
             customer.save(update_fields=['status', 'updated_at'])
 
-        # Tạo appointment ngay tại thời điểm hiện tại
         appt = Appointment.objects.create(
             customer=customer,
             scheduled_at=timezone.now(),
@@ -212,8 +308,9 @@ def walkin_create(request):
             room=data.get('room'),
             notes=data.get('notes', ''),
             booked_by=request.user,
-            status='confirmed',   # Walk-in → đã xác nhận luôn
+            status='confirmed',
             is_walkin=True,
+            visit_type=data.get('visit_type', 'tu_van'),
         )
 
     return Response({

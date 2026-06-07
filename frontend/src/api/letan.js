@@ -34,3 +34,12 @@ export const getServices = () =>
 
 export const checkPhone = (phone) =>
   api.get('/api/customers/check-phone/', { params: { phone } })
+
+export const enqueueAppointment = (id, visitType) =>
+  api.post(`/api/appointments/${id}/enqueue/`, { visit_type: visitType })
+
+export const toTreatment = (id) =>
+  api.post(`/api/appointments/${id}/to-treatment/`)
+
+export const checkoutAppointment = (id) =>
+  api.post(`/api/appointments/${id}/checkout/`)

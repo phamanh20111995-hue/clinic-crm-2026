@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { login } from '../../api/auth'
 import useAuthStore from '../../store/authStore'
 import Spinner from '../../components/ui/Spinner'
+import { getUserRole, getHomeRoute } from '../../utils/rolesV2'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -25,7 +26,7 @@ export default function LoginPage() {
         data.access,
         data.refresh
       )
-      navigate('/')
+      navigate(getHomeRoute(getUserRole({ role: u.role })), { replace: true })
     } catch (err) {
       const msg = err.response?.data?.detail ?? 'Email hoặc mật khẩu không đúng.'
       toast.error(msg)

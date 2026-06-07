@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
-import { IconX, IconCheck, IconSend } from '@tabler/icons-react'
-import { getServices, createContract, submitContract, getMyCustomers } from '../../../api/sale'
+import { useState, useEffect } from 'react'
+import { IconX, IconSend } from '@tabler/icons-react'
+import { getServices, createContract, updateContract, submitContract, getMyCustomers } from '../../../api/sale'
 import toast from 'react-hot-toast'
 
 const ACCENT = '#15803d'
@@ -18,26 +18,35 @@ function fmtMoney(n) {
   return v.toLocaleString('vi') + ' ₫'
 }
 
-export default function ChotHDModal({ onClose, onDone, defaultCustomer }) {
+export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialData }) {
+  const isEdit = !!initialData
+  const firstItem = initialData?.items?.[0]
+
   const [services,   setServices]   = useState([])
   const [customers,  setCustomers]  = useState([])
-  const [loaiGD,     setLoaiGD]     = useState('new')   // new|them|km
+  const [loaiGD,     setLoaiGD]     = useState('new')
   const [showKM,     setShowKM]     = useState(false)
-  const [httt,       setHttt]       = useState('ck')    // ck|tm|kh
-  const [ttCK,       setTtCK]       = useState('chua')  // chua|roi
+  const [httt,       setHttt]       = useState(() => {
+    if (initialData?.payment_method === 'cash') return 'tm'
+    if (initialData?.payment_method === 'combined') return 'kh'
+    return 'ck'
+  })
+  const [ttCK,       setTtCK]       = useState('chua')
   const [maGD,       setMaGD]       = useState('')
   const [saving,     setSaving]     = useState(false)
   const [form, setForm] = useState({
-    customer: defaultCustomer?.id ?? '',
-    service_name: '', service_id: '',
+    customer: defaultCustomer?.id ?? initialData?.customer ?? '',
+    service_name: firstItem?.name ?? '',
+    service_id:   String(firstItem?.service_id ?? ''),
     loai_dv: 'tham_my',
     bs: '',
-    gia_tri: '',
-    dot1: '',
-    ck_amount: '', tm_amount: '',
-    notes: '',
+    gia_tri:    String(initialData?.final_amount ?? initialData?.total_amount ?? ''),
+    dot1:       String(initialData?.transfer_amount ?? initialData?.cash_amount ?? ''),
+    ck_amount:  String(initialData?.transfer_amount ?? ''),
+    tm_amount:  String(initialData?.cash_amount ?? ''),
+    notes:      initialData?.notes ?? '',
   })
-  const [gifts, setGifts] = useState([])
+  const [gifts, setGifts] = useState(initialData?.gifts ?? [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -88,17 +97,24 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer }) {
     if (!form.gia_tri || Number(form.gia_tri) <= 0) { toast.error('Nhập giá trị hợp đồng'); return }
     setSaving(true)
     try {
-      const { data } = await createContract(buildPayload())
+      let data
+      if (isEdit) {
+        const res = await updateContract(initialData.id, buildPayload())
+        data = res.data
+      } else {
+        const res = await createContract(buildPayload())
+        data = res.data
+      }
       if (andSubmit) {
         await submitContract(data.id)
         toast.success(`HĐ ${data.contract_no} đã gửi KT duyệt`)
       } else {
-        toast.success(`Đã lưu nháp ${data.contract_no}`)
+        toast.success(isEdit ? `Đã cập nhật nháp ${data.contract_no}` : `Đã lưu nháp ${data.contract_no}`)
       }
       onDone?.()
       onClose()
     } catch (err) {
-      toast.error(err.response?.data?.detail ?? JSON.stringify(err.response?.data ?? 'Lỗi tạo HĐ'))
+      toast.error(err.response?.data?.detail ?? JSON.stringify(err.response?.data ?? 'Lỗi lưu HĐ'))
     } finally {
       setSaving(false)
     }
@@ -112,7 +128,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
           <div>
-            <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Tạo Hoá đơn</p>
+            <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{isEdit ? 'Sửa Hợp đồng nháp' : 'Tạo Hoá đơn'}</p>
             <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>HĐ tạo là Bản nháp → KT duyệt → DT ghi chính thức</p>
           </div>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af' }}><IconX size={20} /></button>

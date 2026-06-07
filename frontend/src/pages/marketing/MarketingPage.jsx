@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { IconChartBar, IconEdit, IconSpeakerphone, IconFileAnalytics, IconLayoutKanban, IconCalendarMonth, IconChecks, IconUsers, IconChartPie } from '@tabler/icons-react'
+import { useSearchParams } from 'react-router-dom'
+import { IconChartBar, IconEdit, IconSpeakerphone, IconFileAnalytics, IconLayoutKanban, IconCalendarMonth, IconChecks, IconUsers, IconChartPie, IconCalendar } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
+import AppLayout from '../../components/layout/AppLayout'
 import TongQuanTab      from './tabs/TongQuanTab'
 import NhapChiPhiTab    from './tabs/NhapChiPhiTab'
 import ChienDichTab     from './tabs/ChienDichTab'
@@ -11,6 +13,7 @@ import ContentCalendarTab from './tabs/ContentCalendarTab'
 import VongDuyetTab     from './tabs/VongDuyetTab'
 import FreelancerTab    from './tabs/FreelancerTab'
 import TongQuanContentTab from './tabs/TongQuanContentTab'
+import AppointmentsTab    from '../shared/AppointmentsTab'
 
 const ACCENT  = '#0284c7'
 const ALLOWED = ['MKT', 'LEAD_MKT', 'QUAN_LY', 'CHU_DN']
@@ -26,24 +29,31 @@ const TABS = [
   { k: 'vongduyet',l: 'Vòng duyệt',        icon: IconChecks, badge: 3 },
   { k: 'freelancer',l: 'Freelancer',       icon: IconUsers },
   { k: 'tqcontent',l: 'Tổng quan Content', icon: IconChartPie },
+  null,
+  { k: 'appt',     l: 'Lịch hẹn',         icon: IconCalendar },
 ]
 
 export default function MarketingPage() {
   const user = useAuthStore(s => s.user)
   const role = getUserRole(user)
-  const [tab, setTab] = useState('tq')
   const [nhapPlatform, setNhapPlatform] = useState('fb')
+  const VALID_TABS = TABS.filter(Boolean).map(t => t.k)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'tq'
+  const setTab = (k) => setSearchParams({ tab: k }, { replace: true })
 
   const now = new Date()
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
   if (!ALLOWED.includes(role)) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 8 }}>
-        <div style={{ fontSize: 32 }}>🔒</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2044' }}>Bạn không có quyền truy cập màn Marketing</div>
-        <div style={{ fontSize: 12, color: '#64748b' }}>Liên hệ quản lý để được cấp quyền</div>
-      </div>
+      <AppLayout title="Marketing">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: 8 }}>
+          <div style={{ fontSize: 32 }}>🔒</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2044' }}>Bạn không có quyền truy cập màn Marketing</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>Liên hệ quản lý để được cấp quyền</div>
+        </div>
+      </AppLayout>
     )
   }
 
@@ -52,10 +62,11 @@ export default function MarketingPage() {
     setTab('nhap')
   }
 
-  const isContentTab = ['kanban', 'calendar', 'vongduyet', 'freelancer', 'tqcontent'].includes(tab)
+  const isContentTab = ['kanban', 'calendar', 'vongduyet', 'freelancer', 'tqcontent', 'appt'].includes(tab)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+    <AppLayout title="Marketing" bare>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Subnav */}
       <div style={{ height: 40, background: '#fff', borderBottom: '1px solid #dde3ef', display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, gap: 2, flexShrink: 0, overflowX: 'auto' }}>
         {TABS.map((t, idx) => {
@@ -106,7 +117,9 @@ export default function MarketingPage() {
         {tab === 'vongduyet' && <VongDuyetTab />}
         {tab === 'freelancer'&& <FreelancerTab />}
         {tab === 'tqcontent' && <TongQuanContentTab />}
+        {tab === 'appt'      && <AppointmentsTab accent={ACCENT} />}
       </div>
     </div>
+    </AppLayout>
   )
 }

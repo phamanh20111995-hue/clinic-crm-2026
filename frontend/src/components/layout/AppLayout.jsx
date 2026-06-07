@@ -10,10 +10,11 @@ import BottomNav from './BottomNav'
  *   title       string           — topbar module name
  *   actions     ReactNode        — topbar right-side buttons
  *   meta        string           — small label next to title
- *   tabs        array            — [{ key, label, badge? }]
+ *   tabs        array            — [{ key, label, badge? }]  (managed subnav)
  *   activeTab   string
  *   onTabChange (key) => void
- *   noPadding   bool
+ *   noPadding   bool             — skip content padding (for card-style pages)
+ *   bare        bool             — skip inner wrapper; page manages its own flex layout
  *   children    ReactNode
  */
 export default function AppLayout({
@@ -24,9 +25,15 @@ export default function AppLayout({
   activeTab,
   onTabChange,
   noPadding = false,
+  bare = false,
   children,
 }) {
   const hasSubnav = tabs && tabs.length > 0
+
+  // Offset for content area top
+  const contentPaddingTop = hasSubnav
+    ? 'calc(var(--topbar-h) + var(--subnav-h))'
+    : 'var(--topbar-h)'
 
   return (
     <div style={{ minHeight: '100vh', background: '#eef1f6' }}>
@@ -38,7 +45,7 @@ export default function AppLayout({
       {/* Topbar */}
       <TopBarV2 title={title} actions={actions} meta={meta} />
 
-      {/* Subnav (optional) */}
+      {/* Managed subnav (optional) */}
       {hasSubnav && (
         <div
           className="fixed z-20 right-0 bg-white"
@@ -53,11 +60,24 @@ export default function AppLayout({
       )}
 
       {/* Content */}
-      <div className={hasSubnav ? 'app-content-with-subnav' : 'app-content'}>
-        <div className={noPadding ? 'pb-16 md:pb-0' : 'p-5 pb-20 md:pb-5'}>
+      {bare ? (
+        /* bare mode: page owns its flex layout (inline subnav + scrollable content) */
+        <div style={{
+          marginLeft: 'var(--sidebar-w)',
+          paddingTop: contentPaddingTop,
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
           {children}
         </div>
-      </div>
+      ) : (
+        <div className={hasSubnav ? 'app-content-with-subnav' : 'app-content'}>
+          <div className={noPadding ? 'pb-16 md:pb-0' : 'p-5 pb-20 md:pb-5'}>
+            {children}
+          </div>
+        </div>
+      )}
 
       {/* Bottom nav — mobile only */}
       <BottomNav />

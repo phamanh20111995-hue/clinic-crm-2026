@@ -1,13 +1,16 @@
-import { IconPhone, IconDoorEnter, IconCheck, IconLogout, IconStethoscope } from '@tabler/icons-react'
+import { IconPhone, IconDoorEnter, IconCheck, IconLogout, IconStethoscope, IconArrowRight, IconClock } from '@tabler/icons-react'
 
 const ACCENT = '#b45309'
 
 const STATUS_CFG = {
-  pending:     { label: 'Chưa đến',     bg: '#fef9c3', color: '#854d0e', border: '#fde68a' },
-  confirmed:   { label: 'Đang tư vấn',  bg: '#ede9fe', color: '#6d28d9', border: '#c4b5fd' },
-  in_progress: { label: 'Đang ĐT',      bg: '#dcfce7', color: '#166534', border: '#a7f3d0' },
-  done:        { label: 'Đã về',        bg: '#f3f4f6', color: '#9ca3af', border: '#e5e7eb' },
-  cancelled:   { label: 'Đã hủy',       bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+  pending:         { label: 'Chưa đến',    bg: '#fef9c3', color: '#854d0e', border: '#fde68a' },
+  confirmed:       { label: 'Đã đến',      bg: '#dbeafe', color: '#1e40af', border: '#bfdbfe' },
+  waiting_consult: { label: 'Chờ TV',      bg: '#ede9fe', color: '#6d28d9', border: '#c4b5fd' },
+  waiting_treat:   { label: 'Chờ ĐT',      bg: '#fce7f3', color: '#9d174d', border: '#f9a8d4' },
+  consulting:      { label: 'Đang TV',      bg: '#fef3c7', color: '#92400e', border: '#fde68a' },
+  in_progress:     { label: 'Đang ĐT',     bg: '#dcfce7', color: '#166534', border: '#a7f3d0' },
+  done:            { label: 'Đã về',       bg: '#f3f4f6', color: '#9ca3af', border: '#e5e7eb' },
+  cancelled:       { label: 'Đã hủy',      bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
 }
 
 function timeDiff(scheduledAt) {
@@ -16,10 +19,10 @@ function timeDiff(scheduledAt) {
   return `${Math.floor(diff / 60)}h${diff % 60 ? diff % 60 + 'm' : ''}`
 }
 
-export default function AppointmentRow({ appt, onCheckin, onAssignRoom, onCheckout, onCall, isSelected, onClick }) {
+export default function AppointmentRow({ appt, onCheckin, onEnqueue, onAssignRoom, onToTreatment, onCheckout, onCall, isSelected, onClick }) {
   const cfg = STATUS_CFG[appt.status] ?? STATUS_CFG.pending
   const initial = (appt.customer_name || '?')[0].toUpperCase()
-  const isUrgent = appt.status === 'confirmed' && !appt.room // chốt nhưng chưa phân phòng
+  const isWaiting = appt.status === 'waiting_consult' || appt.status === 'waiting_treat'
 
   return (
     <div
@@ -29,7 +32,7 @@ export default function AppointmentRow({ appt, onCheckin, onAssignRoom, onChecko
         padding: '10px 14px',
         borderBottom: '1px solid #f1f5f9',
         background: isSelected ? '#fff7ed' : appt.status === 'done' ? '#fafafa' : '#fff',
-        borderLeft: `3px solid ${isUrgent ? '#dc2626' : isSelected ? ACCENT : 'transparent'}`,
+        borderLeft: `3px solid ${isWaiting ? '#7c3aed' : isSelected ? ACCENT : 'transparent'}`,
         cursor: 'pointer', transition: 'background .12s',
         opacity: appt.status === 'done' ? 0.65 : 1,
       }}
@@ -57,8 +60,11 @@ export default function AppointmentRow({ appt, onCheckin, onAssignRoom, onChecko
             fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99,
             background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
           }}>
-            {isUrgent ? '⚠ Chờ phân công' : cfg.label}
+            {cfg.label}
           </span>
+          {appt.visit_type_display && appt.status !== 'pending' && (
+            <span style={{ fontSize: 10, color: '#9ca3af' }}>{appt.visit_type_display}</span>
+          )}
           {appt.tua_confirmed && (
             <span style={{ fontSize: 10, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 99, fontWeight: 600 }}>
               Tua ✓
@@ -80,6 +86,11 @@ export default function AppointmentRow({ appt, onCheckin, onAssignRoom, onChecko
               · {timeDiff(appt.scheduled_at)} đang ĐT
             </span>
           )}
+          {appt.status === 'done' && appt.checked_out_at && (
+            <span style={{ color: '#9ca3af' }}>
+              · Ra về {new Date(appt.checked_out_at).toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -87,9 +98,9 @@ export default function AppointmentRow({ appt, onCheckin, onAssignRoom, onChecko
       <div style={{ display: 'flex', gap: 5, flexShrink: 0, marginTop: 2 }} onClick={e => e.stopPropagation()}>
         {appt.status === 'pending' && (
           <>
-            <button onClick={() => onCheckin(appt)} title="Đã đến"
+            <button onClick={() => onCheckin(appt)} title="Xác nhận đến"
               style={btnStyle('#15803d', '#fff')}>
-              <IconCheck size={12} stroke={3} /> Đã đến
+              <IconCheck size={12} stroke={3} /> Xác nhận đến
             </button>
             <button onClick={() => onCall?.(appt)} title="Gọi nhắc"
               style={btnStyle('transparent', '#6b7280', '#dde3ef')}>
@@ -97,17 +108,35 @@ export default function AppointmentRow({ appt, onCheckin, onAssignRoom, onChecko
             </button>
           </>
         )}
-        {appt.status === 'confirmed' && !appt.room && (
-          <button onClick={() => onAssignRoom(appt)} title="Phân phòng ĐT"
-            style={btnStyle('#dc2626', '#fff')}>
-            <IconDoorEnter size={12} stroke={2} /> Phân phòng
+        {appt.status === 'confirmed' && (
+          <button onClick={() => onEnqueue(appt)} title="Chọn loại lượt"
+            style={btnStyle(ACCENT, '#fff')}>
+            <IconClock size={12} stroke={2} /> Chọn loại lượt
           </button>
         )}
-        {appt.status === 'confirmed' && appt.room && (
-          <button onClick={() => onAssignRoom(appt)} title="Đổi phòng / BS"
-            style={btnStyle(ACCENT, '#fff')}>
-            <IconStethoscope size={12} stroke={2} /> Đã chốt → ĐT
+        {appt.status === 'waiting_consult' && (
+          <button onClick={() => onAssignRoom(appt)} title="Phân phòng tư vấn"
+            style={btnStyle('#7c3aed', '#fff')}>
+            <IconDoorEnter size={12} stroke={2} /> Phân phòng TV
           </button>
+        )}
+        {appt.status === 'waiting_treat' && (
+          <button onClick={() => onAssignRoom(appt)} title="Phân phòng điều trị"
+            style={btnStyle('#dc2626', '#fff')}>
+            <IconDoorEnter size={12} stroke={2} /> Phân phòng ĐT
+          </button>
+        )}
+        {appt.status === 'consulting' && (
+          <>
+            <button onClick={() => onToTreatment(appt)} title="Chuyển sang điều trị"
+              style={btnStyle(ACCENT, '#fff')}>
+              <IconArrowRight size={12} stroke={2} /> → Điều trị
+            </button>
+            <button onClick={() => onCheckout(appt)} title="KH về"
+              style={btnStyle('transparent', '#6b7280', '#dde3ef')}>
+              <IconLogout size={12} stroke={2} /> Về
+            </button>
+          </>
         )}
         {appt.status === 'in_progress' && (
           <button onClick={() => onCheckout(appt)} title="KH về"

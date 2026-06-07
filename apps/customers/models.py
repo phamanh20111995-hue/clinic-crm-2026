@@ -19,12 +19,16 @@ class Customer(models.Model):
         related_name='customers', limit_choices_to={'role':'SALE'})
     tele = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='tele_customers', limit_choices_to={'role':'TELE'})
+    cskh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='cskh_customers', limit_choices_to={'role':'CSKH'})
     STATUS_CHOICES = [
         ('chua_goi','Chưa gọi'),('da_goi','Đã gọi'),
         ('khong_nghe','Không nghe máy'),('thue_bao','Thuê bao'),
         ('sai_so','Sai số'),('tu_choi','Từ chối'),('hoan_so','Hoàn số'),
         ('dat_lich','Đặt lịch'),('hen_goi','Hẹn gọi lại'),
         ('can_tv','Cần tư vấn thêm'),('khong_qt','Không quan tâm'),
+        ('cho_phan_cskh','Chờ phân CSKH'),
+        ('dang_cham_soc','Đang chăm sóc'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='chua_goi')
     call_count = models.IntegerField(default=0)

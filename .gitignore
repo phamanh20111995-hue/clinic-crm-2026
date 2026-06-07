@@ -26,3 +26,24 @@ staticfiles/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+
+# Backup files
+*.bak
+*.rolebak
+*.b3bak
+*.*bak
+
+# Backup folders & files (m?i b?n nháp _bak / _backup / backup_)
+*_bak*
+*_backup*
+*backup_*
+**/pages_bak_khung/
+**/src_backup*/
+*_bak_khung*

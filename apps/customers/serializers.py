@@ -42,11 +42,12 @@ class CustomerListSerializer(serializers.ModelSerializer):
     data_type_display = serializers.CharField(source='get_data_type_display', read_only=True)
     tele_name = serializers.CharField(source='tele.display_name', read_only=True)
     sale_name = serializers.CharField(source='sale.display_name', read_only=True)
+    cskh_name = serializers.CharField(source='cskh.display_name', read_only=True)
     class Meta:
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
                   'data_type','data_type_display','status','status_display',
-                  'call_count','tele_name','sale_name','created_at']
+                  'call_count','tele_name','sale_name','cskh','cskh_name','created_at']
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
@@ -57,6 +58,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.display_name', read_only=True)
     tele_name = serializers.CharField(source='tele.display_name', read_only=True)
     sale_name = serializers.CharField(source='sale.display_name', read_only=True)
+    cskh_name = serializers.CharField(source='cskh.display_name', read_only=True)
     calls = CallHistorySerializer(many=True, read_only=True)
     images = CustomerImageSerializer(many=True, read_only=True)
     class Meta:
@@ -64,7 +66,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         fields = ['id','full_name','phone','dob','gender','address',
                   'source','source_display','data_type','data_type_display',
                   'status','status_display','call_count','notes',
-                  'tele','tele_name','sale','sale_name',
+                  'tele','tele_name','sale','sale_name','cskh','cskh_name',
                   'created_by_name','created_at','updated_at',
                   'calls','images']
         read_only_fields = ['id','call_count','created_by_name','created_at','updated_at']
@@ -73,7 +75,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 class CustomerCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ['full_name','phone','dob','gender','address','source','data_type','notes','tele','sale']
+        fields = ['full_name','phone','dob','gender','address','source','data_type','notes','tele','sale','cskh']
 
     def validate_phone(self, value):
         # Kiểm tra trùng SĐT (CLAUDE.md)
@@ -94,3 +96,10 @@ class CustomerAssignSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['tele','sale']
+
+
+class CustomerCskhAssignSerializer(serializers.ModelSerializer):
+    """Phân công CSKH."""
+    class Meta:
+        model = Customer
+        fields = ['cskh']

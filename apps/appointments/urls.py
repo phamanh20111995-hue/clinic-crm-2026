@@ -7,6 +7,9 @@ urlpatterns = [
     path('walkin/',                       views.walkin_create,                       name='appointment-walkin'),
     path('<int:pk>/',                     views.AppointmentDetailView.as_view(),     name='appointment-detail'),
     path('<int:pk>/checkin/',             views.checkin_view,                        name='appointment-checkin'),
-    path('<int:pk>/confirm-tua/',         views.confirm_tua,                         name='appointment-confirm-tua'),
+    path('<int:pk>/enqueue/',             views.enqueue,                             name='appointment-enqueue'),
     path('<int:pk>/assign-room/',         views.assign_room,                         name='appointment-assign-room'),
+    path('<int:pk>/to-treatment/',        views.to_treatment,                        name='appointment-to-treatment'),
+    path('<int:pk>/confirm-tua/',         views.confirm_tua,                         name='appointment-confirm-tua'),
+    path('<int:pk>/checkout/',            views.checkout,                            name='appointment-checkout'),
 ]

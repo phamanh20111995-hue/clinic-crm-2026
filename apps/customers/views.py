@@ -10,7 +10,7 @@ from .serializers import (
     CustomerListSerializer, CustomerDetailSerializer,
     CustomerCreateSerializer, CustomerAssignSerializer,
     CustomerImageSerializer, CallHistorySerializer,
-    ReturnRequestSerializer,
+    ReturnRequestSerializer, CustomerCskhAssignSerializer,
 )
 from apps.accounts.permissions import IsLeadTele, IsLeadOrAbove, HasFullCustomerAccess
 
@@ -25,9 +25,9 @@ def _customer_queryset(user, detail=False):
     from apps.accounts.models import FULL_ACCESS_ROLES
     qs = Customer.objects.filter(is_deleted=False)
     if detail:
-        qs = qs.select_related('tele','sale','created_by').prefetch_related('calls','images')
+        qs = qs.select_related('tele','sale','cskh','created_by').prefetch_related('calls','images')
     else:
-        qs = qs.select_related('tele','sale')
+        qs = qs.select_related('tele','sale','cskh')
 
     if user.role in FULL_ACCESS_ROLES:
         return qs
@@ -35,6 +35,10 @@ def _customer_queryset(user, detail=False):
         return qs.filter(sale=user)
     if user.role == 'TELE':
         return qs.filter(tele=user)
+    if user.role == 'CSKH':
+        return qs.filter(cskh=user)
+    if user.role == 'LEAD_CSKH':
+        return qs
     # Vai trò khác không có quyền xem hồ sơ KH
     return qs.none()
 
@@ -111,6 +115,25 @@ def assign_customer(request, pk):
     s.is_valid(raise_exception=True)
     s.save()
     return Response(s.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def assign_cskh(request, pk):
+    """POST /api/customers/{id}/assign-cskh/ — Phân công CSKH (Lead CSKH+)."""
+    if request.user.role not in ('LEAD_CSKH', 'QUAN_LY', 'CHU_DN'):
+        return Response({'detail': 'Không có quyền phân công CSKH.'}, status=403)
+    customer = Customer.objects.filter(pk=pk, is_deleted=False).first()
+    if not customer:
+        return Response({'detail': 'Không tìm thấy KH.'}, status=404)
+    s = CustomerCskhAssignSerializer(customer, data=request.data, partial=True)
+    s.is_valid(raise_exception=True)
+    s.save()
+    customer.refresh_from_db()
+    if customer.cskh_id and customer.status == 'cho_phan_cskh':
+        customer.status = 'dang_cham_soc'
+        customer.save(update_fields=['status', 'updated_at'])
+    return Response(CustomerDetailSerializer(customer).data)
 
 
 @api_view(['POST'])

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AppLayout from '../../components/layout/AppLayout'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
@@ -898,19 +899,20 @@ export default function KpiPage() {
   const [previewRole, setPreviewRole] = useState(null)
   const activeKey = previewRole ?? defaultKpiKey
   const cfg = ROLE_CFG[activeKey] ?? ROLE_CFG.sale
-  const [tab, setTab] = useState(cfg.tabs[0].id)
 
-  // When cfg changes (role switch), reset to first tab
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawTab = searchParams.get('tab')
+  const validTab = cfg.tabs.find(t => t.id === rawTab) ? rawTab : cfg.tabs[0].id
+  const setTab = (id) => setSearchParams({ tab: id }, { replace: true })
+
+  // When cfg changes (role switch), reset to first tab of new cfg
   const handleSetRole = (key) => {
     const c = ROLE_CFG[key]
     if (c) {
       setPreviewRole(key === defaultKpiKey ? null : key)
-      setTab(c.tabs[0].id)
+      setSearchParams({ tab: c.tabs[0].id }, { replace: true })
     }
   }
-
-  // If activeKey changes externally ensure tab is valid
-  const validTab = cfg.tabs.find(t => t.id === tab) ? tab : cfg.tabs[0].id
 
   const ACCENT = cfg.color
 

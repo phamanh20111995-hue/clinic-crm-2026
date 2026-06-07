@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react'
-import DashboardLayout from '../../components/layout/DashboardLayout'
+import { useNavigate } from 'react-router-dom'
+import AppLayout from '../../components/layout/AppLayout'
 import Spinner from '../../components/ui/Spinner'
 import Badge from '../../components/ui/Badge'
 import Pagination from '../../components/ui/Pagination'
-import CustomerDetailModal from './CustomerDetailModal'
 import CustomerFormModal from './CustomerFormModal'
 import { getCustomers } from '../../api/customers'
 import { fmtPhone, fmtDate } from '../../utils/format'
+import { IconUserPlus, IconSearch } from '@tabler/icons-react'
 
 const STATUS_COLORS = {
   moi: 'blue', dang_tu_van: 'yellow', da_tu_van: 'yellow',
@@ -20,17 +21,26 @@ const STATUS_LABELS = {
   hoan_thanh: 'Hoàn thành', hoan_so: 'Hoàn số', sai_so: 'Sai số',
   khong_lien_lac: 'Không liên lạc', tu_choi: 'Từ chối',
 }
-const DATA_TYPE_COLORS = { nong: 'red', am: 'yellow', thuong: 'gray' }
 const DATA_TYPE_LABELS = { nong: '🔥 Nóng', am: '🌤 Âm', thuong: '❄ Thường' }
+const DATA_TYPE_COLORS = { nong: 'red', am: 'yellow', thuong: 'gray' }
+
+const ACTIONS = (onAdd) => (
+  <button
+    onClick={onAdd}
+    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 7, border: 'none', background: '#6d28d9', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+  >
+    <IconUserPlus size={14} stroke={2.5} /> Thêm KH
+  </button>
+)
 
 export default function CustomersPage() {
+  const navigate = useNavigate()
   const [customers, setCustomers] = useState([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState(null)
   const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
@@ -42,6 +52,9 @@ export default function CustomersPage() {
       const { data } = await getCustomers(params)
       setCustomers(data.results ?? data)
       setCount(data.count ?? data.length)
+    } catch {
+      setCustomers([])
+      setCount(0)
     } finally {
       setLoading(false)
     }
@@ -49,89 +62,92 @@ export default function CustomersPage() {
 
   useEffect(() => { load() }, [load])
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    setPage(1)
-    load()
-  }
-
   return (
-    <DashboardLayout title="Khách hàng">
-      <div className="space-y-4">
-        {/* Toolbar */}
-        <div className="flex flex-wrap gap-3 items-center justify-between">
-          <form onSubmit={handleSearch} className="flex gap-2">
+    <AppLayout
+      title="Khách hàng"
+      meta={`${count} khách`}
+      actions={ACTIONS(() => setShowForm(true))}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Filter bar */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: '1 1 220px' }}>
+            <IconSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
             <input
-              className="input w-64"
               placeholder="Tìm tên, SĐT, email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setPage(1) }}
+              onKeyDown={e => e.key === 'Enter' && load()}
+              style={{ width: '100%', paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7, border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
             />
-            <select
-              className="input w-40"
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-            >
-              <option value="">Tất cả trạng thái</option>
-              {Object.entries(STATUS_LABELS).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
-            <button type="submit" className="btn-primary px-4 py-2 text-sm">🔍 Tìm</button>
-          </form>
-          <button onClick={() => setShowForm(true)} className="btn-primary text-sm">+ Thêm KH</button>
+          </div>
+          <select
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+            style={{ padding: '7px 10px', border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, outline: 'none', fontFamily: 'inherit', background: '#fff' }}
+          >
+            <option value="">Tất cả trạng thái</option>
+            {Object.entries(STATUS_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
         </div>
 
         {/* Table */}
-        <div className="card p-0">
+        <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>
           {loading ? (
-            <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size="lg" /></div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="table-th">Tên</th>
-                    <th className="table-th">SĐT</th>
-                    <th className="table-th">Nguồn</th>
-                    <th className="table-th">Loại data</th>
-                    <th className="table-th">Trạng thái</th>
-                    <th className="table-th">Sale</th>
-                    <th className="table-th">Tele</th>
-                    <th className="table-th">Ngày tạo</th>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    {['Tên khách hàng', 'SĐT', 'Nguồn', 'Loại data', 'Trạng thái', 'Sale phụ trách', 'Tele phụ trách', 'Ngày tạo'].map(h => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {customers.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-12 text-gray-400">Không có dữ liệu</td></tr>
-                  ) : customers.map((c) => (
+                    <tr>
+                      <td colSpan={8} style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
+                        Không có khách hàng
+                      </td>
+                    </tr>
+                  ) : customers.map(c => (
                     <tr
                       key={c.id}
-                      className="border-t border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
-                      onClick={() => setSelected(c)}
+                      onClick={() => navigate(`/customers/${c.id}`)}
+                      style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
-                      <td className="table-td font-medium text-primary-700 hover:underline">
-                        {c.full_name}
-                      </td>
-                      <td className="table-td font-mono">{fmtPhone(c.phone)}</td>
-                      <td className="table-td text-gray-500">{c.source}</td>
-                      <td className="table-td">
+                      <td style={{ padding: '9px 12px', fontWeight: 600, color: '#0f2044' }}>{c.full_name}</td>
+                      <td style={{ padding: '9px 12px', fontFamily: 'monospace', color: '#374151' }}>{fmtPhone(c.phone)}</td>
+                      <td style={{ padding: '9px 12px', color: '#64748b' }}>{c.source ?? '—'}</td>
+                      <td style={{ padding: '9px 12px' }}>
                         <Badge variant={DATA_TYPE_COLORS[c.data_type] ?? 'gray'}>
-                          {DATA_TYPE_LABELS[c.data_type] ?? c.data_type}
+                          {DATA_TYPE_LABELS[c.data_type] ?? c.data_type ?? '—'}
                         </Badge>
                       </td>
-                      <td className="table-td">
+                      <td style={{ padding: '9px 12px' }}>
                         <Badge variant={STATUS_COLORS[c.status] ?? 'gray'}>
-                          {STATUS_LABELS[c.status] ?? c.status}
+                          {STATUS_LABELS[c.status] ?? c.status ?? '—'}
                         </Badge>
                       </td>
-                      <td className="table-td text-gray-500">{c.sale_name ?? '—'}</td>
-                      <td className="table-td text-gray-500">{c.tele_name ?? '—'}</td>
-                      <td className="table-td text-gray-400">{fmtDate(c.created_at)}</td>
+                      <td style={{ padding: '9px 12px', color: '#64748b' }}>{c.sale_name ?? '—'}</td>
+                      <td style={{ padding: '9px 12px', color: '#64748b' }}>{c.tele_name ?? '—'}</td>
+                      <td style={{ padding: '9px 12px', color: '#94a3b8', fontSize: 10 }}>{fmtDate(c.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {!loading && customers.length > 0 && (
+            <div style={{ padding: '6px 12px', background: '#f8fafc', borderTop: '1px solid #eef1f6', fontSize: 10, color: '#94a3b8', textAlign: 'right' }}>
+              {count} khách hàng tổng cộng
             </div>
           )}
         </div>
@@ -139,17 +155,11 @@ export default function CustomersPage() {
         <Pagination page={page} count={count} onChange={setPage} />
       </div>
 
-      {selected && (
-        <CustomerDetailModal
-          customer={selected}
-          onClose={() => { setSelected(null); load() }}
-        />
-      )}
       {showForm && (
         <CustomerFormModal
           onClose={() => { setShowForm(false); load() }}
         />
       )}
-    </DashboardLayout>
+    </AppLayout>
   )
 }

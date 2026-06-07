@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AppLayout from '../../components/layout/AppLayout'
 import useAuthStore from '../../store/authStore'
 import TrucPageView from './views/TrucPageView'
@@ -6,11 +7,13 @@ import TeleMyWork from './views/TeleMyWork'
 import TeleQueue from './views/TeleQueue'
 import TeleHistory from './views/TeleHistory'
 import TeleSchedule from './views/TeleSchedule'
+import HoaDonTab from '../sale/tabs/HoaDonTab'
 import NewDataModal from './modals/NewDataModal'
-import { IconLayoutGrid, IconPhone, IconPlus } from '@tabler/icons-react'
+import ChotHDModal from '../sale/modals/ChotHDModal'
+import { IconLayoutGrid, IconPhone, IconPlus, IconFileInvoice } from '@tabler/icons-react'
 import { getUserRole } from '../../utils/rolesV2'
 
-const CAN_TRUC = ['QUAN_LY', 'CHU_DN', 'LEAD_TELE', 'LEAD_SALE', 'LEAD_CSKH']
+const CAN_TRUC = ['QUAN_LY', 'CHU_DN', 'LEAD_TELE', 'LEAD_SALE', 'LEAD_CSKH', 'TRUC_PAGE']
 const CAN_TELE = ['TELE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN']
 
 const TRUC_TABS = [{ key: 'nhap_data', label: 'Nhập data' }]
@@ -20,6 +23,7 @@ const TELE_TABS = [
   { key: 'queue',    label: 'Hàng chờ Tele' },
   { key: 'history',  label: 'Lịch sử gọi' },
   { key: 'schedule', label: 'Lịch hẹn' },
+  { key: 'hd',       label: 'Hoá đơn' },
 ]
 
 export default function TelePage() {
@@ -31,11 +35,19 @@ export default function TelePage() {
 
   const defaultMode = (canTrucPage && !canTele) ? 'truc'
                     : (canTele && !canTrucPage)  ? 'tele'
-                    : 'tele'  // both available → default Tele
+                    : 'tele'
 
-  const [mode, setMode]       = useState(defaultMode)
-  const [teleTab, setTeleTab] = useState('my_work')
   const [showNewData, setShowNewData] = useState(false)
+  const [showChot, setShowChot] = useState(false)
+
+  const VALID_TELE_TABS = TELE_TABS.map(t => t.key)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawMode = searchParams.get('mode')
+  const mode = (rawMode === 'truc' || rawMode === 'tele') ? rawMode : defaultMode
+  const setMode = (m) => setSearchParams(p => { const n = new URLSearchParams(p); n.set('mode', m); return n }, { replace: true })
+  const rawTab = searchParams.get('tab')
+  const teleTab = VALID_TELE_TABS.includes(rawTab) ? rawTab : 'my_work'
+  const setTeleTab = (t) => setSearchParams(p => { const n = new URLSearchParams(p); n.set('tab', t); return n }, { replace: true })
 
   const isTruc = mode === 'truc'
   const trucAccent = '#6d28d9'
@@ -92,9 +104,17 @@ export default function TelePage() {
     </button>
   ) : null
 
+  const ChotHDBtn = (!isTruc && teleTab === 'hd') ? (
+    <button onClick={() => setShowChot(true)}
+      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 7, border: 'none', background: teleAccent, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+      <IconFileInvoice size={14} stroke={2} /> Tạo HĐ
+    </button>
+  ) : null
+
   const topbarActions = (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       {NewDataBtn}
+      {ChotHDBtn}
       {ModeToggle}
     </div>
   )
@@ -135,6 +155,7 @@ export default function TelePage() {
           {teleTab === 'queue'    && <TeleQueue />}
           {teleTab === 'history'  && <TeleHistory />}
           {teleTab === 'schedule' && <TeleSchedule />}
+          {teleTab === 'hd'       && <HoaDonTab />}
         </>
       )}
 
@@ -142,12 +163,10 @@ export default function TelePage() {
       {showNewData && (
         <NewDataModal
           onClose={() => setShowNewData(false)}
-          onDone={() => {
-            setShowNewData(false)
-            // TrucPageView will auto-reload via its own useEffect
-          }}
+          onDone={() => { setShowNewData(false) }}
         />
       )}
+      {showChot && <ChotHDModal onClose={() => setShowChot(false)} onDone={() => setShowChot(false)} />}
     </AppLayout>
   )
 }

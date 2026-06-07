@@ -1,43 +1,52 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { IconPlus, IconBriefcase, IconFileInvoice, IconPhoto, IconCreditCard, IconUsers } from '@tabler/icons-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { IconPlus, IconBriefcase, IconFileInvoice, IconPhoto, IconCreditCard, IconUsers, IconCalendar } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
+import AppLayout from '../../components/layout/AppLayout'
 import ViecHomNayTab from './tabs/ViecHomNayTab'
 import HoaDonTab from './tabs/HoaDonTab'
 import AnhDieuTriTab from './tabs/AnhDieuTriTab'
 import CongNoTab from './tabs/CongNoTab'
 import ChotHDModal from './modals/ChotHDModal'
+import AppointmentsTab from '../shared/AppointmentsTab'
 
 const ACCENT = '#15803d'
 const ALLOWED = ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN']
 
 const TABS = [
-  { k: 'viec', l: 'Việc hôm nay', icon: IconBriefcase },
-  { k: 'hd', l: 'Hoá đơn', icon: IconFileInvoice },
-  { k: 'anh', l: 'Ảnh điều trị', icon: IconPhoto },
-  { k: 'no', l: 'Công nợ', icon: IconCreditCard },
+  { k: 'viec',  l: 'Việc hôm nay', icon: IconBriefcase },
+  { k: 'hd',    l: 'Hoá đơn',      icon: IconFileInvoice },
+  { k: 'anh',   l: 'Ảnh điều trị', icon: IconPhoto },
+  { k: 'no',    l: 'Công nợ',      icon: IconCreditCard },
+  { k: 'appt',  l: 'Lịch hẹn',     icon: IconCalendar },
 ]
 
 export default function SalePage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const role = getUserRole(user)
-  const [tab, setTab] = useState('viec')
   const [showChot, setShowChot] = useState(false)
+  const VALID_TABS = TABS.map(t => t.k)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'viec'
+  const setTab = (k) => setSearchParams({ tab: k }, { replace: true })
 
   if (!ALLOWED.includes(role)) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 8 }}>
-        <div style={{ fontSize: 32 }}>🔒</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2044' }}>Bạn không có quyền truy cập màn Sale</div>
-        <div style={{ fontSize: 12, color: '#64748b' }}>Liên hệ quản lý để được cấp quyền</div>
-      </div>
+      <AppLayout title="Sale">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: 8 }}>
+          <div style={{ fontSize: 32 }}>🔒</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2044' }}>Bạn không có quyền truy cập màn Sale</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>Liên hệ quản lý để được cấp quyền</div>
+        </div>
+      </AppLayout>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+    <AppLayout title="Sale" bare>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Subnav */}
       <div style={{ height: 40, background: '#fff', borderBottom: '1px solid #dde3ef', display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, gap: 2, flexShrink: 0 }}>
         {TABS.map(t => {
@@ -65,9 +74,10 @@ export default function SalePage() {
       {/* Tab content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {tab === 'viec' && <ViecHomNayTab onOpenChotHD={() => setShowChot(true)} />}
-        {tab === 'hd' && <HoaDonTab />}
-        {tab === 'anh' && <AnhDieuTriTab />}
-        {tab === 'no' && <CongNoTab />}
+        {tab === 'hd'   && <HoaDonTab />}
+        {tab === 'anh'  && <AnhDieuTriTab />}
+        {tab === 'no'   && <CongNoTab />}
+        {tab === 'appt' && <AppointmentsTab accent={ACCENT} />}
       </div>
 
       {/* Bottom nav (mobile) */}
@@ -93,5 +103,6 @@ export default function SalePage() {
 
       {showChot && <ChotHDModal onClose={() => setShowChot(false)} onDone={() => setShowChot(false)} />}
     </div>
+    </AppLayout>
   )
 }
