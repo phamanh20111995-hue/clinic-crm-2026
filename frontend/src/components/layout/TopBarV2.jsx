@@ -1,5 +1,6 @@
 import useAuthStore from '../../store/authStore'
 import { getRoleLabel, getRoleAccent, getUserRole } from '../../utils/rolesV2'
+import NotifBell from '../notifications/NotifBell'
 
 export default function TopBarV2({ title, actions, meta }) {
   const { user } = useAuthStore()
@@ -21,6 +22,7 @@ export default function TopBarV2({ title, actions, meta }) {
       {/* Right */}
       <div className="flex items-center gap-2 ml-3">
         {actions}
+        <NotifBell />
         <div
           className="flex items-center gap-2 ml-2 px-2.5 py-1 bg-white"
           style={{ border: '1px solid #dde3ef', borderRadius: 7 }}

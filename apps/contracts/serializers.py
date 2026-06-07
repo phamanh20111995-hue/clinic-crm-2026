@@ -59,10 +59,12 @@ class ContractCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contract
         fields = [
+            'id', 'contract_no',
             'customer', 'appointment', 'items', 'promotions', 'gifts',
             'total_amount', 'discount_amount', 'final_amount',
             'payment_method', 'cash_amount', 'transfer_amount', 'notes',
         ]
+        read_only_fields = ['id', 'contract_no']
 
     def validate(self, attrs):
         pm = attrs.get('payment_method')
@@ -110,6 +112,7 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
             'total_amount', 'discount_amount', 'final_amount',
             'payment_method', 'cash_amount', 'transfer_amount', 'notes',
         ]
+        read_only_fields = ['id', 'contract_no']
 
     def validate(self, attrs):
         if self.instance and self.instance.approval_status != 'draft':

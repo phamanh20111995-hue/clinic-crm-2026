@@ -32,8 +32,7 @@ DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DI
 REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {'hosts': [REDIS_URL]},
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
     }
 }
 

@@ -54,10 +54,6 @@ export default function SidebarV2() {
 
       {/* Bottom — bell + user + logout */}
       <div style={{ width: '100%', borderTop: '1px solid rgba(255,255,255,.1)', paddingBottom: 4 }}>
-        <button className="sidebar-item" title="Thông báo">
-          <IconBell size={20} stroke={1.6} />
-          <span className="sidebar-item-label">Thông báo</span>
-        </button>
         <button className="sidebar-item" title="Tài khoản">
           <IconUserCircle size={20} stroke={1.6} />
           <span className="sidebar-item-label">

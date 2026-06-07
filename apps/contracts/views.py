@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+﻿from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -27,13 +27,15 @@ def _contract_queryset(user):
     qs = Contract.objects.filter(is_deleted=False).select_related(
         'customer', 'created_by', 'approved_by', 'appointment'
     )
-    if user.role in MANAGEMENT_ROLES or user.role in ('KE_TOAN', 'LEAD_SALE'):
+    if user.role in ('QUAN_LY', 'CHU_DN', 'KE_TOAN', 'LEAD_SALE', 'LEAD_TELE', 'LEAD_CSKH'):
         return qs
     if user.role == 'SALE':
         return qs.filter(created_by=user)
-    if user.role in ('CSKH', 'LEAD_CSKH'):
-        return qs.filter(customer__sale__isnull=False) | qs.filter(customer__tele=user)
-    return qs.none()
+    if user.role == 'TELE':
+        return qs.filter(created_by=user)
+    if user.role == 'CSKH':
+        return qs.filter(created_by=user) | qs.filter(customer__sale__isnull=False) | qs.filter(customer__tele=user)
+    return qs.filter(created_by=user)
 
 
 class ContractListCreateView(generics.ListCreateAPIView):
@@ -56,7 +58,7 @@ class ContractListCreateView(generics.ListCreateAPIView):
         return qs.order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
-        allowed = {'SALE', 'CSKH', 'LEAD_SALE', 'LEAD_CSKH'} | MANAGEMENT_ROLES
+        allowed = {'SALE', 'CSKH', 'LEAD_SALE', 'LEAD_CSKH', 'TELE', 'KE_TOAN'} | MANAGEMENT_ROLES
         if request.user.role not in allowed:
             return Response({'detail': 'Không có quyền tạo hợp đồng.'}, status=403)
         return super().create(request, *args, **kwargs)
@@ -89,7 +91,7 @@ def submit_contract(request, pk):
     Sale/CSKH submit HĐ lên KT duyệt.
     draft → pending_kt
     """
-    allowed = {'SALE', 'CSKH', 'LEAD_SALE', 'LEAD_CSKH'} | MANAGEMENT_ROLES
+    allowed = {'SALE', 'CSKH', 'LEAD_SALE', 'LEAD_CSKH', 'TELE', 'KE_TOAN'} | MANAGEMENT_ROLES
     if request.user.role not in allowed:
         return Response({'detail': 'Không có quyền submit.'}, status=403)
 
@@ -124,7 +126,7 @@ def approve_contract(request, pk):
     KT duyệt HĐ → pending_kt → approved.
     Ghi nhận approved_by, approved_at.
     """
-    if request.user.role not in ('KE_TOAN',) | MANAGEMENT_ROLES:
+    if request.user.role not in ({'KE_TOAN'} | MANAGEMENT_ROLES):
         return Response({'detail': 'Chỉ Kế toán mới duyệt HĐ.'}, status=403)
 
     contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
@@ -168,7 +170,7 @@ def reject_contract(request, pk):
     KT từ chối HĐ. Body: {"reason": "..."}
     pending_kt → rejected
     """
-    if request.user.role not in ('KE_TOAN',) | MANAGEMENT_ROLES:
+    if request.user.role not in ({'KE_TOAN'} | MANAGEMENT_ROLES):
         return Response({'detail': 'Chỉ Kế toán mới từ chối HĐ.'}, status=403)
 
     contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
@@ -221,7 +223,7 @@ def pending_contracts(request):
     GET /api/contracts/pending/
     KT xem danh sách HĐ chờ duyệt — realtime dashboard.
     """
-    if request.user.role not in ('KE_TOAN',) | MANAGEMENT_ROLES:
+    if request.user.role not in ({'KE_TOAN'} | MANAGEMENT_ROLES):
         return Response({'detail': 'Không có quyền.'}, status=403)
 
     qs = Contract.objects.filter(
