@@ -22,6 +22,7 @@ import SalePage          from './pages/sale/SalePage'
 import KetoanPage        from './pages/ketoan/KetoanPage'
 import MarketingPage     from './pages/marketing/MarketingPage'
 import CskhPage          from './pages/cskh/CskhPage'
+import SchedulePage      from './pages/schedule/SchedulePage'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore(s => s.user)
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/customers"    element={<PrivateRoute><CustomersPage /></PrivateRoute>} />
         <Route path="/customers/:id"element={<PrivateRoute><CustomerDetailPage /></PrivateRoute>} />
         <Route path="/chat"         element={<PrivateRoute><ChatPage /></PrivateRoute>} />
+        <Route path="/lich-lam-viec" element={<PrivateRoute><SchedulePage /></PrivateRoute>} />
 
         {/* ── v1 screens kept alive (not linked from sidebar) ── */}
         <Route path="/tele-queue"   element={<PrivateRoute><TeleQueuePage /></PrivateRoute>} />

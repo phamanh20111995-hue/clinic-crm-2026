@@ -70,6 +70,12 @@ class LeaveRequest(models.Model):
         ('unpaid', 'Không lương'),
         ('sick', 'Phép bệnh'),
     ]
+    DURATION_CHOICES = [
+        ('full_day',        'Cả ngày'),
+        ('half_morning',    'Nửa ngày sáng'),
+        ('half_afternoon',  'Nửa ngày chiều'),
+        ('hourly',          'Theo giờ'),
+    ]
     STATUS_CHOICES = [
         ('pending', 'Chờ duyệt'),
         ('approved', 'Đã duyệt'),
@@ -82,6 +88,9 @@ class LeaveRequest(models.Model):
     leave_type = models.CharField(max_length=10, choices=LEAVE_TYPE_CHOICES)
     reason = models.TextField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    duration_type = models.CharField(max_length=20, choices=DURATION_CHOICES, default='full_day')
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='approved_leaves',

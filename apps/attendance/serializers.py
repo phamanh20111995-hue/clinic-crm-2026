@@ -97,16 +97,24 @@ class ZKTecoSyncSerializer(serializers.Serializer):
 class LeaveRequestSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
     leave_type_display = serializers.CharField(source='get_leave_type_display', read_only=True)
+    duration_type_display = serializers.CharField(source='get_duration_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     approved_by_name = serializers.SerializerMethodField()
+    department_display = serializers.SerializerMethodField()
+    can_approve = serializers.SerializerMethodField()
 
     class Meta:
         model = LeaveRequest
         fields = (
-            'id', 'user', 'user_name', 'start_date', 'end_date',
-            'leave_type', 'leave_type_display', 'reason',
+            'id', 'user', 'user_name', 'department_display',
+            'start_date', 'end_date',
+            'leave_type', 'leave_type_display',
+            'duration_type', 'duration_type_display',
+            'start_time', 'end_time',
+            'reason',
             'status', 'status_display',
             'approved_by', 'approved_by_name', 'approved_at', 'reject_reason',
+            'can_approve',
             'created_at',
         )
         read_only_fields = ('id', 'user', 'status', 'approved_by', 'approved_at', 'reject_reason', 'created_at')
@@ -119,12 +127,30 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             return obj.approved_by.get_full_name() or obj.approved_by.email
         return None
 
+    def get_department_display(self, obj):
+        return obj.user.get_role_display() if hasattr(obj.user, 'get_role_display') else (obj.user.role or '')
+
+    def get_can_approve(self, obj):
+        try:
+            request = self.context.get('request')
+            if not request or not request.user or not request.user.is_authenticated:
+                return False
+            from .views import _can_approve_leave
+            return _can_approve_leave(request.user, obj)
+        except Exception:
+            return False
+
     def validate(self, attrs):
         if attrs.get('end_date') and attrs.get('start_date'):
             if attrs['end_date'] < attrs['start_date']:
                 raise serializers.ValidationError('Ngày kết thúc phải sau ngày bắt đầu.')
             if attrs['start_date'] < timezone.now().date():
                 raise serializers.ValidationError('Không thể đăng ký nghỉ phép ngày đã qua.')
+        if attrs.get('duration_type') == 'hourly':
+            if not attrs.get('start_time') or not attrs.get('end_time'):
+                raise serializers.ValidationError('Nghỉ theo giờ cần nhập start_time và end_time.')
+            if attrs['end_time'] <= attrs['start_time']:
+                raise serializers.ValidationError('end_time phải sau start_time.')
         return attrs
 
     def create(self, validated_data):

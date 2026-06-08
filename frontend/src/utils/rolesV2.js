@@ -10,6 +10,7 @@ import {
   IconSpeakerphone,
   IconStethoscope,
   IconHeart,
+  IconCalendarEvent,
 } from '@tabler/icons-react'
 
 export const ROLES = {
@@ -142,6 +143,13 @@ const ALL_NAV = [
     path: '/chat',
     label: 'Chat',
     Icon: IconMessages,
+    roles: null,
+  },
+  {
+    key: 'lich-lam-viec',
+    path: '/lich-lam-viec',
+    label: 'Lịch làm việc',
+    Icon: IconCalendarEvent,
     roles: null,
   },
 ]
