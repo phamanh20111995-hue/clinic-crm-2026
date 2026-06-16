@@ -134,14 +134,14 @@ export default function NghiPhepTab() {
   const isHourly = form.duration_type === 'hourly'
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Topbar */}
       <div style={{ padding: '10px 16px', background: '#fff', borderBottom: '1px solid #eef1f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#0f2044' }}>Nghỉ phép</span>
         <button onClick={() => { loadMy(); loadPending() }} style={btnOutline}><IconRefresh size={13} /> Làm mới</button>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         {/* ── Đăng ký đơn ── */}
         <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #dde3ef', overflow: 'hidden' }}>

@@ -1,4 +1,4 @@
-﻿from rest_framework import generics, status
+from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -7,6 +7,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 
 from .models import WorkShift, ShiftAssignment, AttendanceRecord, LeaveRequest
+from .pagination import ShiftAssignmentPagination
 from .serializers import (
     WorkShiftSerializer, ShiftAssignmentSerializer, ShiftAssignmentCreateSerializer,
     AttendanceRecordSerializer, ManualAttendanceSerializer, ZKTecoSyncSerializer,
@@ -46,16 +47,44 @@ def _can_approve_leave(approver, leave):
     return approver.role in _leave_approver_roles(leave.user.role)
 
 
+def _can_approve_shift(approver, assignment):
+    return approver.role in _leave_approver_roles(assignment.user.role)
+
+
+DEPARTMENT_GROUPS = {
+    'Tele': ['TELE', 'LEAD_TELE'],
+    'Sale': ['SALE', 'LEAD_SALE'],
+    'CSKH': ['CSKH', 'LEAD_CSKH'],
+    'MKT': ['MKT', 'LEAD_MKT'],
+    'Trực page': ['TRUC_PAGE', 'LEAD_TRUC_PAGE'],
+    'Y tế': ['BS', 'KTV'],
+    'Lễ tân': ['LE_TAN'],
+    'Kế toán': ['KE_TOAN'],
+    'Ban quản lý': ['QUAN_LY', 'CHU_DN'],
+}
+
+
+def _user_department(user):
+    for dept, roles in DEPARTMENT_GROUPS.items():
+        if user.role in roles:
+            return dept
+    return None
+
+
+def _department_roles(dept):
+    return DEPARTMENT_GROUPS.get(dept, [])
+
+
 def _is_hr(user):
     return user.role in FULL_HR_ROLES
 
 
-# â”€â”€â”€ Ca lÃ m viá»‡c â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Ca làm việc ──────────────────────────────────────────────────────────────
 
 class ShiftListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/attendance/shifts/  â€” táº¥t cáº£ ca (má»i nhÃ¢n viÃªn xem Ä‘Æ°á»£c)
-    POST /api/attendance/shifts/  â€” táº¡o ca má»›i (KE_TOAN / QUAN_LY)
+    GET  /api/attendance/shifts/  — tất cả ca (mọi nhân viên xem được)
+    POST /api/attendance/shifts/  — tạo ca mới (KE_TOAN / QUAN_LY)
     """
     permission_classes = [IsAuthenticated]
     queryset = WorkShift.objects.all()
@@ -63,24 +92,35 @@ class ShiftListCreateView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         if not _is_hr(request.user):
-            return Response({'detail': 'KhÃ´ng cÃ³ quyá»n táº¡o ca.'}, status=403)
+            return Response({'detail': 'Không có quyền tạo ca.'}, status=403)
         return super().create(request, *args, **kwargs)
 
 
 class ShiftAssignmentListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/attendance/shift-assignments/  â€” phÃ¢n ca (KE_TOAN/QUAN_LY xem táº¥t, nhÃ¢n viÃªn xem cá»§a mÃ¬nh)
-    POST /api/attendance/shift-assignments/  â€” phÃ¢n ca (KE_TOAN / QUAN_LY)
+    GET  /api/attendance/shift-assignments/  — phân ca (KE_TOAN/QUAN_LY xem tất, nhân viên xem của mình)
+    POST /api/attendance/shift-assignments/  — phân ca (KE_TOAN / QUAN_LY)
     """
     permission_classes = [IsAuthenticated]
+    pagination_class = ShiftAssignmentPagination
 
     def get_serializer_class(self):
         return ShiftAssignmentCreateSerializer if self.request.method == 'POST' else ShiftAssignmentSerializer
 
     def get_queryset(self):
         qs = ShiftAssignment.objects.select_related('user', 'shift')
-        if not _is_hr(self.request.user):
-            qs = qs.filter(user=self.request.user)
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        user = self.request.user
+        if user.role not in MANAGEMENT_ROLES:
+            if not _is_hr(user):
+                own_ids = set(qs.filter(user=user).values_list('id', flat=True))
+                approvable_ids = {
+                    a.id for a in qs.exclude(user=user)
+                    if _can_approve_shift(user, a)
+                }
+                qs = qs.filter(id__in=own_ids | approvable_ids)
         user_id = self.request.query_params.get('user_id')
         if user_id and _is_hr(self.request.user):
             qs = qs.filter(user_id=user_id)
@@ -90,18 +130,32 @@ class ShiftAssignmentListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(date__gte=date_from)
         if date_to:
             qs = qs.filter(date__lte=date_to)
-        return qs
+        return qs.order_by('-date', '-shift__start_time')
 
-    def create(self, request, *args, **kwargs):
-        if not _is_hr(request.user):
-            return Response({'detail': 'KhÃ´ng cÃ³ quyá»n phÃ¢n ca.'}, status=403)
-        return super().create(request, *args, **kwargs)
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx['request'] = self.request
+        return ctx
+
+    def perform_create(self, serializer):
+        assignment = serializer.save(user=self.request.user)
+        try:
+            from apps.chat.notifications import send_notification_to_roles
+            send_notification_to_roles(
+                _leave_approver_roles(assignment.user.role),
+                'shift_pending',
+                title=f'Đăng ký ca mới từ {assignment.user.get_full_name() or assignment.user.username}',
+                body=f'{assignment.shift} · {assignment.date}',
+                data={'shift_assignment_id': assignment.id},
+            )
+        except Exception:
+            pass
 
 
-# â”€â”€â”€ Cháº¥m cÃ´ng â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Chấm công ────────────────────────────────────────────────────────────────
 
 def _compute_status(check_in, check_out, shift):
-    """TÃ­nh tráº¡ng thÃ¡i vÃ  sá»‘ phÃºt muá»™n/vá» sá»›m dá»±a vÃ o ca lÃ m viá»‡c."""
+    """Tính trạng thái và số phút muộn/về sớm dựa vào ca làm việc."""
     late_minutes = 0
     early_minutes = 0
     sts = 'on_time'
@@ -132,8 +186,8 @@ def _compute_status(check_in, check_out, shift):
 def today_attendance(request):
     """
     GET /api/attendance/today/
-    KE_TOAN/QUAN_LY â†’ táº¥t cáº£ nhÃ¢n viÃªn hÃ´m nay.
-    NhÃ¢n viÃªn thÆ°á»ng â†’ chá»‰ cá»§a mÃ¬nh.
+    KE_TOAN/QUAN_LY → tất cả nhân viên hôm nay.
+    Nhân viên thường → chỉ của mình.
     """
     today = timezone.now().date()
     qs = AttendanceRecord.objects.filter(date=today).select_related('user')
@@ -147,13 +201,13 @@ def today_attendance(request):
 def monthly_attendance(request):
     """
     GET /api/attendance/monthly/?year=2026&month=5&user_id=3
-    user_id chá»‰ HR má»›i truyá»n Ä‘Æ°á»£c; nhÃ¢n viÃªn thÆ°á»ng â†’ chá»‰ xem cá»§a mÃ¬nh.
+    user_id chỉ HR mới truyền được; nhân viên thường → chỉ xem của mình.
     """
     try:
         year = int(request.query_params.get('year', timezone.now().year))
         month = int(request.query_params.get('month', timezone.now().month))
     except ValueError:
-        return Response({'detail': 'year/month khÃ´ng há»£p lá»‡.'}, status=400)
+        return Response({'detail': 'year/month không hợp lệ.'}, status=400)
 
     qs = AttendanceRecord.objects.filter(date__year=year, date__month=month).select_related('user')
 
@@ -184,13 +238,13 @@ def monthly_attendance(request):
 def sync_zkteco(request):
     """
     POST /api/attendance/sync/
-    Nháº­n dá»¯ liá»‡u tá»« ZKTeco middleware vÃ  lÆ°u vÃ o DB.
-    Chá»‰ KE_TOAN / QUAN_LY má»›i gá»i Ä‘Æ°á»£c (hoáº·c service account).
+    Nhận dữ liệu từ ZKTeco middleware và lưu vào DB.
+    Chỉ KE_TOAN / QUAN_LY mới gọi được (hoặc service account).
     Body: {"records": [{"employee_id": "EMP001", "timestamp": "2026-05-29T08:05:00"}]}
-    employee_id pháº£i khá»›p vá»›i User.username hoáº·c User.employee_id náº¿u cÃ³.
+    employee_id phải khớp với User.username hoặc User.employee_id nếu có.
     """
     if not _is_hr(request.user):
-        return Response({'detail': 'KhÃ´ng cÃ³ quyá»n Ä‘á»“ng bá»™ cháº¥m cÃ´ng.'}, status=403)
+        return Response({'detail': 'Không có quyền đồng bộ chấm công.'}, status=403)
 
     s = ZKTecoSyncSerializer(data=request.data)
     if not s.is_valid():
@@ -205,18 +259,18 @@ def sync_zkteco(request):
             try:
                 ts = datetime.fromisoformat(rec['timestamp'])
             except (ValueError, TypeError):
-                results['errors'].append({'employee_id': emp_id, 'error': 'timestamp khÃ´ng há»£p lá»‡'})
+                results['errors'].append({'employee_id': emp_id, 'error': 'timestamp không hợp lệ'})
                 continue
 
             user = User.objects.filter(username=emp_id, is_active=True).first()
             if not user:
-                results['errors'].append({'employee_id': emp_id, 'error': 'KhÃ´ng tÃ¬m tháº¥y nhÃ¢n viÃªn'})
+                results['errors'].append({'employee_id': emp_id, 'error': 'Không tìm thấy nhân viên'})
                 continue
 
             date = ts.date()
             time_val = ts.time()
 
-            # Láº¥y ca cá»§a nhÃ¢n viÃªn hÃ´m Ä‘Ã³ (náº¿u cÃ³)
+            # Lấy ca của nhân viên hôm đó (nếu có)
             assignment = ShiftAssignment.objects.filter(user=user, date=date).select_related('shift').first()
             shift = assignment.shift if assignment else None
 
@@ -225,14 +279,14 @@ def sync_zkteco(request):
                 defaults={'check_in': time_val, 'status': 'on_time', 'source': 'machine'},
             )
             if created:
-                # Láº§n cháº¥m Ä‘áº§u tiÃªn = check_in
+                # Lần chấm đầu tiên = check_in
                 sts, late_min, _ = _compute_status(time_val, None, shift)
                 record.status = sts
                 record.late_minutes = late_min
                 record.save(update_fields=['status', 'late_minutes'])
                 results['created'] += 1
             else:
-                # Láº§n cháº¥m thá»© hai trá»Ÿ Ä‘i = check_out (náº¿u sau check_in)
+                # Lần chấm thứ hai trở đi = check_out (nếu sau check_in)
                 if record.check_in and time_val > record.check_in:
                     sts, late_min, early_min = _compute_status(record.check_in, time_val, shift)
                     record.check_out = time_val
@@ -250,10 +304,10 @@ def sync_zkteco(request):
 def manual_attendance(request):
     """
     POST /api/attendance/manual/
-    KE_TOAN / QUAN_LY nháº­p tay cháº¥m cÃ´ng cho nhÃ¢n viÃªn.
+    KE_TOAN / QUAN_LY nhập tay chấm công cho nhân viên.
     """
     if not _is_hr(request.user):
-        return Response({'detail': 'KhÃ´ng cÃ³ quyá»n nháº­p tay cháº¥m cÃ´ng.'}, status=403)
+        return Response({'detail': 'Không có quyền nhập tay chấm công.'}, status=403)
 
     s = ManualAttendanceSerializer(data=request.data)
     if not s.is_valid():
@@ -275,12 +329,12 @@ def manual_attendance(request):
     return Response(AttendanceRecordSerializer(record).data, status=status.HTTP_200_OK)
 
 
-# â”€â”€â”€ Nghá»‰ phÃ©p â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Nghỉ phép ────────────────────────────────────────────────────────────────
 
 class LeaveRequestListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/attendance/leaves/  â€” nhÃ¢n viÃªn xem cá»§a mÃ¬nh + nhá»¯ng Ä‘Æ¡n mÃ¬nh Ä‘Æ°á»£c duyá»‡t
-    POST /api/attendance/leaves/  â€” nhÃ¢n viÃªn Ä‘Äƒng kÃ½ nghá»‰ phÃ©p
+    GET  /api/attendance/leaves/  — nhân viên xem của mình + những đơn mình được duyệt
+    POST /api/attendance/leaves/  — nhân viên đăng ký nghỉ phép
     """
     permission_classes = [IsAuthenticated]
     serializer_class = LeaveRequestSerializer
@@ -291,11 +345,9 @@ class LeaveRequestListCreateView(generics.ListCreateAPIView):
         status_filter = self.request.query_params.get('status')
         if status_filter:
             qs = qs.filter(status=status_filter)
-        # QUAN_LY/CHU_DN xem tat ca don
+        # QUAN_LY/CHU_DN see everything; others see own + approvable
         if user.role in MANAGEMENT_ROLES:
             return qs
-        # Collect PKs visible to this user:
-        # own leaves + leaves of staff whose approver role includes this user's role
         own_ids = set(qs.filter(user=user).values_list('id', flat=True))
         approvable_ids = {
             leave.id for leave in qs.exclude(user=user)
@@ -315,12 +367,41 @@ class LeaveRequestListCreateView(generics.ListCreateAPIView):
             send_notification_to_roles(
                 _leave_approver_roles(leave.user.role),
                 'leave_pending',
-                title=f'ÄÆ¡n nghá»‰ má»›i tá»« {leave.user.get_full_name() or leave.user.username}',
-                body=f'{leave.get_leave_type_display()} Â· {leave.start_date} â†’ {leave.end_date}',
+                title=f'Đơn nghỉ mới từ {leave.user.get_full_name() or leave.user.username}',
+                body=f'{leave.get_leave_type_display()} · {leave.start_date} → {leave.end_date}',
                 data={'leave_id': leave.id},
             )
         except Exception:
             pass
+
+
+def _delete_overlapping_shifts(leave):
+    """Xóa các ShiftAssignment trùng khung giờ với đơn nghỉ phép đã duyệt."""
+    from datetime import time, timedelta
+
+    try:
+        duration = leave.duration_type
+        if duration == 'half_morning':
+            nghi_start, nghi_end = time(0, 0), time(12, 0)
+        elif duration == 'half_afternoon':
+            nghi_start, nghi_end = time(12, 0), time(23, 59)
+        elif duration == 'hourly':
+            if leave.start_time and leave.end_time:
+                nghi_start, nghi_end = leave.start_time, leave.end_time
+            else:
+                nghi_start, nghi_end = time(0, 0), time(23, 59)
+        else:
+            nghi_start, nghi_end = time(0, 0), time(23, 59)
+
+        current = leave.start_date
+        while current <= leave.end_date:
+            assignments = ShiftAssignment.objects.filter(user=leave.user, date=current).select_related('shift')
+            for a in assignments:
+                if a.shift.start_time < nghi_end and a.shift.end_time > nghi_start:
+                    a.delete()
+            current += timedelta(days=1)
+    except Exception:
+        pass
 
 
 @api_view(['POST'])
@@ -328,16 +409,16 @@ class LeaveRequestListCreateView(generics.ListCreateAPIView):
 def approve_leave(request, pk):
     """
     POST /api/attendance/leaves/{id}/approve/
-    KE_TOAN / QUAN_LY duyá»‡t hoáº·c tá»« chá»‘i Ä‘Æ¡n nghá»‰ phÃ©p.
+    KE_TOAN / QUAN_LY duyệt hoặc từ chối đơn nghỉ phép.
     Body: {"action": "approve" | "reject", "reason": "..."}
     """
     leave = LeaveRequest.objects.filter(pk=pk).select_related('user').first()
     if not leave:
-        return Response({'detail': 'KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n nghá»‰ phÃ©p.'}, status=404)
+        return Response({'detail': 'Không tìm thấy đơn nghỉ phép.'}, status=404)
     if not _can_approve_leave(request.user, leave):
-        return Response({'detail': 'KhÃ´ng cÃ³ quyá»n duyá»‡t Ä‘Æ¡n nghá»‰ phÃ©p nÃ y.'}, status=403)
+        return Response({'detail': 'Không có quyền duyệt đơn nghỉ phép này.'}, status=403)
     if leave.status != 'pending':
-        return Response({'detail': f'ÄÆ¡n Ä‘Ã£ á»Ÿ tráº¡ng thÃ¡i {leave.get_status_display()}, khÃ´ng thá»ƒ xá»­ lÃ½ láº¡i.'}, status=400)
+        return Response({'detail': f'Đơn đã ở trạng thái {leave.get_status_display()}, không thể xử lý lại.'}, status=400)
 
     s = LeaveApproveSerializer(data=request.data)
     if not s.is_valid():
@@ -346,24 +427,25 @@ def approve_leave(request, pk):
     with transaction.atomic():
         if s.validated_data['action'] == 'approve':
             leave.status = 'approved'
+            _delete_overlapping_shifts(leave)
             leave.approved_by = request.user
             leave.approved_at = timezone.now()
             leave.save()
 
-            # Táº¡o AttendanceRecord "leave" cho tá»«ng ngÃ y trong khoáº£ng
+            # Tạo AttendanceRecord "leave" cho từng ngày trong khoảng
             from datetime import date, timedelta
             duration = leave.duration_type
             if duration == 'hourly' and leave.start_time and leave.end_time:
                 duration_note = (
-                    f'Nghá»‰ phÃ©p theo giá» '
+                    f'Nghỉ phép theo giờ '
                     f'{leave.start_time.strftime("%H:%M")}-{leave.end_time.strftime("%H:%M")}'
                 )
             elif duration == 'half_morning':
-                duration_note = 'Nghá»‰ phÃ©p ná»­a ngÃ y sÃ¡ng'
+                duration_note = 'Nghỉ phép nửa ngày sáng'
             elif duration == 'half_afternoon':
-                duration_note = 'Nghá»‰ phÃ©p ná»­a ngÃ y chiá»u'
+                duration_note = 'Nghỉ phép nửa ngày chiều'
             else:
-                duration_note = f'Nghá»‰ phÃ©p: {leave.get_leave_type_display()}'
+                duration_note = f'Nghỉ phép: {leave.get_leave_type_display()}'
             current = leave.start_date
             while current <= leave.end_date:
                 AttendanceRecord.objects.get_or_create(
@@ -378,20 +460,20 @@ def approve_leave(request, pk):
             leave.reject_reason = s.validated_data.get('reason', '')
             leave.save()
 
-    # ThÃ´ng bÃ¡o cho nhÃ¢n viÃªn
+    # Thông báo cho nhân viên
     try:
         from apps.chat.notifications import send_notification
         if leave.status == 'approved':
             send_notification(
                 leave.user, 'general',
-                'ÄÆ¡n nghá»‰ phÃ©p Ä‘Æ°á»£c duyá»‡t',
+                'Đơn nghỉ phép được duyệt',
                 body=f'{leave.start_date} ~ {leave.end_date}',
                 data={'leave_id': leave.id},
             )
         else:
             send_notification(
                 leave.user, 'absence_alert',
-                'ÄÆ¡n nghá»‰ phÃ©p bá»‹ tá»« chá»‘i',
+                'Đơn nghỉ phép bị từ chối',
                 body=s.validated_data.get('reason', ''),
                 data={'leave_id': leave.id},
             )
@@ -400,3 +482,96 @@ def approve_leave(request, pk):
 
     return Response(LeaveRequestSerializer(leave).data)
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_shift(request, pk):
+    """
+    POST /api/attendance/shift-assignments/{id}/approve/
+    Lead/quản lý duyệt hoặc từ chối đơn đăng ký ca.
+    Body: {"action": "approve" | "reject", "reason": "..."}
+    """
+    assignment = ShiftAssignment.objects.filter(pk=pk).select_related('user', 'shift').first()
+    if not assignment:
+        return Response({'detail': 'Không tìm thấy đơn đăng ký ca.'}, status=404)
+    if not _can_approve_shift(request.user, assignment):
+        return Response({'detail': 'Không có quyền duyệt đơn đăng ký ca này.'}, status=403)
+    if assignment.status != 'pending':
+        return Response({'detail': f'Đơn đã ở trạng thái {assignment.get_status_display()}, không thể xử lý lại.'}, status=400)
+
+    s = LeaveApproveSerializer(data=request.data)
+    if not s.is_valid():
+        return Response(s.errors, status=400)
+
+    with transaction.atomic():
+        if s.validated_data['action'] == 'approve':
+            assignment.status = 'approved'
+            assignment.approved_by = request.user
+            assignment.approved_at = timezone.now()
+            assignment.save()
+        else:
+            assignment.status = 'rejected'
+            assignment.approved_by = request.user
+            assignment.approved_at = timezone.now()
+            assignment.reject_reason = s.validated_data.get('reason', '')
+            assignment.save()
+
+    # Thông báo cho nhân viên
+    try:
+        from apps.chat.notifications import send_notification
+        if assignment.status == 'approved':
+            send_notification(
+                assignment.user, 'general',
+                'Đăng ký ca được duyệt',
+                body=f'{assignment.shift} · {assignment.date}',
+                data={'shift_assignment_id': assignment.id},
+            )
+        else:
+            send_notification(
+                assignment.user, 'absence_alert',
+                'Đăng ký ca bị từ chối',
+                body=s.validated_data.get('reason', ''),
+                data={'shift_assignment_id': assignment.id},
+            )
+    except Exception:
+        pass
+
+    return Response(ShiftAssignmentSerializer(assignment).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def department_week_shifts(request):
+    """
+    GET /api/attendance/shift-assignments/department-week/?week_start=YYYY-MM-DD&department=...
+    Trả lịch ca làm việc của một phòng trong 7 ngày kể từ week_start.
+    QUAN_LY/CHU_DN có thể truyền department để xem phòng khác; còn lại chỉ xem phòng của mình.
+    """
+    from datetime import datetime, timedelta
+
+    week_start_str = request.query_params.get('week_start')
+    if not week_start_str:
+        return Response({'detail': 'week_start không hợp lệ'}, status=400)
+    try:
+        week_start = datetime.strptime(week_start_str, '%Y-%m-%d').date()
+    except ValueError:
+        return Response({'detail': 'week_start không hợp lệ'}, status=400)
+    week_end = week_start + timedelta(days=6)
+
+    department = request.query_params.get('department')
+    if request.user.role in MANAGEMENT_ROLES and department:
+        if department not in DEPARTMENT_GROUPS:
+            return Response({'detail': 'department không hợp lệ'}, status=400)
+        dept = department
+    else:
+        dept = _user_department(request.user)
+        if dept is None:
+            return Response({'department': None, 'week_start': str(week_start), 'assignments': []})
+
+    roles = _department_roles(dept)
+    qs = ShiftAssignment.objects.filter(
+        user__role__in=roles, date__gte=week_start, date__lte=week_end,
+    ).select_related('user', 'shift', 'approved_by')
+
+    serializer = ShiftAssignmentSerializer(qs, many=True, context={'request': request})
+    return Response({'department': dept, 'week_start': str(week_start), 'assignments': serializer.data})

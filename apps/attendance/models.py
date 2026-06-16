@@ -23,9 +23,23 @@ class WorkShift(models.Model):
 
 
 class ShiftAssignment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Chờ duyệt'),
+        ('approved', 'Đã duyệt'),
+        ('rejected', 'Từ chối'),
+    ]
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shift_assignments')
     shift = models.ForeignKey(WorkShift, on_delete=models.CASCADE, related_name='assignments')
     date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='shift_approvals',
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    reject_reason = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ['user', 'date', 'shift']

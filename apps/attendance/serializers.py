@@ -1,4 +1,4 @@
-from rest_framework import serializers
+﻿from rest_framework import serializers
 from django.utils import timezone
 from .models import WorkShift, ShiftAssignment, AttendanceRecord, LeaveRequest
 
@@ -14,26 +14,55 @@ class WorkShiftSerializer(serializers.ModelSerializer):
 class ShiftAssignmentSerializer(serializers.ModelSerializer):
     shift_detail = WorkShiftSerializer(source='shift', read_only=True)
     user_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    department_display = serializers.SerializerMethodField()
+
+    can_approve = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ShiftAssignment
-        fields = ('id', 'user', 'user_name', 'shift', 'shift_detail', 'date')
+        fields = (
+            'id', 'user', 'user_name', 'shift', 'shift_detail', 'date',
+            'status', 'status_display', 'approved_by', 'approved_at', 'reject_reason',
+            'department_display', 'can_approve', 'approved_by_name',
+        )
         read_only_fields = ('id',)
+
+    def get_can_approve(self, obj):
+        try:
+            request = self.context.get('request')
+            if not request or not request.user or not request.user.is_authenticated:
+                return False
+            from .views import _can_approve_shift
+            return _can_approve_shift(request.user, obj)
+        except Exception:
+            return False
+
+    def get_approved_by_name(self, obj):
+        if obj.approved_by:
+            return obj.approved_by.get_full_name() or obj.approved_by.email
+        return None
 
     def get_user_name(self, obj):
         return obj.user.get_full_name() or obj.user.email
+
+    def get_department_display(self, obj):
+        return obj.user.get_role_display() if hasattr(obj.user, 'get_role_display') else (obj.user.role or '')
 
 
 class ShiftAssignmentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShiftAssignment
         fields = ('user', 'shift', 'date')
+        read_only_fields = ('user',)
 
     def validate(self, attrs):
+        user = self.context['request'].user
         if ShiftAssignment.objects.filter(
-            user=attrs['user'], shift=attrs['shift'], date=attrs['date']
+            user=user, shift=attrs['shift'], date=attrs['date']
         ).exists():
-            raise serializers.ValidationError('Nhân viên đã được phân ca này trong ngày.')
+            raise serializers.ValidationError('NhÃ¢n viÃªn Ä‘Ã£ Ä‘Æ°á»£c phÃ¢n ca nÃ y trong ngÃ y.')
         return attrs
 
 
@@ -51,6 +80,21 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'created_at')
 
+    def get_can_approve(self, obj):
+        try:
+            request = self.context.get('request')
+            if not request or not request.user or not request.user.is_authenticated:
+                return False
+            from .views import _can_approve_shift
+            return _can_approve_shift(request.user, obj)
+        except Exception:
+            return False
+
+    def get_approved_by_name(self, obj):
+        if obj.approved_by:
+            return obj.approved_by.get_full_name() or obj.approved_by.email
+        return None
+
     def get_user_name(self, obj):
         return obj.user.get_full_name() or obj.user.email
 
@@ -67,13 +111,13 @@ class ManualAttendanceSerializer(serializers.Serializer):
         from django.contrib.auth import get_user_model
         User = get_user_model()
         if not User.objects.filter(id=attrs['user_id'], is_active=True).exists():
-            raise serializers.ValidationError({'user_id': 'Nhân viên không tồn tại.'})
+            raise serializers.ValidationError({'user_id': 'NhÃ¢n viÃªn khÃ´ng tá»“n táº¡i.'})
         return attrs
 
 
 class ZKTecoSyncSerializer(serializers.Serializer):
     """
-    Body gửi từ ZKTeco server / middleware:
+    Body gá»­i tá»« ZKTeco server / middleware:
     {
       "records": [
         {"employee_id": "EMP001", "timestamp": "2026-05-29T08:05:00", "device_id": "DEVICE_01"}
@@ -90,7 +134,7 @@ class ZKTecoSyncSerializer(serializers.Serializer):
         for i, rec in enumerate(records):
             missing = required - rec.keys()
             if missing:
-                raise serializers.ValidationError(f'Record {i}: thiếu trường {missing}.')
+                raise serializers.ValidationError(f'Record {i}: thiáº¿u trÆ°á»ng {missing}.')
         return records
 
 
@@ -102,6 +146,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     approved_by_name = serializers.SerializerMethodField()
     department_display = serializers.SerializerMethodField()
     can_approve = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = LeaveRequest
@@ -118,6 +163,21 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             'created_at',
         )
         read_only_fields = ('id', 'user', 'status', 'approved_by', 'approved_at', 'reject_reason', 'created_at')
+
+    def get_can_approve(self, obj):
+        try:
+            request = self.context.get('request')
+            if not request or not request.user or not request.user.is_authenticated:
+                return False
+            from .views import _can_approve_shift
+            return _can_approve_shift(request.user, obj)
+        except Exception:
+            return False
+
+    def get_approved_by_name(self, obj):
+        if obj.approved_by:
+            return obj.approved_by.get_full_name() or obj.approved_by.email
+        return None
 
     def get_user_name(self, obj):
         return obj.user.get_full_name() or obj.user.email
@@ -143,14 +203,14 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs.get('end_date') and attrs.get('start_date'):
             if attrs['end_date'] < attrs['start_date']:
-                raise serializers.ValidationError('Ngày kết thúc phải sau ngày bắt đầu.')
+                raise serializers.ValidationError('NgÃ y káº¿t thÃºc pháº£i sau ngÃ y báº¯t Ä‘áº§u.')
             if attrs['start_date'] < timezone.now().date():
-                raise serializers.ValidationError('Không thể đăng ký nghỉ phép ngày đã qua.')
+                raise serializers.ValidationError('KhÃ´ng thá»ƒ Ä‘Äƒng kÃ½ nghá»‰ phÃ©p ngÃ y Ä‘Ã£ qua.')
         if attrs.get('duration_type') == 'hourly':
             if not attrs.get('start_time') or not attrs.get('end_time'):
-                raise serializers.ValidationError('Nghỉ theo giờ cần nhập start_time và end_time.')
+                raise serializers.ValidationError('Nghá»‰ theo giá» cáº§n nháº­p start_time vÃ  end_time.')
             if attrs['end_time'] <= attrs['start_time']:
-                raise serializers.ValidationError('end_time phải sau start_time.')
+                raise serializers.ValidationError('end_time pháº£i sau start_time.')
         return attrs
 
     def create(self, validated_data):
@@ -164,5 +224,8 @@ class LeaveApproveSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs['action'] == 'reject' and not attrs.get('reason', '').strip():
-            raise serializers.ValidationError({'reason': 'Vui lòng nhập lý do từ chối.'})
+            raise serializers.ValidationError({'reason': 'Vui lÃ²ng nháº­p lÃ½ do tá»« chá»‘i.'})
         return attrs
+
+
+
