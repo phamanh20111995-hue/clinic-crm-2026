@@ -8,6 +8,7 @@ from .models import ChatChannel, Message, Notification
 from .serializers import (
     ChatChannelSerializer, ChatChannelCreateSerializer,
     MessageSerializer, MessageCreateSerializer, NotificationSerializer,
+    MemberSerializer,
 )
 
 
@@ -142,7 +143,9 @@ def add_members(request, pk):
     channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
     if channel.channel_type != 'group':
         return Response({'detail': 'Chỉ thêm thành viên vào nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
-    if request.user != channel.created_by and request.user.role not in ('QUAN_LY', 'CHU_DN'):
+    is_owner = request.user == channel.created_by
+    is_admin = channel.admins.filter(pk=request.user.pk).exists()
+    if not is_owner and not is_admin and request.user.role not in ('QUAN_LY', 'CHU_DN'):
         return Response({'detail': 'Không có quyền thêm thành viên.'}, status=status.HTTP_403_FORBIDDEN)
 
     from django.contrib.auth import get_user_model
@@ -161,6 +164,9 @@ def leave_channel(request, pk):
     channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
     if channel.channel_type != 'group':
         return Response({'detail': 'Không thể rời kênh trực tiếp.'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user == channel.created_by:
+        return Response({'detail': 'Trưởng nhóm phải chuyển quyền trước khi rời.'}, status=status.HTTP_400_BAD_REQUEST)
+    channel.admins.remove(request.user)
     channel.members.remove(request.user)
     return Response({'detail': 'Đã rời nhóm.'})
 
@@ -171,7 +177,10 @@ def remove_member(request, pk):
     channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
     if channel.channel_type != 'group':
         return Response({'detail': 'Chỉ xóa thành viên khỏi nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
-    if request.user != channel.created_by and request.user.role not in ('QUAN_LY', 'CHU_DN'):
+
+    is_owner = request.user == channel.created_by
+    is_admin = channel.admins.filter(pk=request.user.pk).exists()
+    if not is_owner and not is_admin and request.user.role not in ('QUAN_LY', 'CHU_DN'):
         return Response({'detail': 'Không có quyền xóa thành viên.'}, status=status.HTTP_403_FORBIDDEN)
 
     user_id = request.data.get('user_id')
@@ -179,6 +188,13 @@ def remove_member(request, pk):
         return Response({'detail': 'Thiếu user_id.'}, status=status.HTTP_400_BAD_REQUEST)
     if user_id == request.user.id:
         return Response({'detail': 'Dùng endpoint leave để tự rời.'}, status=status.HTTP_400_BAD_REQUEST)
+    if channel.created_by_id and user_id == channel.created_by_id:
+        return Response({'detail': 'Không thể xóa trưởng nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
+    target_is_admin = channel.admins.filter(pk=user_id).exists()
+    if target_is_admin and not is_owner:
+        return Response({'detail': 'Chỉ trưởng nhóm mới xóa được phó nhóm.'}, status=status.HTTP_403_FORBIDDEN)
+
+    channel.admins.remove(user_id)
     channel.members.remove(user_id)
     return Response(ChatChannelSerializer(channel, context={'request': request}).data)
 
@@ -193,3 +209,63 @@ def disband_channel(request, pk):
         return Response({'detail': 'Chỉ trưởng nhóm mới giải tán được nhóm.'}, status=status.HTTP_403_FORBIDDEN)
     channel.delete()
     return Response({'detail': 'Đã giải tán nhóm.'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def promote_admin(request, pk):
+    channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
+    if channel.channel_type != 'group':
+        return Response({'detail': 'Chỉ áp dụng cho nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user != channel.created_by:
+        return Response({'detail': 'Chỉ trưởng nhóm mới phong phó.'}, status=status.HTTP_403_FORBIDDEN)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({'detail': 'Thiếu user_id.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not channel.members.filter(pk=user_id).exists():
+        return Response({'detail': 'User không phải thành viên.'}, status=status.HTTP_400_BAD_REQUEST)
+    channel.admins.add(user_id)
+    return Response(ChatChannelSerializer(channel, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def demote_admin(request, pk):
+    channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
+    if channel.channel_type != 'group':
+        return Response({'detail': 'Chỉ áp dụng cho nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user != channel.created_by:
+        return Response({'detail': 'Chỉ trưởng nhóm mới hạ phó.'}, status=status.HTTP_403_FORBIDDEN)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({'detail': 'Thiếu user_id.'}, status=status.HTTP_400_BAD_REQUEST)
+    channel.admins.remove(user_id)
+    return Response(ChatChannelSerializer(channel, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def transfer_owner(request, pk):
+    channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
+    if channel.channel_type != 'group':
+        return Response({'detail': 'Chỉ áp dụng cho nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user != channel.created_by:
+        return Response({'detail': 'Chỉ trưởng nhóm mới chuyển quyền.'}, status=status.HTTP_403_FORBIDDEN)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({'detail': 'Thiếu user_id.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not channel.members.filter(pk=user_id).exists():
+        return Response({'detail': 'User không phải thành viên.'}, status=status.HTTP_400_BAD_REQUEST)
+    channel.admins.remove(user_id)
+    channel.created_by_id = user_id
+    channel.save(update_fields=['created_by'])
+    return Response(ChatChannelSerializer(channel, context={'request': request}).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def chat_contacts(request):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    qs = User.objects.filter(is_active=True).exclude(pk=request.user.pk).order_by('first_name', 'email')
+    return Response(MemberSerializer(qs, many=True).data)

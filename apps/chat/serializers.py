@@ -77,12 +77,13 @@ class MessageCreateSerializer(serializers.ModelSerializer):
 
 class ChatChannelSerializer(serializers.ModelSerializer):
     members = MemberSerializer(many=True, read_only=True)
+    admins = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatChannel
-        fields = ('id', 'channel_type', 'name', 'members', 'created_by', 'created_at',
+        fields = ('id', 'channel_type', 'name', 'members', 'created_by', 'admins', 'created_at',
                   'last_message', 'unread_count')
         read_only_fields = ('id', 'created_by', 'created_at')
 

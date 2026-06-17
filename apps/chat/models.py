@@ -8,6 +8,7 @@ class ChatChannel(models.Model):
     name = models.CharField(max_length=100, blank=True)
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='channels')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_channels')
+    admins = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='admin_channels', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

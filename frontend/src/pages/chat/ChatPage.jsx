@@ -30,7 +30,7 @@ export default function ChatPage() {
     api.get('/api/chat/channels/')
       .then(r => setChannels(r.data?.results ?? r.data ?? []))
       .finally(() => setLoading(false))
-    api.get('/api/auth/users/').then(r => setUsers(r.data?.results ?? r.data ?? [])).catch(() => {})
+    api.get('/api/chat/contacts/').then(r => setUsers(r.data?.results ?? r.data ?? [])).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -156,6 +156,38 @@ export default function ChatPage() {
     } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi giải tán nhóm') }
   }
 
+  const refreshActiveChannel = async () => {
+    const r = await api.get('/api/chat/channels/')
+    const list = r.data?.results ?? r.data ?? []
+    setChannels(list)
+    setActiveChannel(list.find(c => c.id === activeChannel.id) ?? null)
+  }
+
+  const handlePromote = async (uid) => {
+    try {
+      await api.post(`/api/chat/channels/${activeChannel.id}/promote-admin/`, { user_id: uid })
+      toast.success('Đã bổ nhiệm phó nhóm')
+      await refreshActiveChannel()
+    } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi bổ nhiệm') }
+  }
+
+  const handleDemote = async (uid) => {
+    try {
+      await api.post(`/api/chat/channels/${activeChannel.id}/demote-admin/`, { user_id: uid })
+      toast.success('Đã gỡ phó nhóm')
+      await refreshActiveChannel()
+    } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi gỡ phó') }
+  }
+
+  const handleTransfer = async (uid) => {
+    if (!window.confirm('Chuyển quyền trưởng nhóm cho người này?')) return
+    try {
+      await api.post(`/api/chat/channels/${activeChannel.id}/transfer-owner/`, { user_id: uid })
+      toast.success('Đã chuyển quyền trưởng nhóm')
+      await refreshActiveChannel()
+    } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi chuyển quyền') }
+  }
+
   const sortedContacts = users
     .filter(u => u.id !== user?.id)
     .sort((a, b) => (a.display_name ?? a.email).localeCompare(b.display_name ?? b.email))
@@ -273,6 +305,8 @@ export default function ChatPage() {
 
               {activeChannel.channel_type === 'group' && (() => {
                 const isOwner = activeChannel.created_by === user?.id
+                const adminIds = activeChannel.admins ?? []
+                const isAdminId = (id) => adminIds.includes(id)
                 const memberIds = activeChannel.members?.map(m => m.id) ?? []
                 const nonMembers = users.filter(u => !memberIds.includes(u.id))
                 return (
@@ -283,22 +317,36 @@ export default function ChatPage() {
                         <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
                           {activeChannel.members?.map(m => (
                             <div key={m.id} className="flex items-center justify-between px-3 py-2">
-                              <div>
-                                <span className="text-sm text-gray-800">{m.display_name ?? m.email}</span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-sm text-gray-800 truncate">{m.display_name ?? m.email}</span>
                                 {m.id === activeChannel.created_by && (
-                                  <span className="ml-2 text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded">Trưởng nhóm</span>
+                                  <span className="shrink-0 text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded">Trưởng nhóm</span>
+                                )}
+                                {m.id !== activeChannel.created_by && isAdminId(m.id) && (
+                                  <span className="shrink-0 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Phó nhóm</span>
                                 )}
                               </div>
-                              {isOwner && m.id !== user?.id && (
-                                <button onClick={() => handleRemoveMember(m.id)}
-                                  className="text-xs text-red-500 hover:text-red-700 font-medium">Xóa</button>
+                              {isOwner && m.id !== user?.id && m.id !== activeChannel.created_by && (
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                  {isAdminId(m.id) ? (
+                                    <button onClick={() => handleDemote(m.id)}
+                                      className="text-xs text-amber-600 hover:text-amber-800 font-medium">Gỡ phó</button>
+                                  ) : (
+                                    <button onClick={() => handlePromote(m.id)}
+                                      className="text-xs text-primary-600 hover:text-primary-800 font-medium">Bổ nhiệm phó</button>
+                                  )}
+                                  <button onClick={() => handleTransfer(m.id)}
+                                    className="text-xs text-gray-500 hover:text-gray-700 font-medium">Chuyển quyền</button>
+                                  <button onClick={() => handleRemoveMember(m.id)}
+                                    className="text-xs text-red-500 hover:text-red-700 font-medium">Xóa</button>
+                                </div>
                               )}
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      {isOwner && nonMembers.length > 0 && (
+                      {(isOwner || isAdminId(user?.id)) && nonMembers.length > 0 && (
                         <div>
                           <p className="text-sm font-medium text-gray-700 mb-2">Thêm thành viên</p>
                           <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
