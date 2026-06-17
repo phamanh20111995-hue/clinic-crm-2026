@@ -81,6 +81,7 @@ export default function AppointmentRow({ appt, onCheckin, onEnqueue, onAssignRoo
           {appt.room_name && <span>· {appt.room_name}</span>}
           {appt.doctor_name && <span>· BS: {appt.doctor_name}</span>}
           {appt.ktv_name && <span>· KTV: {appt.ktv_name}</span>}
+                {appt.sale_name && <span>· Sale: {appt.sale_name}</span>}
           {appt.status === 'in_progress' && (
             <span style={{ color: ACCENT, fontWeight: 600 }}>
               · {timeDiff(appt.scheduled_at)} đang ĐT

@@ -13,6 +13,7 @@ from .serializers import (
     ReturnRequestSerializer, CustomerCskhAssignSerializer,
 )
 from apps.accounts.permissions import IsLeadTele, IsLeadOrAbove, HasFullCustomerAccess
+from apps.chat.notifications import send_notification, send_notification_to_roles
 
 
 def _customer_queryset(user, detail=False):
@@ -53,6 +54,18 @@ class CustomerListCreateView(generics.ListCreateAPIView):
 
     def get_serializer_class(self):
         return CustomerCreateSerializer if self.request.method == 'POST' else CustomerListSerializer
+
+    def perform_create(self, serializer):
+        customer = serializer.save()
+        try:
+            if self.request.user.role == 'TRUC_PAGE':
+                send_notification_to_roles(
+                    ['LEAD_TELE'], 'new_lead_from_page',
+                    f'KH mới từ Trực page: {customer.full_name}',
+                    data={'customer_id': customer.id},
+                )
+        except Exception:
+            pass
 
     def get_queryset(self):
         qs = _customer_queryset(self.request.user)
@@ -114,6 +127,16 @@ def assign_customer(request, pk):
     s = CustomerAssignSerializer(customer, data=request.data, partial=True)
     s.is_valid(raise_exception=True)
     s.save()
+    customer.refresh_from_db()
+    try:
+        notif_data = {'customer_id': customer.id}
+        notif_title = f'Bạn được giao KH {customer.full_name}'
+        if customer.tele:
+            send_notification(customer.tele, 'customer_assigned', notif_title, data=notif_data)
+        if customer.sale:
+            send_notification(customer.sale, 'customer_assigned', notif_title, data=notif_data)
+    except Exception:
+        pass
     return Response(s.data)
 
 
@@ -133,6 +156,15 @@ def assign_cskh(request, pk):
     if customer.cskh_id and customer.status == 'cho_phan_cskh':
         customer.status = 'dang_cham_soc'
         customer.save(update_fields=['status', 'updated_at'])
+    try:
+        if customer.cskh:
+            send_notification(
+                customer.cskh, 'cskh_assigned',
+                f'Bạn được giao chăm sóc KH {customer.full_name}',
+                data={'customer_id': customer.id},
+            )
+    except Exception:
+        pass
     return Response(CustomerDetailSerializer(customer).data)
 
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { IconX, IconCheck } from '@tabler/icons-react'
-import { assignRoom, getRooms, getUsers } from '../../../api/letan'
+import { assignRoom, getRooms, getAvailableStaff } from '../../../api/letan'
 import toast from 'react-hot-toast'
 
 const ACCENT = '#b45309'
@@ -79,16 +79,18 @@ export default function AssignRoomModal({ appt, onClose, onDone }) {
   const [saving, setSaving]       = useState(false)
 
   useEffect(() => {
+    const d = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     getRooms({ is_active: true })
       .then(r => setAllRooms(r.data?.results ?? r.data ?? []))
       .catch(() => {})
-    getUsers({ role: 'BS' })
+    getAvailableStaff({ date: today, role: 'BS' })
       .then(r => setDoctors(r.data?.results ?? r.data ?? []))
       .catch(() => {})
-    getUsers({ role: 'KTV' })
+    getAvailableStaff({ date: today, role: 'KTV' })
       .then(r => setKtvList(r.data?.results ?? r.data ?? []))
       .catch(() => {})
-    getUsers({ role: 'SALE' })
+    getAvailableStaff({ date: today, role: 'SALE' })
       .then(r => setSaleList(r.data?.results ?? r.data ?? []))
       .catch(() => {})
   }, [])

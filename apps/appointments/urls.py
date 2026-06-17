@@ -5,6 +5,7 @@ urlpatterns = [
     path('',                              views.AppointmentListCreateView.as_view(), name='appointment-list-create'),
     path('today/',                        views.today_appointments,                  name='appointment-today'),
     path('walkin/',                       views.walkin_create,                       name='appointment-walkin'),
+    path('available-staff/',             views.available_staff,                     name='available-staff'),
     path('<int:pk>/',                     views.AppointmentDetailView.as_view(),     name='appointment-detail'),
     path('<int:pk>/checkin/',             views.checkin_view,                        name='appointment-checkin'),
     path('<int:pk>/enqueue/',             views.enqueue,                             name='appointment-enqueue'),

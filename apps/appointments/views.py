@@ -12,7 +12,7 @@ from .serializers import (
 )
 from apps.accounts.models import FULL_ACCESS_ROLES
 from apps.accounts.permissions import IsLeTan
-from apps.chat.notifications import send_notification_to_roles
+from apps.chat.notifications import send_notification, send_notification_to_roles
 
 LETAN_ROLES = ('LE_TAN', 'QUAN_LY', 'CHU_DN')
 
@@ -238,6 +238,22 @@ def assign_room(request, pk):
     s.is_valid(raise_exception=True)
     s.save()
     appt.refresh_from_db()
+
+    notif_data = {'appointment_id': appt.id, 'customer_id': appt.customer_id}
+    notif_title = f'Bạn được phân khám KH {appt.customer.full_name}'
+    try:
+        if appt.doctor:
+            send_notification(appt.doctor, 'room_assigned', notif_title, data=notif_data)
+        if appt.ktv:
+            send_notification(appt.ktv, 'room_assigned', notif_title, data=notif_data)
+        if appt.sale:
+            send_notification(appt.sale, 'room_assigned', notif_title, data=notif_data)
+            send_notification_to_roles(['LEAD_SALE'], 'room_assigned', notif_title, data=notif_data)
+        if appt.doctor or appt.ktv:
+            send_notification_to_roles(['QUAN_LY', 'CHU_DN'], 'room_assigned', notif_title, data=notif_data)
+    except Exception:
+        pass
+
     return Response(AppointmentListSerializer(appt).data)
 
 
@@ -320,3 +336,39 @@ def walkin_create(request):
         'customer_phone': customer.phone,
         'appointment': AppointmentListSerializer(appt).data,
     }, status=201)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def available_staff(request):
+    """
+    GET /api/appointments/available-staff/?date=YYYY-MM-DD&role=BS
+    Trả danh sách nhân sự có ca duyệt (ShiftAssignment status='approved') theo ngày.
+    Chỉ LE_TAN / QUAN_LY / CHU_DN được gọi.
+    """
+    if request.user.role not in LETAN_ROLES:
+        return Response({'detail': 'Không có quyền xem danh sách nhân sự.'}, status=403)
+
+    from apps.attendance.models import ShiftAssignment
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    date_str = request.query_params.get('date')
+    if date_str:
+        try:
+            from datetime import date as date_type
+            query_date = date_type.fromisoformat(date_str)
+        except ValueError:
+            return Response({'detail': 'date không hợp lệ, dùng định dạng YYYY-MM-DD.'}, status=400)
+    else:
+        query_date = timezone.localdate()
+
+    qs = ShiftAssignment.objects.filter(date=query_date, status='approved')
+    role_filter = request.query_params.get('role')
+    if role_filter:
+        qs = qs.filter(user__role=role_filter)
+
+    user_ids = qs.values_list('user_id', flat=True).distinct()
+    users = User.objects.filter(id__in=user_ids, is_active=True).values('id', 'first_name', 'email', 'role')
+
+    return Response({'date': str(query_date), 'results': list(users)})
