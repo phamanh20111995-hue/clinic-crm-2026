@@ -104,3 +104,92 @@ def mark_notification_read(request, pk):
 def mark_all_notifications_read(request):
     Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
     return Response({'status': 'ok'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_or_create_direct(request):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({'detail': 'Thiếu user_id.'}, status=status.HTTP_400_BAD_REQUEST)
+    target = User.objects.filter(pk=user_id, is_active=True).first()
+    if not target:
+        return Response({'detail': 'Không tìm thấy user.'}, status=status.HTTP_404_NOT_FOUND)
+    if target == request.user:
+        return Response({'detail': 'Không thể chat với chính mình.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.db.models import Count
+    channel = (
+        ChatChannel.objects
+        .filter(channel_type='direct', members=request.user)
+        .filter(members=target)
+        .annotate(member_count=Count('members'))
+        .filter(member_count=2)
+        .first()
+    )
+    if not channel:
+        channel = ChatChannel.objects.create(channel_type='direct', created_by=request.user)
+        channel.members.set([request.user, target])
+
+    return Response(ChatChannelSerializer(channel, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_members(request, pk):
+    channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
+    if channel.channel_type != 'group':
+        return Response({'detail': 'Chỉ thêm thành viên vào nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user != channel.created_by and request.user.role not in ('QUAN_LY', 'CHU_DN'):
+        return Response({'detail': 'Không có quyền thêm thành viên.'}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    user_ids = request.data.get('user_ids', [])
+    if not user_ids:
+        return Response({'detail': 'Thiếu user_ids.'}, status=status.HTTP_400_BAD_REQUEST)
+    new_users = User.objects.filter(pk__in=user_ids, is_active=True)
+    channel.members.add(*new_users)
+    return Response(ChatChannelSerializer(channel, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def leave_channel(request, pk):
+    channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
+    if channel.channel_type != 'group':
+        return Response({'detail': 'Không thể rời kênh trực tiếp.'}, status=status.HTTP_400_BAD_REQUEST)
+    channel.members.remove(request.user)
+    return Response({'detail': 'Đã rời nhóm.'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def remove_member(request, pk):
+    channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
+    if channel.channel_type != 'group':
+        return Response({'detail': 'Chỉ xóa thành viên khỏi nhóm.'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user != channel.created_by and request.user.role not in ('QUAN_LY', 'CHU_DN'):
+        return Response({'detail': 'Không có quyền xóa thành viên.'}, status=status.HTTP_403_FORBIDDEN)
+
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({'detail': 'Thiếu user_id.'}, status=status.HTTP_400_BAD_REQUEST)
+    if user_id == request.user.id:
+        return Response({'detail': 'Dùng endpoint leave để tự rời.'}, status=status.HTTP_400_BAD_REQUEST)
+    channel.members.remove(user_id)
+    return Response(ChatChannelSerializer(channel, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def disband_channel(request, pk):
+    channel = get_object_or_404(ChatChannel, pk=pk, members=request.user)
+    if channel.channel_type != 'group':
+        return Response({'detail': 'Không thể giải tán kênh trực tiếp.'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user != channel.created_by and request.user.role not in ('QUAN_LY', 'CHU_DN'):
+        return Response({'detail': 'Chỉ trưởng nhóm mới giải tán được nhóm.'}, status=status.HTTP_403_FORBIDDEN)
+    channel.delete()
+    return Response({'detail': 'Đã giải tán nhóm.'})
