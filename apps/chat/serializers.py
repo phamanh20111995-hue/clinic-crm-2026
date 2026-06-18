@@ -23,8 +23,8 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ('id', 'channel', 'sender', 'sender_name', 'content', 'message_type',
-                  'file', 'file_url', 'metadata', 'is_pinned', 'created_at')
-        read_only_fields = ('id', 'sender', 'sender_name', 'file_url', 'created_at')
+                  'file', 'file_url', 'metadata', 'is_pinned', 'is_recalled', 'is_edited', 'created_at')
+        read_only_fields = ('id', 'sender', 'sender_name', 'file_url', 'is_recalled', 'is_edited', 'created_at')
 
     def get_sender_name(self, obj):
         return obj.sender.get_full_name() or obj.sender.email if obj.sender else ''

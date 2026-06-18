@@ -142,11 +142,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _save_message(self, content, message_type, metadata):
-        from .models import Message
-        return Message.objects.create(
+        from .models import Message, Notification, ChatChannel
+        msg = Message.objects.create(
             channel_id=self.channel_id,
             sender=self.user,
             content=content,
             message_type=message_type,
             metadata=metadata,
         )
+        channel = ChatChannel.objects.get(pk=self.channel_id)
+        sender_name = self.user.get_full_name() or self.user.email
+        if message_type == 'text':
+            body = content[:50] + ('…' if len(content) > 50 else '')
+        elif message_type == 'image':
+            body = '[Hình ảnh]'
+        elif message_type == 'video':
+            body = '[Video]'
+        else:
+            body = '[Tệp đính kèm]'
+        recipients = channel.members.exclude(pk=self.user.pk)
+        Notification.objects.bulk_create([
+            Notification(
+                recipient=member,
+                notif_type='general',
+                title=f'Tin nhắn mới từ {sender_name}',
+                body=body,
+                data={'channel_id': channel.id, 'message_id': msg.id, 'kind': 'message_new'},
+            ) for member in recipients
+        ])
+        return msg

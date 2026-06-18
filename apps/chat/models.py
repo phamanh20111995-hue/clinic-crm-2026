@@ -30,6 +30,8 @@ class Message(models.Model):
     file = models.FileField(upload_to='chat_files/', blank=True)
     metadata = models.JSONField(default=dict)
     is_pinned = models.BooleanField(default=False)
+    is_recalled = models.BooleanField(default=False)
+    is_edited = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

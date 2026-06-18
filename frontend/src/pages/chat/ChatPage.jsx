@@ -24,6 +24,9 @@ export default function ChatPage() {
   const [addMemberIds, setAddMemberIds] = useState([])
   const [showArchive, setShowArchive] = useState(false)
   const [lightbox, setLightbox] = useState(null)
+  const [editingMsg, setEditingMsg] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [menuMsgId, setMenuMsgId] = useState(null)
   const wsRef = useRef(null)
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -211,6 +214,27 @@ export default function ChatPage() {
       await refreshActiveChannel()
     } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi chuyển quyền') }
   }
+
+  const handleEditMessage = async (msgId) => {
+    if (!editText.trim()) return
+    try {
+      const { data } = await api.patch(`/api/chat/messages/${msgId}/edit/`, { content: editText.trim() })
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.content, is_edited: true } : m))
+      setEditingMsg(null)
+      setEditText('')
+    } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi sửa tin nhắn') }
+  }
+
+  const handleRecallMessage = async (msgId) => {
+    if (!window.confirm('Thu hồi tin nhắn này?')) return
+    try {
+      await api.post(`/api/chat/messages/${msgId}/recall/`)
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_recalled: true } : m))
+      setMenuMsgId(null)
+    } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi thu hồi tin nhắn') }
+  }
+
+  const isWithinOneHour = (createdAt) => createdAt && (Date.now() - new Date(createdAt).getTime()) <= 60 * 60 * 1000
 
   const URL_RE = /(https?:\/\/[^\s<>"']+)/g
 
@@ -497,33 +521,70 @@ export default function ChatPage() {
                   const isMe = msg.sender === user?.id || msg.sender_id === user?.id
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xs lg:max-w-md ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
+                      <div className={`max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
                         {!isMe && (
                           <span className="text-xs text-gray-400 mb-1 px-1">{msg.sender_name}</span>
                         )}
-                        <div className={`px-4 py-2 rounded-2xl text-sm ${
-                          isMe
-                            ? 'bg-primary-600 text-white rounded-br-sm'
-                            : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-                        }`}>
-                          {msg.message_type === 'image' && msg.file_url ? (
-                            <img src={msg.file_url} alt="" className="max-w-[240px] rounded-lg cursor-pointer"
-                              onClick={() => setLightbox({ type: 'image', url: msg.file_url })} />
-                          ) : msg.message_type === 'video' && msg.file_url ? (
-                            <video src={msg.file_url} controls className="max-w-[280px] rounded-lg"
-                              onClick={(e) => { e.preventDefault(); setLightbox({ type: 'video', url: msg.file_url }) }} />
-                          ) : msg.message_type === 'file' && msg.file_url ? (
-                            <a href={msg.file_url} target="_blank" rel="noopener noreferrer"
-                              className={`flex items-center gap-2 ${isMe ? 'text-white underline' : 'text-primary-600 underline'}`}>
-                              <span>📎</span>
-                              <span className="truncate max-w-[200px]">{msg.file_url.split('/').pop()}</span>
-                            </a>
-                          ) : (
-                            renderTextWithLinks(msg.content || '', isMe)
-                          )}
-                        </div>
+                        {msg.is_recalled ? (
+                          <div className="px-4 py-2 rounded-2xl text-sm bg-gray-200 text-gray-400 italic rounded-br-sm break-words overflow-hidden" style={{ overflowWrap: 'anywhere' }}>
+                            Tin nhắn đã thu hồi
+                          </div>
+                        ) : editingMsg === msg.id ? (
+                          <div className="flex flex-col gap-1.5">
+                            <input className="input text-sm" value={editText}
+                              onChange={e => setEditText(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && handleEditMessage(msg.id)} autoFocus />
+                            <div className="flex gap-1.5 justify-end">
+                              <button onClick={() => { setEditingMsg(null); setEditText('') }}
+                                className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded border border-gray-200">Hủy</button>
+                              <button onClick={() => handleEditMessage(msg.id)}
+                                className="text-xs text-white bg-primary-600 hover:bg-primary-700 px-2 py-1 rounded">Lưu</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative group">
+                            <div className={`px-4 py-2 rounded-2xl text-sm break-words overflow-hidden ${
+                              isMe
+                                ? 'bg-primary-600 text-white rounded-br-sm'
+                                : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                            }`} style={{ overflowWrap: 'anywhere' }}>
+                              {msg.message_type === 'image' && msg.file_url ? (
+                                <img src={msg.file_url} alt="" className="max-w-[240px] rounded-lg cursor-pointer"
+                                  onClick={() => setLightbox({ type: 'image', url: msg.file_url })} />
+                              ) : msg.message_type === 'video' && msg.file_url ? (
+                                <video src={msg.file_url} controls className="max-w-[280px] rounded-lg"
+                                  onClick={(e) => { e.preventDefault(); setLightbox({ type: 'video', url: msg.file_url }) }} />
+                              ) : msg.message_type === 'file' && msg.file_url ? (
+                                <a href={msg.file_url} target="_blank" rel="noopener noreferrer"
+                                  className={`flex items-center gap-2 ${isMe ? 'text-white underline' : 'text-primary-600 underline'}`}>
+                                  <span>📎</span>
+                                  <span className="truncate max-w-[200px]">{msg.file_url.split('/').pop()}</span>
+                                </a>
+                              ) : (
+                                renderTextWithLinks(msg.content || '', isMe)
+                              )}
+                            </div>
+                            {isMe && isWithinOneHour(msg.created_at) && (
+                              <div className="absolute top-0 right-full mr-1 hidden group-hover:flex items-center">
+                                <button onClick={() => setMenuMsgId(menuMsgId === msg.id ? null : msg.id)}
+                                  className="text-gray-400 hover:text-gray-600 text-xs px-1 py-0.5 rounded hover:bg-gray-100">···</button>
+                                {menuMsgId === msg.id && (
+                                  <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 whitespace-nowrap">
+                                    {(!msg.message_type || msg.message_type === 'text') && (
+                                      <button onClick={() => { setEditingMsg(msg.id); setEditText(msg.content || ''); setMenuMsgId(null) }}
+                                        className="block w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">Sửa</button>
+                                    )}
+                                    <button onClick={() => handleRecallMessage(msg.id)}
+                                      className="block w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-gray-50">Thu hồi</button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <span className="text-xs text-gray-300 mt-1 px-1">
                           {fmtDateTime(msg.created_at)}
+                          {msg.is_edited && !msg.is_recalled && <span className="text-gray-400 ml-1">(đã chỉnh sửa)</span>}
                         </span>
                       </div>
                     </div>

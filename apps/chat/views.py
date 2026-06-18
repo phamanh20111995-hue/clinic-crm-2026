@@ -3,6 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import ChatChannel, Message, Notification
 from .serializers import (
@@ -66,6 +68,26 @@ class MessageListCreateView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         msg = serializer.save()
+        channel = self.get_channel()
+        sender_name = request.user.get_full_name() or request.user.email
+        if msg.message_type == 'text':
+            body = msg.content[:50] + ('…' if len(msg.content) > 50 else '')
+        elif msg.message_type == 'image':
+            body = '[Hình ảnh]'
+        elif msg.message_type == 'video':
+            body = '[Video]'
+        else:
+            body = '[Tệp đính kèm]'
+        recipients = channel.members.exclude(pk=request.user.pk)
+        Notification.objects.bulk_create([
+            Notification(
+                recipient=member,
+                notif_type='general',
+                title=f'Tin nhắn mới từ {sender_name}',
+                body=body,
+                data={'channel_id': channel.id, 'message_id': msg.id, 'kind': 'message_new'},
+            ) for member in recipients
+        ])
         return Response(MessageSerializer(msg, context={'request': request}).data,
                         status=status.HTTP_201_CREATED)
 
@@ -77,6 +99,60 @@ def pin_message(request, message_id):
     msg.is_pinned = not msg.is_pinned
     msg.save(update_fields=['is_pinned'])
     return Response({'is_pinned': msg.is_pinned})
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def edit_message(request, message_id):
+    msg = get_object_or_404(Message, pk=message_id, channel__members=request.user)
+    if msg.sender != request.user:
+        return Response({'detail': 'Chỉ người gửi mới được sửa tin nhắn.'}, status=status.HTTP_403_FORBIDDEN)
+    if (timezone.now() - msg.created_at) > timedelta(hours=1):
+        return Response({'detail': 'Đã quá thời gian cho phép (1 giờ).'}, status=status.HTTP_403_FORBIDDEN)
+    if msg.message_type != 'text':
+        return Response({'detail': 'Chỉ sửa được tin nhắn text.'}, status=status.HTTP_400_BAD_REQUEST)
+    if msg.is_recalled:
+        return Response({'detail': 'Tin nhắn đã thu hồi, không sửa được.'}, status=status.HTTP_400_BAD_REQUEST)
+    content = request.data.get('content', '').strip()
+    if not content:
+        return Response({'detail': 'Nội dung không được để trống.'}, status=status.HTTP_400_BAD_REQUEST)
+    msg.content = content
+    msg.is_edited = True
+    msg.save(update_fields=['content', 'is_edited'])
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        async_to_sync(channel_layer.group_send)(f'chat_{msg.channel_id}', {
+            'type': 'chat_message_edited',
+            'message_id': msg.id,
+            'content': msg.content,
+            'is_edited': True,
+        })
+    return Response(MessageSerializer(msg, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def recall_message(request, message_id):
+    msg = get_object_or_404(Message, pk=message_id, channel__members=request.user)
+    if msg.sender != request.user:
+        return Response({'detail': 'Chỉ người gửi mới được thu hồi tin nhắn.'}, status=status.HTTP_403_FORBIDDEN)
+    if (timezone.now() - msg.created_at) > timedelta(hours=1):
+        return Response({'detail': 'Đã quá thời gian cho phép (1 giờ).'}, status=status.HTTP_403_FORBIDDEN)
+    if msg.is_recalled:
+        return Response({'detail': 'Tin nhắn đã thu hồi rồi.'}, status=status.HTTP_400_BAD_REQUEST)
+    msg.is_recalled = True
+    msg.save(update_fields=['is_recalled'])
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        async_to_sync(channel_layer.group_send)(f'chat_{msg.channel_id}', {
+            'type': 'chat_message_recalled',
+            'message_id': msg.id,
+        })
+    return Response(MessageSerializer(msg, context={'request': request}).data)
 
 
 class NotificationListView(generics.ListAPIView):
