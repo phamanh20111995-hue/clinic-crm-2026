@@ -40,6 +40,10 @@ AUTH_PASSWORD_VALIDATORS = [{'NAME':'django.contrib.auth.password_validation.Use
 LANGUAGE_CODE='vi'; TIME_ZONE='Asia/Ho_Chi_Minh'; USE_I18N=True; USE_TZ=True
 STATIC_URL='/static/'; STATIC_ROOT=BASE_DIR/'staticfiles'
 MEDIA_URL='/media/'; MEDIA_ROOT=BASE_DIR/'media'
+
+# Gioi han upload file (video chat) - 50MB. Tam thoi cho local/demo; production se chuyen S3.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800
 DEFAULT_AUTO_FIELD='django.db.models.BigAutoField'
 AUTH_USER_MODEL='accounts.User'
 REST_FRAMEWORK={'DEFAULT_AUTHENTICATION_CLASSES':('rest_framework_simplejwt.authentication.JWTAuthentication',),'DEFAULT_PERMISSION_CLASSES':('rest_framework.permissions.IsAuthenticated',),'DEFAULT_PAGINATION_CLASS':'rest_framework.pagination.PageNumberPagination','PAGE_SIZE':20}

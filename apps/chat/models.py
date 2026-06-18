@@ -20,7 +20,7 @@ class ChatChannel(models.Model):
 
 class Message(models.Model):
     MESSAGE_TYPES = [
-        ('text', 'Text'), ('file', 'File'), ('image', 'Ảnh'),
+        ('text', 'Text'), ('file', 'File'), ('image', 'Ảnh'), ('video', 'Video'),
         ('system', 'Hệ thống'), ('kh_share', 'Chia sẻ KH'), ('hd_share', 'Chia sẻ HĐ'),
     ]
     channel = models.ForeignKey(ChatChannel, on_delete=models.CASCADE, related_name='messages')

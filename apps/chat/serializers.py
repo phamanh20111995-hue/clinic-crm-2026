@@ -47,7 +47,7 @@ class MessageCreateSerializer(serializers.ModelSerializer):
         file = attrs.get('file')
         if msg_type == 'text' and not content:
             raise serializers.ValidationError('Nội dung không được để trống.')
-        if msg_type in ('file', 'image') and not file:
+        if msg_type in ('file', 'image', 'video') and not file:
             raise serializers.ValidationError('Cần đính kèm file.')
         return attrs
 

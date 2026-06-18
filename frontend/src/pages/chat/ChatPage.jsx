@@ -22,8 +22,11 @@ export default function ChatPage() {
   const [leftTab, setLeftTab] = useState('chat')
   const [showPanel, setShowPanel] = useState(false)
   const [addMemberIds, setAddMemberIds] = useState([])
+  const [showArchive, setShowArchive] = useState(false)
+  const [lightbox, setLightbox] = useState(null)
   const wsRef = useRef(null)
   const bottomRef = useRef(null)
+  const fileInputRef = useRef(null)
   const BASE_WS = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8001'
 
   useEffect(() => {
@@ -73,6 +76,27 @@ export default function ChatPage() {
         .catch(() => toast.error('Không gửi được tin nhắn'))
       setText('')
     }
+  }
+
+  const sendFile = async (file) => {
+    if (!file || !activeChannel) return
+    const fd = new FormData()
+    fd.append('file', file)
+    const mtype = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file'
+    fd.append('message_type', mtype)
+    fd.append('content', '')
+    try {
+      const r = await api.post(`/api/chat/channels/${activeChannel.id}/messages/`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setMessages(prev => [...prev, r.data])
+    } catch { toast.error('Không gửi được file') }
+  }
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (file) sendFile(file)
+    e.target.value = ''
   }
 
   const channelDisplayName = (ch) => {
@@ -188,6 +212,21 @@ export default function ChatPage() {
     } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi chuyển quyền') }
   }
 
+  const URL_RE = /(https?:\/\/[^\s<>"']+)/g
+
+  const renderTextWithLinks = (content, isMe) => {
+    const parts = content.split(URL_RE)
+    if (parts.length === 1) return content
+    return parts.map((part, i) =>
+      URL_RE.test(part) ? (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+          className={`underline decoration-1 ${isMe ? 'text-blue-200 hover:text-white' : 'text-primary-600 hover:text-primary-800'}`}>{part}</a>
+      ) : part
+    )
+  }
+
+  const extractUrls = (content) => (content ?? '').match(URL_RE) ?? []
+
   const sortedContacts = users
     .filter(u => u.id !== user?.id)
     .sort((a, b) => (a.display_name ?? a.email).localeCompare(b.display_name ?? b.email))
@@ -290,7 +329,7 @@ export default function ChatPage() {
           ) : (
             <>
               {/* Header */}
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-xl flex items-center justify-between">
                 {activeChannel.channel_type === 'group' ? (
                   <div className="cursor-pointer" onClick={() => { setShowPanel(true); setAddMemberIds([]) }}>
                     <p className="font-semibold text-gray-800 hover:text-primary-600 transition-colors">
@@ -301,7 +340,78 @@ export default function ChatPage() {
                 ) : (
                   <p className="font-semibold text-gray-800">{channelDisplayName(activeChannel)}</p>
                 )}
+                <button onClick={() => setShowArchive(true)}
+                  className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 hover:bg-gray-100">
+                  Kho lưu trữ
+                </button>
               </div>
+
+              <Modal open={showArchive} onClose={() => setShowArchive(false)} title="Kho lưu trữ" size="lg">
+                {(() => {
+                  const media = messages.filter(m => ['image', 'video'].includes(m.message_type) && m.file_url)
+                  const files = messages.filter(m => m.message_type === 'file' && m.file_url)
+                  const linkMessages = messages.filter(m => (!m.message_type || m.message_type === 'text') && extractUrls(m.content).length > 0)
+                  return (
+                    <div className="space-y-5">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2">Media ({media.length})</p>
+                        {media.length === 0 ? (
+                          <p className="text-xs text-gray-400">Chưa có ảnh/video nào.</p>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-2">
+                            {media.map(m => (
+                              <div key={m.id} className="relative cursor-pointer group"
+                                onClick={() => setLightbox({ type: m.message_type, url: m.file_url })}>
+                                {m.message_type === 'video' ? (
+                                  <div className="w-full h-24 bg-black rounded-lg flex items-center justify-center">
+                                    <span className="text-white text-2xl">▶</span>
+                                  </div>
+                                ) : (
+                                  <img src={m.file_url} alt="" className="w-full h-24 object-cover rounded-lg group-hover:opacity-80 transition-opacity" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2">File ({files.length})</p>
+                        {files.length === 0 ? (
+                          <p className="text-xs text-gray-400">Chưa có file nào.</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {files.map(m => (
+                              <a key={m.id} href={m.file_url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-primary-600">
+                                <span>📎</span>
+                                <span className="truncate">{m.file_url.split('/').pop()}</span>
+                                <span className="text-xs text-gray-400 ml-auto shrink-0">{fmtDateTime(m.created_at)}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2">Link ({linkMessages.length})</p>
+                        {linkMessages.length === 0 ? (
+                          <p className="text-xs text-gray-400">Chưa có link nào.</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {linkMessages.map(m => extractUrls(m.content).map((url, i) => (
+                              <a key={`${m.id}-${i}`} href={url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-primary-600">
+                                <span>🔗</span>
+                                <span className="truncate">{url}</span>
+                                <span className="text-xs text-gray-400 ml-auto shrink-0">{m.sender_name} · {fmtDateTime(m.created_at)}</span>
+                              </a>
+                            )))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </Modal>
 
               {activeChannel.channel_type === 'group' && (() => {
                 const isOwner = activeChannel.created_by === user?.id
@@ -396,7 +506,21 @@ export default function ChatPage() {
                             ? 'bg-primary-600 text-white rounded-br-sm'
                             : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                         }`}>
-                          {msg.content}
+                          {msg.message_type === 'image' && msg.file_url ? (
+                            <img src={msg.file_url} alt="" className="max-w-[240px] rounded-lg cursor-pointer"
+                              onClick={() => setLightbox({ type: 'image', url: msg.file_url })} />
+                          ) : msg.message_type === 'video' && msg.file_url ? (
+                            <video src={msg.file_url} controls className="max-w-[280px] rounded-lg"
+                              onClick={(e) => { e.preventDefault(); setLightbox({ type: 'video', url: msg.file_url }) }} />
+                          ) : msg.message_type === 'file' && msg.file_url ? (
+                            <a href={msg.file_url} target="_blank" rel="noopener noreferrer"
+                              className={`flex items-center gap-2 ${isMe ? 'text-white underline' : 'text-primary-600 underline'}`}>
+                              <span>📎</span>
+                              <span className="truncate max-w-[200px]">{msg.file_url.split('/').pop()}</span>
+                            </a>
+                          ) : (
+                            renderTextWithLinks(msg.content || '', isMe)
+                          )}
                         </div>
                         <span className="text-xs text-gray-300 mt-1 px-1">
                           {fmtDateTime(msg.created_at)}
@@ -410,6 +534,9 @@ export default function ChatPage() {
 
               {/* Input */}
               <form onSubmit={sendMessage} className="px-4 py-3 border-t border-gray-100 flex gap-2">
+                <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  className="px-2 text-gray-400 hover:text-gray-600 text-lg" title="Đính kèm file">📎</button>
                 <input
                   className="input flex-1"
                   placeholder="Nhập tin nhắn..."
@@ -422,6 +549,23 @@ export default function ChatPage() {
           )}
         </div>
       </div>
+      {lightbox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setLightbox(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setLightbox(null)}>
+          <div className="relative max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute -top-10 right-0 flex gap-3">
+              <a href={lightbox.url} download className="text-white hover:text-gray-300 text-sm">⬇ Tải về</a>
+              <button onClick={() => setLightbox(null)} className="text-white hover:text-gray-300 text-2xl leading-none">&times;</button>
+            </div>
+            {lightbox.type === 'video' ? (
+              <video src={lightbox.url} controls autoPlay className="max-w-[90vw] max-h-[85vh] rounded-lg" />
+            ) : (
+              <img src={lightbox.url} alt="" className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg" />
+            )}
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }
