@@ -1,9 +1,11 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
+import django_filters
 
 from .models import Customer, CustomerImage, CallHistory, ReturnRequest
 from .serializers import (
@@ -12,6 +14,7 @@ from .serializers import (
     CustomerImageSerializer, CallHistorySerializer,
     ReturnRequestSerializer, CustomerCskhAssignSerializer,
 )
+from .pagination import CustomerPagination
 from apps.accounts.permissions import IsLeadTele, IsLeadOrAbove, HasFullCustomerAccess
 from apps.chat.notifications import send_notification, send_notification_to_roles
 
@@ -44,13 +47,33 @@ def _customer_queryset(user, detail=False):
     return qs.none()
 
 
+class CustomerFilter(django_filters.FilterSet):
+    created_after = django_filters.DateFilter(field_name='created_at', lookup_expr='date__gte')
+    created_before = django_filters.DateFilter(field_name='created_at', lookup_expr='date__lte')
+    unassigned = django_filters.BooleanFilter(method='filter_unassigned')
+
+    class Meta:
+        model = Customer
+        fields = ['source', 'status', 'data_type', 'gender', 'province', 'sale', 'tele', 'cskh', 'is_customer']
+
+    def filter_unassigned(self, queryset, name, value):
+        if value:
+            return queryset.filter(sale__isnull=True, tele__isnull=True, cskh__isnull=True)
+        return queryset
+
+
 class CustomerListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/customers/        — Danh sách KH (filter theo role tự động)
     POST /api/customers/        — Tạo KH mới
-    Query params: status, source, data_type, tele_id, sale_id, search
     """
     permission_classes = [IsAuthenticated]
+    pagination_class = CustomerPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = CustomerFilter
+    search_fields = ['full_name', 'phone']
+    ordering = ['-created_at']
+    ordering_fields = ['full_name', 'phone', 'created_at', 'status', 'source']
 
     def get_serializer_class(self):
         return CustomerCreateSerializer if self.request.method == 'POST' else CustomerListSerializer
@@ -68,17 +91,7 @@ class CustomerListCreateView(generics.ListCreateAPIView):
             pass
 
     def get_queryset(self):
-        qs = _customer_queryset(self.request.user)
-        p = self.request.query_params
-
-        if p.get('status'):   qs = qs.filter(status=p['status'])
-        if p.get('source'):   qs = qs.filter(source=p['source'])
-        if p.get('data_type'):qs = qs.filter(data_type=p['data_type'])
-        if p.get('tele_id'):  qs = qs.filter(tele_id=p['tele_id'])
-        if p.get('sale_id'):  qs = qs.filter(sale_id=p['sale_id'])
-        if p.get('search'):
-            qs = qs.filter(full_name__icontains=p['search']) | qs.filter(phone__icontains=p['search'])
-        return qs.order_by('-created_at')
+        return _customer_queryset(self.request.user)
 
 
 class CustomerDetailView(generics.RetrieveUpdateAPIView):

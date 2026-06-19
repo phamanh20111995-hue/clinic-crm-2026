@@ -32,6 +32,10 @@ class Customer(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='chua_goi')
     call_count = models.IntegerField(default=0)
+    customer_group = models.CharField(max_length=200, blank=True)
+    appointment_date = models.DateField(null=True, blank=True)
+    province = models.CharField(max_length=100, blank=True)
+    is_customer = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     is_deleted = models.BooleanField(default=False)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,

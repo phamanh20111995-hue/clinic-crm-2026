@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../../hooks/useNotifications'
+import useAuthStore from '../../store/authStore'
 
 function fmtAgo(dateStr) {
   if (!dateStr) return ''
@@ -12,6 +14,8 @@ function fmtAgo(dateStr) {
 
 export default function NotifBell() {
   const { notifs, unreadCount, loading, load, markRead, markAllRead } = useNotifications()
+  const { user } = useAuthStore()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const dropRef = useRef(null)
 
@@ -30,6 +34,27 @@ export default function NotifBell() {
 
   const handleItem = (n) => {
     if (!n.is_read) markRead(n.id)
+    setOpen(false)
+    const nType = n.notif_type
+    let path = null
+    if (nType === 'new_lead_from_page') {
+      path = '/tele?tab=queue'
+    } else if (nType === 'customer_assigned') {
+      path = (user?.role || '').includes('SALE') ? '/sale?tab=viec' : '/tele?tab=my_work'
+    } else if (nType === 'cskh_assigned') {
+      path = '/cskh?tab=hangcho'
+    } else if (nType === 'hd_approved') {
+      path = '/contracts'
+    } else if (nType === 'hd_approved_cskh') {
+      path = '/cskh?tab=hd'
+    } else if (nType === 'room_assigned') {
+      path = '/appointments'
+    } else if (nType === 'shift_pending' || nType === 'leave_pending' || nType === 'absence_alert' || (nType || '').includes('shift')) {
+      path = '/lich-lam-viec'
+    } else if (nType === 'general') {
+      path = n.data?.kind === 'message_new' ? '/chat' : '/lich-lam-viec'
+    }
+    if (path) navigate(path)
   }
 
   return (

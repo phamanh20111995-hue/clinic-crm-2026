@@ -144,11 +144,12 @@ def approve_contract(request, pk):
 
         # Chuyển KH vào hàng chờ CSKH hoặc đang chăm sóc nếu đã phân CSKH
         customer = contract.customer
+        customer.is_customer = True
         if customer.cskh_id:
             customer.status = 'dang_cham_soc'
         else:
             customer.status = 'cho_phan_cskh'
-        customer.save(update_fields=['status', 'updated_at'])
+        customer.save(update_fields=['status', 'is_customer', 'updated_at'])
 
     send_notification(
         contract.created_by,

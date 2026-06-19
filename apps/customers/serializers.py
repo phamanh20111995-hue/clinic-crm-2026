@@ -47,7 +47,8 @@ class CustomerListSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
                   'data_type','data_type_display','status','status_display',
-                  'call_count','tele_name','sale_name','cskh','cskh_name','created_at']
+                  'call_count','customer_group','appointment_date','province',
+                  'tele_name','sale_name','cskh','cskh_name','created_at']
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
@@ -65,7 +66,8 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ['id','full_name','phone','dob','gender','address',
                   'source','source_display','data_type','data_type_display',
-                  'status','status_display','call_count','notes',
+                  'status','status_display','call_count',
+                  'customer_group','appointment_date','province','notes',
                   'tele','tele_name','sale','sale_name','cskh','cskh_name',
                   'created_by_name','created_at','updated_at',
                   'calls','images']
@@ -75,7 +77,8 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 class CustomerCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ['full_name','phone','dob','gender','address','source','data_type','notes','tele','sale','cskh']
+        fields = ['full_name','phone','dob','gender','address','source','data_type',
+                  'customer_group','appointment_date','province','notes','tele','sale','cskh']
 
     def validate_phone(self, value):
         # Kiểm tra trùng SĐT (CLAUDE.md)
