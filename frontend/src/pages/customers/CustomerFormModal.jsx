@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../../components/ui/Modal'
-import { createCustomer, checkPhone } from '../../api/customers'
+import { createCustomer, updateCustomer, checkPhone } from '../../api/customers'
+import { getMktUsers } from '../../api/letan'
 import toast from 'react-hot-toast'
 
 const SOURCES = ['facebook', 'zalo', 'google', 'tiktok', 'referral', 'walkin', 'other']
@@ -9,18 +10,53 @@ const DATA_TYPES = [
   { value: 'am',   label: '🌤 Âm' },
   { value: 'thuong', label: '❄ Thường' },
 ]
+const STATUS_CHOICES = [
+  { value: 'chua_goi', label: 'Chưa gọi' },
+  { value: 'da_goi', label: 'Đã gọi' },
+  { value: 'khong_nghe', label: 'Không nghe máy' },
+  { value: 'thue_bao', label: 'Thuê bao' },
+  { value: 'sai_so', label: 'Sai số' },
+  { value: 'tu_choi', label: 'Từ chối' },
+  { value: 'hoan_so', label: 'Hoàn số' },
+  { value: 'dat_lich', label: 'Đặt lịch' },
+  { value: 'hen_goi', label: 'Hẹn gọi lại' },
+  { value: 'khong_qt', label: 'Không quan tâm' },
+  { value: 'cho_phan_cskh', label: 'Chờ phân CSKH' },
+  { value: 'dang_cham_soc', label: 'Đang chăm sóc' },
+]
 
-export default function CustomerFormModal({ onClose }) {
+const PROVINCES = ['Hà Nội','TP. Hồ Chí Minh','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','Tuyên Quang','Lào Cai','Thái Nguyên','Phú Thọ','Bắc Ninh','Hưng Yên','Ninh Bình','Quảng Trị','Quảng Ngãi','Gia Lai','Khánh Hòa','Lâm Đồng','Đắk Lắk','Đồng Nai','Tây Ninh','Vĩnh Long','Đồng Tháp','Cà Mau','An Giang','Cao Bằng','Điện Biên','Hà Tĩnh','Lai Châu','Lạng Sơn','Nghệ An','Quảng Ninh','Thanh Hóa','Sơn La']
+
+export default function CustomerFormModal({ onClose, customer, onSaved }) {
+  const isEdit = !!customer
   const [form, setForm] = useState({
-    full_name: '', phone: '', email: '',
-    source: 'facebook', data_type: 'thuong', notes: '',
+    full_name: customer?.full_name ?? '',
+    phone: customer?.phone ?? '',
+    email: customer?.email ?? '',
+    source: customer?.source ?? 'facebook',
+    data_type: customer?.data_type ?? 'thuong',
+    gender: customer?.gender ?? '',
+    dob: customer?.dob ?? '',
+    status: customer?.status ?? 'chua_goi',
+    customer_group: customer?.customer_group ?? '',
+    appointment_date: customer?.appointment_date ?? '',
+    province: customer?.province ?? '',
+    address: customer?.address ?? '',
+    ads: customer?.ads ?? '',
+    notes: customer?.notes ?? '',
   })
   const [phoneChecked, setPhoneChecked] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [mktUsers, setMktUsers] = useState([])
+
+  useEffect(() => {
+    getMktUsers().then(res => setMktUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
+  }, [])
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   const handlePhoneBlur = async () => {
+    if (isEdit) return
     if (!form.phone || form.phone.length < 9) return
     try {
       const { data } = await checkPhone(form.phone)
@@ -31,11 +67,23 @@ export default function CustomerFormModal({ onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (phoneChecked) { toast.error('SĐT đã tồn tại. Không thể tạo trùng.'); return }
+    if (!isEdit && phoneChecked) { toast.error('SĐT đã tồn tại. Không thể tạo trùng.'); return }
     setLoading(true)
     try {
-      await createCustomer(form)
-      toast.success('Đã thêm khách hàng mới')
+      const payload = { ...form,
+        dob: form.dob || null,
+        appointment_date: form.appointment_date || null,
+        ads: form.ads || null,
+      }
+      let res
+      if (isEdit) {
+        res = await updateCustomer(customer.id, payload)
+        toast.success('Đã cập nhật thông tin')
+      } else {
+        res = await createCustomer(payload)
+        toast.success('Đã thêm khách hàng mới')
+      }
+      if (onSaved) onSaved(res.data)
       onClose()
     } catch (err) {
       const msg = Object.values(err.response?.data ?? {}).flat().join(' ') || 'Có lỗi xảy ra'
@@ -46,7 +94,7 @@ export default function CustomerFormModal({ onClose }) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Thêm khách hàng mới">
+    <Modal open onClose={onClose} title={isEdit ? 'Sửa thông tin khách hàng' : 'Thêm khách hàng mới'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
@@ -56,10 +104,10 @@ export default function CustomerFormModal({ onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
-            <input required className={`input ${phoneChecked ? 'border-red-400' : ''}`}
+            <input required className={`input ${!isEdit && phoneChecked ? 'border-red-400' : ''}`}
               value={form.phone} onChange={(e) => set('phone', e.target.value)}
               onBlur={handlePhoneBlur} placeholder="0912345678" />
-            {phoneChecked && (
+            {!isEdit && phoneChecked && (
               <p className="text-xs text-red-500 mt-1">⚠️ Trùng: {phoneChecked.full_name}</p>
             )}
           </div>
@@ -67,6 +115,19 @@ export default function CustomerFormModal({ onClose }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input type="email" className="input" value={form.email}
               onChange={(e) => set('email', e.target.value)} placeholder="email@gmail.com" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
+            <select className="input" value={form.gender} onChange={(e) => set('gender', e.target.value)}>
+              <option value="">-- Chọn --</option>
+              <option value="M">Nam</option>
+              <option value="F">Nữ</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
+            <input type="date" className="input" value={form.dob}
+              onChange={(e) => set('dob', e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nguồn</label>
@@ -80,6 +141,42 @@ export default function CustomerFormModal({ onClose }) {
               {DATA_TYPES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+            <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
+              {STATUS_CHOICES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nhóm khách</label>
+            <input className="input" value={form.customer_group}
+              onChange={(e) => set('customer_group', e.target.value)} placeholder="VIP, thường..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hẹn</label>
+            <input type="date" className="input" value={form.appointment_date}
+              onChange={(e) => set('appointment_date', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tỉnh/TP</label>
+            <input list="province-list" className="input" value={form.province}
+              onChange={(e) => set('province', e.target.value)} placeholder="Hà Nội, TP.HCM..." />
+            <datalist id="province-list">
+              {PROVINCES.map((p) => <option key={p} value={p} />)}
+            </datalist>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ads phụ trách</label>
+            <select className="input" value={form.ads} onChange={(e) => set('ads', e.target.value)}>
+              <option value="">-- Chọn nhân viên MKT --</option>
+              {mktUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+            <textarea className="input resize-none" rows={2} value={form.address}
+              onChange={(e) => set('address', e.target.value)} placeholder="Số nhà, đường, phường..." />
+          </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
             <textarea className="input resize-none" rows={2} value={form.notes}
@@ -87,8 +184,8 @@ export default function CustomerFormModal({ onClose }) {
           </div>
         </div>
         <div className="flex gap-2 pt-2">
-          <button type="submit" disabled={loading || !!phoneChecked} className="btn-primary">
-            {loading ? 'Đang lưu...' : '+ Thêm KH'}
+          <button type="submit" disabled={loading || (!isEdit && !!phoneChecked)} className="btn-primary">
+            {loading ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : '+ Thêm KH'}
           </button>
           <button type="button" onClick={onClose} className="btn-secondary">Huỷ</button>
         </div>

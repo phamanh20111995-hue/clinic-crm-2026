@@ -39,6 +39,7 @@ const ALL_COLUMNS = [
   { key: 'tele_name', label: 'Tele phụ trách', roles: ['TELE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
   { key: 'sale_name', label: 'Sale phụ trách', roles: ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
   { key: 'cskh_name', label: 'CSKH phụ trách', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
+  { key: 'ads_name', label: 'Ads phụ trách', roles: ['MKT', 'LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
   { key: 'created_by_name', label: 'Người tạo', roles: ['QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
 ]
 
@@ -178,6 +179,8 @@ export default function CustomersPage() {
         return <span style={{ color: '#64748b' }}>{c.sale_name ?? '—'}</span>
       case 'cskh_name':
         return <span style={{ color: '#64748b' }}>{c.cskh_name ?? '—'}</span>
+      case 'ads_name':
+        return <span style={{ color: '#64748b' }}>{c.ads_name ?? '—'}</span>
       case 'created_by_name':
         return <span style={{ color: '#64748b' }}>{c.created_by_name ?? '—'}</span>
       default:

@@ -29,6 +29,9 @@ export const getRooms = (params) =>
 export const getUsers = (params) =>
   api.get('/api/auth/users/', { params })
 
+export const getMktUsers = () =>
+  api.get('/api/auth/users/', { params: { role: 'MKT' } })
+
 export const getAvailableStaff = (params) =>
   api.get('/api/appointments/available-staff/', { params }).catch(() => ({ data: [] }))
 

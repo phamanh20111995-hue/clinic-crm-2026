@@ -100,6 +100,8 @@ export default function TongQuanTab({ customer, contracts }) {
           <InfoRow label="Loại data"        value={customer.data_type_display} />
           <InfoRow label="Sale phụ trách"   value={customer.sale_name} />
           <InfoRow label="Tele phụ trách"   value={customer.tele_name} />
+          <InfoRow label="CSKH phụ trách"   value={customer.cskh_name} />
+          <InfoRow label="Ads phụ trách"    value={customer.ads_name} />
           <InfoRow label="Người tạo"        value={customer.created_by_name} />
           <InfoRow label="Ngày tạo"         value={fmtDate(customer.created_at)} />
           {customer.notes && <InfoRow label="Ghi chú" value={customer.notes} />}

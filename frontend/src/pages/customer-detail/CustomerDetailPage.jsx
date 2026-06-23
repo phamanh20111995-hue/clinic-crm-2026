@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { IconChevronLeft, IconRefresh } from '@tabler/icons-react'
+import { IconChevronLeft, IconRefresh, IconPencil } from '@tabler/icons-react'
 import AppLayout from '../../components/layout/AppLayout'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 import { getCustomerDetail, getCustomerContracts, getCustomerAppts } from '../../api/customerDetail'
+import CustomerFormModal from '../customers/CustomerFormModal'
 import TongQuanTab  from './tabs/TongQuanTab'
 import HanhTrinhTab from './tabs/HanhTrinhTab'
 import TaiChinhTab  from './tabs/TaiChinhTab'
@@ -71,6 +72,7 @@ export default function CustomerDetailPage() {
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState(null)
   const [activeTab, setActiveTab] = useState('tongquan')
+  const [showEdit, setShowEdit] = useState(false)
 
   const tabs = getTabsForRole(role)
 
@@ -106,6 +108,13 @@ export default function CustomerDetailPage() {
     }
   }, [role])
 
+  const editBtn = (
+    <button onClick={() => setShowEdit(true)}
+      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: '1px solid #dde3ef', background: '#fff', fontSize: 12, cursor: 'pointer' }}>
+      <IconPencil size={14} /> Sửa
+    </button>
+  )
+
   const backBtn = (
     <button onClick={() => navigate(-1)}
       style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: '1px solid #dde3ef', background: '#fff', fontSize: 12, cursor: 'pointer' }}>
@@ -124,7 +133,7 @@ export default function CustomerDetailPage() {
     <AppLayout
       title={customer ? `Hồ sơ: ${customer.full_name}` : 'Hồ sơ khách hàng'}
       meta={customer?.phone ?? id}
-      actions={<div style={{ display: 'flex', gap: 6 }}>{backBtn}{refreshBtn}</div>}
+      actions={<div style={{ display: 'flex', gap: 6 }}>{editBtn}{backBtn}{refreshBtn}</div>}
     >
       {loading ? (
         <div style={{ padding: 60, textAlign: 'center', color: '#9ca3af' }}>
@@ -157,6 +166,14 @@ export default function CustomerDetailPage() {
           {activeTab === 'anh'       && <AnhTab customer={customer} images={customer.images ?? []} canUpload={canUploadPhoto(role)} />}
         </div>
       ) : null}
+
+      {showEdit && customer && (
+        <CustomerFormModal
+          customer={customer}
+          onClose={() => setShowEdit(false)}
+          onSaved={(data) => setCustomer(prev => ({ ...prev, ...data }))}
+        />
+      )}
     </AppLayout>
   )
 }
