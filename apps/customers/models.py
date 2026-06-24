@@ -23,6 +23,7 @@ class Customer(models.Model):
         related_name='cskh_customers', limit_choices_to={'role':'CSKH'})
     ads = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='ads_customers', limit_choices_to={'role':'MKT'})
+    services_interest = models.ManyToManyField('services.Service', blank=True, related_name='interested_customers')
     STATUS_CHOICES = [
         ('chua_goi','Chưa gọi'),('da_goi','Đã gọi'),
         ('khong_nghe','Không nghe máy'),('thue_bao','Thuê bao'),

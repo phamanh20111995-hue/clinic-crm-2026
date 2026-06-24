@@ -171,7 +171,7 @@ export default function CustomerDetailPage() {
         <CustomerFormModal
           customer={customer}
           onClose={() => setShowEdit(false)}
-          onSaved={(data) => setCustomer(prev => ({ ...prev, ...data }))}
+          onSaved={() => load()}
         />
       )}
     </AppLayout>

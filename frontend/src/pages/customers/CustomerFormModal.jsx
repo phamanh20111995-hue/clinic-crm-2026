@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Modal from '../../components/ui/Modal'
 import { createCustomer, updateCustomer, checkPhone } from '../../api/customers'
-import { getMktUsers } from '../../api/letan'
+import { getMktUsers, getTeleUsers, getServices } from '../../api/letan'
 import toast from 'react-hot-toast'
 
 const SOURCES = ['facebook', 'zalo', 'google', 'tiktok', 'referral', 'walkin', 'other']
@@ -27,6 +27,8 @@ const STATUS_CHOICES = [
 
 const PROVINCES = ['Hà Nội','TP. Hồ Chí Minh','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','Tuyên Quang','Lào Cai','Thái Nguyên','Phú Thọ','Bắc Ninh','Hưng Yên','Ninh Bình','Quảng Trị','Quảng Ngãi','Gia Lai','Khánh Hòa','Lâm Đồng','Đắk Lắk','Đồng Nai','Tây Ninh','Vĩnh Long','Đồng Tháp','Cà Mau','An Giang','Cao Bằng','Điện Biên','Hà Tĩnh','Lai Châu','Lạng Sơn','Nghệ An','Quảng Ninh','Thanh Hóa','Sơn La']
 
+const CUSTOMER_GROUPS = ['Khách mới','Khách thường','Khách thân thiết','VIP','VVIP','Khách giới thiệu','Khách nội bộ']
+
 export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const isEdit = !!customer
   const [form, setForm] = useState({
@@ -42,15 +44,21 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
     appointment_date: customer?.appointment_date ?? '',
     province: customer?.province ?? '',
     address: customer?.address ?? '',
+    tele: customer?.tele ?? '',
     ads: customer?.ads ?? '',
+    services_interest: customer?.services_interest ?? [],
     notes: customer?.notes ?? '',
   })
   const [phoneChecked, setPhoneChecked] = useState(null)
   const [loading, setLoading] = useState(false)
   const [mktUsers, setMktUsers] = useState([])
+  const [teleUsers, setTeleUsers] = useState([])
+  const [services, setServices] = useState([])
 
   useEffect(() => {
     getMktUsers().then(res => setMktUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
+    getTeleUsers().then(res => setTeleUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
+    getServices().then(res => setServices(res.data?.results ?? res.data ?? [])).catch(() => {})
   }, [])
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
@@ -73,7 +81,9 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
       const payload = { ...form,
         dob: form.dob || null,
         appointment_date: form.appointment_date || null,
+        tele: form.tele || null,
         ads: form.ads || null,
+        services_interest: form.services_interest,
       }
       let res
       if (isEdit) {
@@ -149,8 +159,10 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nhóm khách</label>
-            <input className="input" value={form.customer_group}
-              onChange={(e) => set('customer_group', e.target.value)} placeholder="VIP, thường..." />
+            <select className="input" value={form.customer_group} onChange={(e) => set('customer_group', e.target.value)}>
+              <option value="">— Chọn nhóm —</option>
+              {CUSTOMER_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hẹn</label>
@@ -171,6 +183,30 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               <option value="">-- Chọn nhân viên MKT --</option>
               {mktUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Giao cho Tele</label>
+            <select className="input" value={form.tele} onChange={(e) => set('tele', e.target.value)}>
+              <option value="">— Chưa giao —</option>
+              {teleUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Dịch vụ quan tâm</label>
+            <div style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: 8, maxHeight: 140, overflowY: 'auto' }}>
+              {services.map((s) => (
+                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '2px 0', cursor: 'pointer' }}>
+                  <input type="checkbox"
+                    checked={form.services_interest.includes(Number(s.id))}
+                    onChange={() => set('services_interest',
+                      form.services_interest.includes(Number(s.id))
+                        ? form.services_interest.filter(x => x !== Number(s.id))
+                        : [...form.services_interest, Number(s.id)]
+                    )} />
+                  {s.name}
+                </label>
+              ))}
+            </div>
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
