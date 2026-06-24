@@ -8,7 +8,7 @@ import TeleQueue from './views/TeleQueue'
 import TeleHistory from './views/TeleHistory'
 import TeleSchedule from './views/TeleSchedule'
 import HoaDonTab from '../sale/tabs/HoaDonTab'
-import NewDataModal from './modals/NewDataModal'
+import CustomerFormModal from '../customers/CustomerFormModal'
 import ChotHDModal from '../sale/modals/ChotHDModal'
 import { IconLayoutGrid, IconPhone, IconPlus, IconFileInvoice } from '@tabler/icons-react'
 import { getUserRole } from '../../utils/rolesV2'
@@ -38,6 +38,7 @@ export default function TelePage() {
                     : 'tele'
 
   const [showNewData, setShowNewData] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [showChot, setShowChot] = useState(false)
 
   const VALID_TELE_TABS = TELE_TABS.map(t => t.key)
@@ -144,7 +145,7 @@ export default function TelePage() {
       {canTrucPage && isTruc && (
         <TrucPageView
           onNewData={() => setShowNewData(true)}
-          hideNewBtn
+          reloadKey={reloadKey}
         />
       )}
 
@@ -159,11 +160,10 @@ export default function TelePage() {
         </>
       )}
 
-      {/* New data modal — controlled from topbar */}
       {showNewData && (
-        <NewDataModal
+        <CustomerFormModal
           onClose={() => setShowNewData(false)}
-          onDone={() => { setShowNewData(false) }}
+          onSaved={() => { setReloadKey(k => k + 1); setShowNewData(false) }}
         />
       )}
       {showChot && <ChotHDModal onClose={() => setShowChot(false)} onDone={() => setShowChot(false)} />}

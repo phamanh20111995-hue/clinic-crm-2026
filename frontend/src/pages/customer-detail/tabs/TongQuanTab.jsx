@@ -1,3 +1,6 @@
+import useAuthStore from '../../../store/authStore'
+import { getUserRole } from '../../../utils/rolesV2'
+
 const ACCENT = '#1e40af'
 
 function InfoRow({ label, value }) {
@@ -39,6 +42,7 @@ function fmtMoney(n) {
 }
 
 export default function TongQuanTab({ customer, contracts }) {
+  const role = getUserRole(useAuthStore(s => s.user))
   const st = STATUS_CFG[customer.status] ?? { bg: '#f3f4f6', color: '#374151', label: customer.status_display ?? customer.status }
 
   const totalContract = contracts.reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
@@ -49,6 +53,7 @@ export default function TongQuanTab({ customer, contracts }) {
 
   const initial = (customer.full_name || '?')[0].toUpperCase()
   const genderLabel = customer.gender === 'M' ? 'Nam' : customer.gender === 'F' ? 'Nữ' : 'Không xác định'
+  const showFinanceStats = role !== 'TRUC_PAGE'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -76,13 +81,15 @@ export default function TongQuanTab({ customer, contracts }) {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-        <StatCard label="Tổng HĐ"        value={contracts.length}      color={ACCENT} />
-        <StatCard label="Tổng chi tiêu"   value={fmtMoney(totalContract)} color="#15803d" />
-        <StatCard label="Đã thanh toán"   value={fmtMoney(totalPaid)}   color="#0369a1" />
-        <StatCard label="Công nợ"         value={fmtMoney(debt)}        color={debt > 0 ? '#dc2626' : '#6b7280'} />
-        <StatCard label="Số lần gọi"      value={customer.call_count ?? 0} color="#6d28d9" />
-      </div>
+      {showFinanceStats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+          <StatCard label="Tổng HĐ"        value={contracts.length}      color={ACCENT} />
+          <StatCard label="Tổng chi tiêu"   value={fmtMoney(totalContract)} color="#15803d" />
+          <StatCard label="Đã thanh toán"   value={fmtMoney(totalPaid)}   color="#0369a1" />
+          <StatCard label="Công nợ"         value={fmtMoney(debt)}        color={debt > 0 ? '#dc2626' : '#6b7280'} />
+          <StatCard label="Số lần gọi"      value={customer.call_count ?? 0} color="#6d28d9" />
+        </div>
+      )}
 
       {/* Thông tin cơ bản */}
       <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>

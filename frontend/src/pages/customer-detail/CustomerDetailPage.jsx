@@ -30,9 +30,9 @@ function getTabsForRole(role) {
   ]
   if (FULL_ROLES.includes(role)) return ALL
   if (CSKH_ROLES.includes(role)) return ALL.filter(t => t.key !== 'taichinch')
-  if (role === 'SALE') return ALL  // SALE sees all tabs for own customer
-  // TELE, LE_TAN, MKT
-  return ALL.filter(t => !['taichinch'].includes(t.key))
+  if (role === 'SALE') return ALL
+  // TELE, LE_TAN, MKT, TRUC_PAGE
+  return ALL.filter(t => t.key !== 'taichinch')
 }
 
 function canUploadPhoto(role) {

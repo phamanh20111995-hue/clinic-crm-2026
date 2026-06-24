@@ -43,6 +43,8 @@ def _customer_queryset(user, detail=False):
         return qs.filter(cskh=user)
     if user.role == 'LEAD_CSKH':
         return qs
+    if user.role == 'TRUC_PAGE':
+        return qs
     # Vai trò khác không có quyền xem hồ sơ KH
     return qs.none()
 
