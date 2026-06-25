@@ -32,7 +32,7 @@ def _compute_kpi(user, month, year):
     # Calls (Tele)
     calls_actual = CallHistory.objects.filter(
         customer__tele=user,
-        created_at__year=year, created_at__month=month,
+        called_at__year=year, called_at__month=month,
     ).count()
 
     # Appointments (Sale / CSKH — lịch hẹn của KH mình phụ trách)
@@ -182,7 +182,7 @@ def kpi_tele(request):
     for u in tele_users:
         calls = CallHistory.objects.filter(
             customer__tele=u,
-            created_at__year=year, created_at__month=month,
+            called_at__year=year, called_at__month=month,
         )
         total_calls = calls.count()
         unique_customers = calls.values('customer').distinct().count()
@@ -294,7 +294,7 @@ def kpi_truc_page(request):
     ).count()
 
     leads_called = CallHistory.objects.filter(
-        created_at__year=year, created_at__month=month,
+        called_at__year=year, called_at__month=month,
     ).values('customer').distinct().count()
 
     appointments_created = Appointment.objects.filter(
