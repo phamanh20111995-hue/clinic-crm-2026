@@ -36,7 +36,7 @@ function getTabsForRole(role) {
 }
 
 function canUploadPhoto(role) {
-  return ['LE_TAN', 'QUAN_LY', 'CHU_DN', 'CSKH', 'LEAD_CSKH'].includes(role)
+  return ['LE_TAN', 'QUAN_LY', 'CHU_DN', 'CSKH', 'LEAD_CSKH', 'TRUC_PAGE'].includes(role)
 }
 
 // ─── Sub-nav tabs (inline, not using AppLayout tabs because we need colors) ──

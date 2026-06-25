@@ -6,10 +6,10 @@ import toast from 'react-hot-toast'
 const ACCENT = '#1e40af'
 
 const TYPE_LABEL = {
-  before: 'Trước',
-  after: 'Sau',
-  progress: 'Tiến trình',
-  other: 'Khác',
+  truoc: 'Trước ĐT',
+  trong: 'Trong ĐT',
+  sau: 'Sau ĐT',
+  tinh_trang: 'Tình trạng',
 }
 
 export default function AnhTab({ customer, images: initImages, canUpload }) {
@@ -17,7 +17,7 @@ export default function AnhTab({ customer, images: initImages, canUpload }) {
   const [lightbox, setLightbox]   = useState(null)
   const [previews, setPreviews]   = useState([])
   const [files, setFiles]         = useState([])
-  const [imgType, setImgType]     = useState('progress')
+  const [imgType, setImgType]     = useState('tinh_trang')
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef()
 

@@ -53,14 +53,27 @@ class CustomerFilter(django_filters.FilterSet):
     created_after = django_filters.DateFilter(field_name='created_at', lookup_expr='date__gte')
     created_before = django_filters.DateFilter(field_name='created_at', lookup_expr='date__lte')
     unassigned = django_filters.BooleanFilter(method='filter_unassigned')
+    services_interest = django_filters.NumberFilter(field_name='services_interest', lookup_expr='exact')
+    assigned_to = django_filters.NumberFilter(method='filter_assigned_to')
+    unassigned_role = django_filters.CharFilter(method='filter_unassigned_role')
 
     class Meta:
         model = Customer
-        fields = ['source', 'status', 'data_type', 'gender', 'province', 'sale', 'tele', 'cskh', 'is_customer']
+        fields = ['source', 'status', 'data_type', 'gender', 'province', 'sale', 'tele', 'cskh', 'is_customer', 'customer_group', 'ads']
 
     def filter_unassigned(self, queryset, name, value):
         if value:
             return queryset.filter(sale__isnull=True, tele__isnull=True, cskh__isnull=True)
+        return queryset
+
+    def filter_assigned_to(self, queryset, name, value):
+        from django.db.models import Q
+        return queryset.filter(Q(tele_id=value) | Q(sale_id=value) | Q(cskh_id=value) | Q(ads_id=value))
+
+    def filter_unassigned_role(self, queryset, name, value):
+        m = {'tele': 'tele__isnull', 'sale': 'sale__isnull', 'cskh': 'cskh__isnull', 'ads': 'ads__isnull'}
+        if value in m:
+            return queryset.filter(**{m[value]: True})
         return queryset
 
 

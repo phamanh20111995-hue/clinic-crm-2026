@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import Spinner from '../ui/Spinner'
 import Badge from '../ui/Badge'
 import { getCustomers } from '../../api/customers'
+import { getServices, getAllUsers } from '../../api/letan'
 import { fmtPhone, fmtDate } from '../../utils/format'
-import { IconSearch } from '@tabler/icons-react'
+import { IconSearch, IconFilter, IconX } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 
 const STATUS_COLORS = {
@@ -95,6 +96,25 @@ const TIME_PRESETS = [
   { value: 'custom', label: 'Tùy chọn' },
 ]
 
+const SOURCES = [
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'zalo', label: 'Zalo' },
+  { value: 'google', label: 'Google/Maps' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'gioi_thieu', label: 'Giới thiệu' },
+  { value: 'walkin', label: 'Walk-in' },
+  { value: 'khac', label: 'Khác' },
+]
+const CUSTOMER_GROUPS = ['Khách mới','Khách thường','Khách thân thiết','VIP','VVIP','Khách giới thiệu','Khách nội bộ']
+const PROVINCES = ['Hà Nội','TP. Hồ Chí Minh','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','Tuyên Quang','Lào Cai','Thái Nguyên','Phú Thọ','Bắc Ninh','Hưng Yên','Ninh Bình','Quảng Trị','Quảng Ngãi','Gia Lai','Khánh Hòa','Lâm Đồng','Đắk Lắk','Đồng Nai','Tây Ninh','Vĩnh Long','Đồng Tháp','Cà Mau','An Giang','Cao Bằng','Điện Biên','Hà Tĩnh','Lai Châu','Lạng Sơn','Nghệ An','Quảng Ninh','Thanh Hóa','Sơn La']
+const UNASSIGNED_ROLE_OPTIONS = [
+  { value: 'tele', label: 'Chưa có Tele' },
+  { value: 'sale', label: 'Chưa có Sale' },
+  { value: 'cskh', label: 'Chưa có CSKH' },
+  { value: 'ads', label: 'Chưa có Ads' },
+]
+
 const selectStyle = { padding: '7px 10px', border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, outline: 'none', fontFamily: 'inherit', background: '#fff' }
 
 export default function CustomerTable({ baseParams = {}, columnKeys, onCountChange, onAdd, addLabel = 'Thêm', reloadKey }) {
@@ -109,8 +129,22 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
   const [timePreset, setTimePreset] = useState('')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
-  const [unassigned, setUnassigned] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showFilterPanel, setShowFilterPanel] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState('')
+  const [groupFilter, setGroupFilter] = useState('')
+  const [provinceFilter, setProvinceFilter] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
+  const [serviceFilter, setServiceFilter] = useState('')
+  const [assignedTo, setAssignedTo] = useState('')
+  const [unassignedRole, setUnassignedRole] = useState('')
+  const [services, setServices] = useState([])
+  const [allUsers, setAllUsers] = useState([])
+
+  useEffect(() => {
+    getServices().then(res => setServices(res.data?.results ?? res.data ?? [])).catch(() => {})
+    getAllUsers().then(res => setAllUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
+  }, [])
 
   const visibleCols = ALL_COLUMNS
     .filter(c => !columnKeys || columnKeys.includes(c.key))
@@ -122,7 +156,6 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       const params = { page, page_size: pageSize, ...baseParams }
       if (search) params.search = search
       if (statusFilter) params.status = statusFilter
-      if (unassigned) params.unassigned = true
       if (timePreset === 'custom') {
         if (customFrom) params.created_after = customFrom
         if (customTo) params.created_before = customTo
@@ -131,6 +164,13 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         if (range.created_after) params.created_after = range.created_after
         if (range.created_before) params.created_before = range.created_before
       }
+      if (sourceFilter) params.source = sourceFilter
+      if (groupFilter) params.customer_group = groupFilter
+      if (provinceFilter) params.province = provinceFilter
+      if (genderFilter) params.gender = genderFilter
+      if (serviceFilter) params.services_interest = serviceFilter
+      if (assignedTo) params.assigned_to = assignedTo
+      if (unassignedRole) params.unassigned_role = unassignedRole
       const { data } = await getCustomers(params)
       setCustomers(data.results ?? data)
       const c = data.count ?? data.length
@@ -143,7 +183,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, search, statusFilter, timePreset, customFrom, customTo, unassigned, reloadKey])
+  }, [page, pageSize, search, statusFilter, timePreset, customFrom, customTo, sourceFilter, groupFilter, provinceFilter, genderFilter, serviceFilter, assignedTo, unassignedRole, reloadKey])
 
   useEffect(() => { load() }, [load])
 
@@ -195,7 +235,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Filter bar */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: '1 1 220px' }}>
+          <div style={{ position: 'relative', width: 220 }}>
             <IconSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
             <input
               placeholder="Tìm tên, SĐT..."
@@ -242,15 +282,17 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
             </>
           )}
           <button
-            onClick={() => { setUnassigned(v => !v); setPage(1) }}
+            onClick={() => setShowFilterPanel(v => !v)}
             style={{
+              display: 'flex', alignItems: 'center', gap: 5,
               padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              border: unassigned ? '1px solid #6d28d9' : '1px solid #dde3ef',
-              background: unassigned ? '#ede9fe' : '#fff',
-              color: unassigned ? '#6d28d9' : '#64748b',
+              border: showFilterPanel ? '1px solid #6d28d9' : '1px solid #dde3ef',
+              background: showFilterPanel ? '#ede9fe' : '#fff',
+              color: showFilterPanel ? '#6d28d9' : '#64748b',
             }}
           >
-            Chưa phân công
+            <IconFilter size={13} stroke={2} />
+            Bộ lọc
           </button>
           {onAdd && (
             <button
@@ -264,6 +306,52 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
             </button>
           )}
         </div>
+
+        {/* Advanced filter panel */}
+        {showFilterPanel && (
+          <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, padding: 16, marginTop: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+              <select value={sourceFilter} onChange={e => { setSourceFilter(e.target.value); setPage(1) }} style={selectStyle}>
+                <option value="">Tất cả nguồn</option>
+                {SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+              <select value={groupFilter} onChange={e => { setGroupFilter(e.target.value); setPage(1) }} style={selectStyle}>
+                <option value="">Tất cả nhóm</option>
+                {CUSTOMER_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <select value={provinceFilter} onChange={e => { setProvinceFilter(e.target.value); setPage(1) }} style={selectStyle}>
+                <option value="">Tất cả tỉnh</option>
+                {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={genderFilter} onChange={e => { setGenderFilter(e.target.value); setPage(1) }} style={selectStyle}>
+                <option value="">Tất cả giới tính</option>
+                <option value="M">Nam</option>
+                <option value="F">Nữ</option>
+              </select>
+              <select value={serviceFilter} onChange={e => { setServiceFilter(e.target.value); setPage(1) }} style={selectStyle}>
+                <option value="">Tất cả dịch vụ</option>
+                {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <select value={assignedTo} onChange={e => { setAssignedTo(e.target.value); setPage(1) }} style={selectStyle}>
+                <option value="">Tất cả người phụ trách</option>
+                {allUsers.map(u => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
+              </select>
+              <select value={unassignedRole} onChange={e => { setUnassignedRole(e.target.value); setPage(1) }} style={selectStyle}>
+                <option value="">Chưa phân công (—)</option>
+                {UNASSIGNED_ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div style={{ marginTop: 10, textAlign: 'right' }}>
+              <button
+                onClick={() => { setSourceFilter(''); setGroupFilter(''); setProvinceFilter(''); setGenderFilter(''); setServiceFilter(''); setAssignedTo(''); setUnassignedRole(''); setPage(1) }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: '1px solid #dde3ef', background: '#fff', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}
+              >
+                <IconX size={12} stroke={2} />
+                Xóa lọc
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Table */}
         <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>
