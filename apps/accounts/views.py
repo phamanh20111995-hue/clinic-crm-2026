@@ -53,6 +53,19 @@ def roles_view(request):
     return Response([{'value': v, 'label': l} for v, l in ROLE_CHOICES])
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def users_lite(request):
+    """GET /api/auth/users-lite/ - danh sach user gon cho dropdown, moi role."""
+    from apps.chat.serializers import MemberSerializer
+    qs = User.objects.filter(is_active=True)
+    role = request.query_params.get('role')
+    if role:
+        qs = qs.filter(role=role)
+    qs = qs.order_by('first_name', 'email')
+    return Response(MemberSerializer(qs, many=True).data)
+
+
 class UserListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/auth/users/ — Chỉ Management."""
     permission_classes = [IsAuthenticated, CanManageUsers]

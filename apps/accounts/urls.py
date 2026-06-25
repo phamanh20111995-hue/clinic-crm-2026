@@ -14,6 +14,7 @@ urlpatterns = [
     path('change-password/', views.change_password_view,         name='auth-change-password'),
 
     # User management (Management only)
+    path('users-lite/', views.users_lite, name='user-lite'),
     path('users/',           views.UserListCreateView.as_view(), name='user-list-create'),
     path('users/<int:pk>/',  views.UserDetailView.as_view(),     name='user-detail'),
 
