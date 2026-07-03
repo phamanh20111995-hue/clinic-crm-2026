@@ -61,7 +61,7 @@ class ContractCreateSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'contract_no',
             'customer', 'appointment', 'items', 'promotions', 'gifts',
-            'total_amount', 'discount_amount', 'final_amount',
+            'total_amount', 'discount_amount', 'final_amount', 'sale_round',
             'payment_method', 'cash_amount', 'transfer_amount', 'notes',
         ]
         read_only_fields = ['id', 'contract_no']
@@ -109,7 +109,7 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
         model = Contract
         fields = [
             'items', 'promotions', 'gifts',
-            'total_amount', 'discount_amount', 'final_amount',
+            'total_amount', 'discount_amount', 'final_amount', 'sale_round',
             'payment_method', 'cash_amount', 'transfer_amount', 'notes',
         ]
         read_only_fields = ['id', 'contract_no']

@@ -51,13 +51,16 @@ class CustomerListSerializer(serializers.ModelSerializer):
     last_bs_name = serializers.SerializerMethodField()
     last_ktv_name = serializers.SerializerMethodField()
     services_interest_names = serializers.SerializerMethodField()
+    round1_value = serializers.SerializerMethodField()
+    round1_paid = serializers.SerializerMethodField()
+    round1_debt = serializers.SerializerMethodField()
     class Meta:
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
                   'data_type','data_type_display','status','status_display',
                   'call_count','customer_group','appointment_date','province',
                   'tele_name','sale_name','cskh','cskh_name','ads','ads_name',
-                  'last_bs_name','last_ktv_name','services_interest_names','created_at']
+                  'last_bs_name','last_ktv_name','services_interest_names','round1_value','round1_paid','round1_debt','created_at']
 
     def get_last_bs_name(self, obj):
         appt = _last_done_appt(obj)
@@ -69,6 +72,18 @@ class CustomerListSerializer(serializers.ModelSerializer):
 
     def get_services_interest_names(self, obj):
         return [s.name for s in obj.services_interest.all()]
+
+    def _round1_contracts(self, obj):
+        return obj.contracts.filter(sale_round='sale')
+
+    def get_round1_value(self, obj):
+        return sum(float(c.final_amount or 0) for c in self._round1_contracts(obj))
+
+    def get_round1_paid(self, obj):
+        return sum(float(c.cash_amount or 0) + float(c.transfer_amount or 0) for c in self._round1_contracts(obj))
+
+    def get_round1_debt(self, obj):
+        return self.get_round1_value(obj) - self.get_round1_paid(obj)
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):

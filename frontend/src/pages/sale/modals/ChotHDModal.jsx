@@ -45,6 +45,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
     ck_amount:  String(initialData?.transfer_amount ?? ''),
     tm_amount:  String(initialData?.cash_amount ?? ''),
     notes:      initialData?.notes ?? '',
+    sale_round: initialData?.sale_round ?? 'sale',
   })
   const [gifts, setGifts] = useState(initialData?.gifts ?? [])
 
@@ -87,6 +88,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
       cash_amount: cashAmt,
       transfer_amount: transferAmt,
       payment_status: paymentStatus,
+      sale_round: form.sale_round,
       notes: form.notes,
     }
   }
@@ -183,7 +185,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
             </div>
           )}
 
-          {/* Dịch vụ + Loại */}
+          {/* Dịch vụ + Loại vòng + Loại DV */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Dịch vụ *</label>
@@ -198,13 +200,23 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
               <input placeholder="Hoặc nhập tên DV" value={form.service_name} onChange={e => set('service_name', e.target.value)}
                 style={{ marginTop: 6, width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 12, boxSizing: 'border-box' }} />
             </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Loại DV *</label>
-              <select value={form.loai_dv} onChange={e => set('loai_dv', e.target.value)}
-                style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
-                <option value="tham_my">Thẩm mỹ — VAT 10%</option>
-                <option value="benh_ly">Bệnh lý — Miễn VAT (cần hồ sơ)</option>
-              </select>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Loại vòng tư vấn</label>
+                <select value={form.sale_round} onChange={e => set('sale_round', e.target.value)}
+                  style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
+                  <option value="sale">Sale (vòng 1)</option>
+                  <option value="upsale">Upsale (vòng 2+)</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Loại DV *</label>
+                <select value={form.loai_dv} onChange={e => set('loai_dv', e.target.value)}
+                  style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
+                  <option value="tham_my">Thẩm mỹ — VAT 10%</option>
+                  <option value="benh_ly">Bệnh lý — Miễn VAT (cần hồ sơ)</option>
+                </select>
+              </div>
             </div>
           </div>
 
