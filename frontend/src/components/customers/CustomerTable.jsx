@@ -24,6 +24,25 @@ const DATA_TYPE_LABELS = { nong: '🔥 Nóng', am: '🌤 Âm', thuong: '❄ Thư
 const DATA_TYPE_COLORS = { nong: 'red', am: 'yellow', thuong: 'gray' }
 const GENDER_LABELS = { M: 'Nam', F: 'Nữ' }
 
+const SOURCES = [
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'zalo', label: 'Zalo' },
+  { value: 'google', label: 'Google/Maps' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'gioi_thieu', label: 'Giới thiệu' },
+  { value: 'walkin', label: 'Walk-in' },
+  { value: 'khac', label: 'Khác' },
+]
+const CUSTOMER_GROUPS = ['Khách mới','Khách thường','Khách thân thiết','VIP','VVIP','Khách giới thiệu','Khách nội bộ']
+const PROVINCES = ['Hà Nội','TP. Hồ Chí Minh','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','Tuyên Quang','Lào Cai','Thái Nguyên','Phú Thọ','Bắc Ninh','Hưng Yên','Ninh Bình','Quảng Trị','Quảng Ngãi','Gia Lai','Khánh Hòa','Lâm Đồng','Đắk Lắk','Đồng Nai','Tây Ninh','Vĩnh Long','Đồng Tháp','Cà Mau','An Giang','Cao Bằng','Điện Biên','Hà Tĩnh','Lai Châu','Lạng Sơn','Nghệ An','Quảng Ninh','Thanh Hóa','Sơn La']
+const UNASSIGNED_ROLE_OPTIONS = [
+  { value: 'tele', label: 'Chưa có Tele' },
+  { value: 'sale', label: 'Chưa có Sale' },
+  { value: 'cskh', label: 'Chưa có CSKH' },
+  { value: 'ads', label: 'Chưa có Ads' },
+]
+
 const ALL_COLUMNS = [
   { key: 'full_name', label: 'Tên khách hàng' },
   { key: 'phone', label: 'SĐT' },
@@ -42,6 +61,9 @@ const ALL_COLUMNS = [
   { key: 'ads_name', label: 'Ads phụ trách', roles: ['MKT', 'LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'last_bs_name', label: 'BS gần nhất', roles: ['BS', 'KTV', 'LE_TAN', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'last_ktv_name', label: 'KTV gần nhất', roles: ['BS', 'KTV', 'LE_TAN', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
+  { key: 'round1_value', label: 'Giá trị HĐ vòng 1', roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'round1_paid',  label: 'Đã thu V1',          roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'round1_debt',  label: 'Còn nợ V1',          roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
   { key: 'created_by_name', label: 'Người tạo', roles: ['QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
 ]
 
@@ -50,6 +72,11 @@ function fmtLocalDate(d) {
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+function fmtMoney(n) {
+  if (n == null) return '—'
+  return Number(n).toLocaleString('vi') + ' ₫'
 }
 
 function getDateRange(preset) {
@@ -96,28 +123,9 @@ const TIME_PRESETS = [
   { value: 'custom', label: 'Tùy chọn' },
 ]
 
-const SOURCES = [
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'zalo', label: 'Zalo' },
-  { value: 'google', label: 'Google/Maps' },
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'gioi_thieu', label: 'Giới thiệu' },
-  { value: 'walkin', label: 'Walk-in' },
-  { value: 'khac', label: 'Khác' },
-]
-const CUSTOMER_GROUPS = ['Khách mới','Khách thường','Khách thân thiết','VIP','VVIP','Khách giới thiệu','Khách nội bộ']
-const PROVINCES = ['Hà Nội','TP. Hồ Chí Minh','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','Tuyên Quang','Lào Cai','Thái Nguyên','Phú Thọ','Bắc Ninh','Hưng Yên','Ninh Bình','Quảng Trị','Quảng Ngãi','Gia Lai','Khánh Hòa','Lâm Đồng','Đắk Lắk','Đồng Nai','Tây Ninh','Vĩnh Long','Đồng Tháp','Cà Mau','An Giang','Cao Bằng','Điện Biên','Hà Tĩnh','Lai Châu','Lạng Sơn','Nghệ An','Quảng Ninh','Thanh Hóa','Sơn La']
-const UNASSIGNED_ROLE_OPTIONS = [
-  { value: 'tele', label: 'Chưa có Tele' },
-  { value: 'sale', label: 'Chưa có Sale' },
-  { value: 'cskh', label: 'Chưa có CSKH' },
-  { value: 'ads', label: 'Chưa có Ads' },
-]
-
 const selectStyle = { padding: '7px 10px', border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, outline: 'none', fontFamily: 'inherit', background: '#fff' }
 
-export default function CustomerTable({ baseParams = {}, columnKeys, onCountChange, onAdd, addLabel = 'Thêm', reloadKey }) {
+export default function CustomerTable({ baseParams = {}, columnKeys, onCountChange, onAdd, addLabel = 'Thêm', reloadKey, hideMoneyColumns = false, fromContext }) {
   const navigate = useNavigate()
   const role = useAuthStore(s => s.user)?.role || ''
   const [customers, setCustomers] = useState([])
@@ -146,9 +154,11 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     getAllUsers().then(res => setAllUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
   }, [])
 
+  const MONEY_KEYS = ['round1_value', 'round1_paid', 'round1_debt']
   const visibleCols = ALL_COLUMNS
     .filter(c => !columnKeys || columnKeys.includes(c.key))
     .filter(c => !c.roles || c.roles.includes(role))
+    .filter(c => !hideMoneyColumns || !MONEY_KEYS.includes(c.key))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -223,6 +233,12 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         return <span style={{ color: '#64748b' }}>{c.last_ktv_name ?? '—'}</span>
       case 'services_interest_names':
         return <span style={{ color: '#64748b' }}>{(c.services_interest_names && c.services_interest_names.length) ? c.services_interest_names.join(', ') : '—'}</span>
+      case 'round1_value':
+        return <span style={{ color: '#64748b' }}>{fmtMoney(c.round1_value)}</span>
+      case 'round1_paid':
+        return <span style={{ color: '#64748b' }}>{fmtMoney(c.round1_paid)}</span>
+      case 'round1_debt':
+        return <span style={{ color: c.round1_debt > 0 ? '#dc2626' : '#64748b' }}>{fmtMoney(c.round1_debt)}</span>
       case 'created_by_name':
         return <span style={{ color: '#64748b' }}>{c.created_by_name ?? '—'}</span>
       default:
@@ -232,7 +248,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
 
   return (
     <>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
         {/* Filter bar */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ position: 'relative', width: 220 }}>
@@ -354,12 +370,12 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         )}
 
         {/* Table */}
-        <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size="lg" /></div>
           ) : (
-            <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 220px)' }}>
-              <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse', fontSize: 12 }}>
+            <div style={{ overflowX: 'auto', overflowY: 'scroll', flex: 1, minHeight: 0 }}>
+              <table style={{ width: '100%', minWidth: 1700, borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 2 }}>
                     {visibleCols.map(col => (
@@ -378,13 +394,13 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
                   ) : customers.map(c => (
                     <tr
                       key={c.id}
-                      onClick={() => navigate(`/customers/${c.id}`)}
+                      onClick={() => navigate(`/customers/${c.id}` + (fromContext ? `?from=${fromContext}` : ''))}
                       style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
                       onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
                       {visibleCols.map(col => (
-                        <td key={col.key} style={{ padding: '9px 12px' }}>{renderCell(c, col)}</td>
+                        <td key={col.key} style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{renderCell(c, col)}</td>
                       ))}
                     </tr>
                   ))}
@@ -394,7 +410,6 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
           )}
         </div>
 
-        <div style={{ paddingBottom: 64 }} />
       </div>
 
       {(() => {

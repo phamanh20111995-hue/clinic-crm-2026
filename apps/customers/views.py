@@ -208,3 +208,41 @@ def upload_image(request, pk):
         s.save(customer=customer, uploaded_by=request.user)
         return Response(s.data, status=201)
     return Response(s.errors, status=400)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def page_stats(request):
+    """GET /api/customers/page-stats/ - So tong cho StatCard (tinh tren toan queryset, khong phan trang)."""
+    from django.db.models import Sum, Count, Q, DecimalField
+    from django.db.models.functions import Coalesce
+    from django.utils import timezone
+
+    qs = _customer_queryset(request.user)
+    qs = CustomerFilter(request.GET, queryset=qs).qs
+
+    today = timezone.localdate()
+
+    total = qs.count()
+    dat_lich = qs.filter(appointment_date__isnull=False).count()
+    nong_today = qs.filter(data_type='nong', created_at__date=today).count()
+
+    zero = Coalesce(Sum('contracts__final_amount', filter=Q(contracts__sale_round='sale')), 0, output_field=DecimalField())
+    paid = Coalesce(
+        Sum('contracts__cash_amount', filter=Q(contracts__sale_round='sale')), 0, output_field=DecimalField()
+    ) + Coalesce(
+        Sum('contracts__transfer_amount', filter=Q(contracts__sale_round='sale')), 0, output_field=DecimalField()
+    )
+    agg = qs.aggregate(round1_value=zero, round1_paid=paid)
+    r1_value = float(agg['round1_value'] or 0)
+    r1_paid = float(agg['round1_paid'] or 0)
+    r1_debt = r1_value - r1_paid
+
+    return Response({
+        'total': total,
+        'dat_lich': dat_lich,
+        'nong_today': nong_today,
+        'round1_value': r1_value,
+        'round1_paid': r1_paid,
+        'round1_debt': r1_debt,
+    })

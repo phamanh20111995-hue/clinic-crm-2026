@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { IconBell, IconUserCircle, IconLogout } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import { getNavItems, getRoleAccent, getUserRole } from '../../utils/rolesV2'
@@ -7,6 +7,8 @@ import { logout as apiLogout } from '../../api/auth'
 export default function SidebarV2() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const _fromParam = new URLSearchParams(location.search).get('from'); const fromTruc = _fromParam === 'truc' || _fromParam === 'tele'
   const role = getUserRole(user)
   const navItems = getNavItems(role)
   const accent = getRoleAccent(role)
@@ -42,8 +44,8 @@ export default function SidebarV2() {
             key={key}
             to={path}
             end={path === '/'}
-            className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
-            style={({ isActive }) => isActive ? { background: accent } : undefined}
+            className={({ isActive }) => { const eff = fromTruc && key === 'tele' ? true : (fromTruc && key === 'customers' ? false : isActive); return `sidebar-item${eff ? ' active' : ''}` }}
+            style={({ isActive }) => { const eff = fromTruc && key === 'tele' ? true : (fromTruc && key === 'customers' ? false : isActive); return eff ? { background: accent } : undefined }}
             title={label}
           >
             <Icon size={20} stroke={1.6} />

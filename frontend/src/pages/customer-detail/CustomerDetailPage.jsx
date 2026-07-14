@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { IconChevronLeft, IconRefresh, IconPencil } from '@tabler/icons-react'
 import AppLayout from '../../components/layout/AppLayout'
 import useAuthStore from '../../store/authStore'
@@ -20,7 +20,8 @@ const CSKH_ROLES   = ['CSKH', 'LEAD_CSKH']
 const LIMITED_ROLES = ['TELE', 'LE_TAN', 'MKT']
 // SALE handled separately (own customers only)
 
-function getTabsForRole(role) {
+function getTabsForRole(role, from) {
+  const hideFinance = from === 'truc'
   const ALL = [
     { key: 'tongquan',  label: 'Tổng quan' },
     { key: 'hanhtrinh', label: 'Hành trình' },
@@ -28,9 +29,10 @@ function getTabsForRole(role) {
     { key: 'lieutrinh', label: 'Liệu trình' },
     { key: 'anh',       label: 'Ảnh điều trị' },
   ]
-  if (FULL_ROLES.includes(role)) return ALL
+  if (FULL_ROLES.includes(role)) return hideFinance ? ALL.filter(t => t.key !== 'taichinh') : ALL
   if (CSKH_ROLES.includes(role)) return ALL.filter(t => t.key !== 'taichinch')
-  if (role === 'SALE') return ALL
+  if (role === 'SALE') return hideFinance ? ALL.filter(t => t.key !== 'taichinh') : ALL
+  if (role === 'TELE' || role === 'LE_TAN') return hideFinance ? ALL.filter(t => t.key !== 'taichinh') : ALL
   // TELE, LE_TAN, MKT, TRUC_PAGE
   return ALL.filter(t => t.key !== 'taichinch')
 }
@@ -63,6 +65,8 @@ function TabBar({ tabs, active, onChange }) {
 export default function CustomerDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const from = searchParams.get('from')
   const { user } = useAuthStore()
   const role = getUserRole(user)
 
@@ -74,7 +78,7 @@ export default function CustomerDetailPage() {
   const [activeTab, setActiveTab] = useState('tongquan')
   const [showEdit, setShowEdit] = useState(false)
 
-  const tabs = getTabsForRole(role)
+  const tabs = getTabsForRole(role, from)
 
   const load = async () => {
     setLoading(true)

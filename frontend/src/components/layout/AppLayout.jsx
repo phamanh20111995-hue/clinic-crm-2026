@@ -65,7 +65,8 @@ export default function AppLayout({
         <div style={{
           marginLeft: 'var(--sidebar-w)',
           paddingTop: contentPaddingTop,
-          minHeight: '100vh',
+          height: 'calc(100vh - (' + contentPaddingTop + '))',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
         }}>
