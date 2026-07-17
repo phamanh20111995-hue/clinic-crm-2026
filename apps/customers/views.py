@@ -246,3 +246,37 @@ def page_stats(request):
         'round1_paid': r1_paid,
         'round1_debt': r1_debt,
     })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def cskh_stats(request):
+    """GET /api/customers/cskh-stats/ - 4 the nhac viec cho man CSKH."""
+    from django.utils import timezone
+    from apps.appointments.models import Appointment
+
+    user = request.user
+    today = timezone.localdate()
+
+    qs = _customer_queryset(user).filter(is_customer=True)
+    if user.role == 'CSKH':
+        qs = qs.filter(cskh=user)
+
+    total = qs.count()
+
+    appts = Appointment.objects.filter(customer__in=qs)
+    cham_soc_today = appts.filter(scheduled_at__date=today).count()
+    nhac_lich_today = appts.filter(scheduled_at__date__gt=today).count()
+    tai_kham_due = appts.filter(visit_type='tai_kham', scheduled_at__date__lte=today).count()
+
+    # TODO: sap_het_lieu_trinh can field dem buoi tren Contract; cho_danh_gia can model danh gia
+    sap_het_lt = 0
+    cho_danh_gia = 0
+
+    return Response({
+        'total': total,
+        'cham_soc_today': cham_soc_today,
+        'nhac_lich_today': nhac_lich_today,
+        'tai_kham_due': tai_kham_due,
+        'sap_het_lt': sap_het_lt,
+        'cho_danh_gia': cho_danh_gia,
+    })

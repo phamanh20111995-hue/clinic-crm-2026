@@ -7,6 +7,8 @@ export { getContracts as getCskhContracts, createContract as createCskhContract,
 export const getCustomersQueue = (params) =>
   api.get('/api/customers/', { params: { status: 'cho_phan_cskh', ...params } })
 
+export const getCskhStats = (params) =>
+  api.get('/api/customers/cskh-stats/', { params })
 export const getCskhCustomers = (params) =>
   api.get('/api/customers/', { params })
 

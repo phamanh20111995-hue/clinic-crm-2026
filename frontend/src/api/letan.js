@@ -38,8 +38,8 @@ export const getTeleUsers = () =>
 export const getAvailableStaff = (params) =>
   api.get('/api/appointments/available-staff/', { params }).catch(() => ({ data: [] }))
 
-export const getAllUsers = () =>
-  api.get('/api/auth/users-lite/')
+export const getAllUsers = (params) =>
+  api.get('/api/auth/users-lite/', { params })
 
 export const getServices = () =>
   api.get('/api/services/')

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import Modal from '../../components/ui/Modal'
 import { createCustomer, updateCustomer, checkPhone } from '../../api/customers'
-import { getMktUsers, getTeleUsers, getServices } from '../../api/letan'
+import { getMktUsers, getTeleUsers, getServices, getAllUsers } from '../../api/letan'
+import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
 import toast from 'react-hot-toast'
 
 const SOURCES = ['facebook', 'zalo', 'google', 'tiktok', 'referral', 'walkin', 'other']
@@ -31,6 +33,13 @@ const CUSTOMER_GROUPS = ['Khách mới','Khách thường','Khách thân thiết
 
 export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const isEdit = !!customer
+  const currentUser = useAuthStore(s => s.user)
+  const myRole = getUserRole(currentUser)
+  const canAssignCskh = ['LEAD_CSKH', 'QUAN_LY', 'CHU_DN'].includes(myRole)
+  const canAssignTele = ['LEAD_TELE', 'QUAN_LY', 'CHU_DN'].includes(myRole)
+  const canAssignSale = ['LEAD_SALE', 'QUAN_LY', 'CHU_DN'].includes(myRole)
+  const canAssignAds = ['LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(myRole)
+  const lockStyle = { background: '#f8fafc', cursor: 'not-allowed' }
   const [form, setForm] = useState({
     full_name: customer?.full_name ?? '',
     phone: customer?.phone ?? '',
@@ -45,6 +54,8 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
     province: customer?.province ?? '',
     address: customer?.address ?? '',
     tele: customer?.tele ?? '',
+    sale: customer?.sale ?? '',
+    cskh: customer?.cskh ?? '',
     ads: customer?.ads ?? '',
     services_interest: customer?.services_interest ?? [],
     notes: customer?.notes ?? '',
@@ -53,12 +64,16 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const [loading, setLoading] = useState(false)
   const [mktUsers, setMktUsers] = useState([])
   const [teleUsers, setTeleUsers] = useState([])
+  const [saleUsers, setSaleUsers] = useState([])
+  const [cskhUsers, setCskhUsers] = useState([])
   const [services, setServices] = useState([])
 
   useEffect(() => {
     getMktUsers().then(res => setMktUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
     getTeleUsers().then(res => setTeleUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
     getServices().then(res => setServices(res.data?.results ?? res.data ?? [])).catch(() => {})
+    getAllUsers({ role: 'SALE' }).then(res => setSaleUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
+    getAllUsers({ role: 'CSKH' }).then(res => setCskhUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
   }, [])
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
@@ -82,6 +97,8 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
         dob: form.dob || null,
         appointment_date: form.appointment_date || null,
         tele: form.tele || null,
+        sale: form.sale || null,
+        cskh: form.cskh || null,
         ads: form.ads || null,
         services_interest: form.services_interest,
       }
@@ -179,16 +196,30 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Ads phụ trách</label>
-            <select className="input" value={form.ads} onChange={(e) => set('ads', e.target.value)}>
-              <option value="">-- Chọn nhân viên MKT --</option>
+            <select className="input" value={form.ads} disabled={!canAssignAds} style={!canAssignAds ? lockStyle : undefined} onChange={(e) => set('ads', e.target.value)}>
+              <option value="">— Chưa giao —</option>
               {mktUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Giao cho Tele</label>
-            <select className="input" value={form.tele} onChange={(e) => set('tele', e.target.value)}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tele phụ trách</label>
+            <select className="input" value={form.tele} disabled={!canAssignTele} style={!canAssignTele ? lockStyle : undefined} onChange={(e) => set('tele', e.target.value)}>
               <option value="">— Chưa giao —</option>
               {teleUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sale phụ trách</label>
+            <select className="input" value={form.sale} disabled={!canAssignSale} style={!canAssignSale ? lockStyle : undefined} onChange={(e) => set('sale', e.target.value)}>
+              <option value="">— Chưa giao —</option>
+              {saleUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CSKH phụ trách</label>
+            <select className="input" value={form.cskh} disabled={!canAssignCskh} style={!canAssignCskh ? lockStyle : undefined} onChange={(e) => set('cskh', e.target.value)}>
+              <option value="">— Chưa giao —</option>
+              {cskhUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
             </select>
           </div>
           <div className="col-span-2">

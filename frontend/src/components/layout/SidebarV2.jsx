@@ -8,7 +8,7 @@ export default function SidebarV2() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
-  const _fromParam = new URLSearchParams(location.search).get('from'); const fromTruc = _fromParam === 'truc' || _fromParam === 'tele'
+  const _fromParam = new URLSearchParams(location.search).get('from'); const fromTruc = _fromParam === 'truc' || _fromParam === 'tele' || _fromParam === 'cskh'
   const role = getUserRole(user)
   const navItems = getNavItems(role)
   const accent = getRoleAccent(role)
@@ -44,8 +44,8 @@ export default function SidebarV2() {
             key={key}
             to={path}
             end={path === '/'}
-            className={({ isActive }) => { const eff = fromTruc && key === 'tele' ? true : (fromTruc && key === 'customers' ? false : isActive); return `sidebar-item${eff ? ' active' : ''}` }}
-            style={({ isActive }) => { const eff = fromTruc && key === 'tele' ? true : (fromTruc && key === 'customers' ? false : isActive); return eff ? { background: accent } : undefined }}
+            className={({ isActive }) => { const eff = (_fromParam === 'cskh' && key === 'cskh') ? true : (((_fromParam === 'truc' || _fromParam === 'tele') && key === 'tele') ? true : (fromTruc && key === 'customers' ? false : isActive)); return `sidebar-item${eff ? ' active' : ''}` }}
+            style={({ isActive }) => { const eff = (_fromParam === 'cskh' && key === 'cskh') ? true : (((_fromParam === 'truc' || _fromParam === 'tele') && key === 'tele') ? true : (fromTruc && key === 'customers' ? false : isActive)); return eff ? { background: accent } : undefined }}
             title={label}
           >
             <Icon size={20} stroke={1.6} />
