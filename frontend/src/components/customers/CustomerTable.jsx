@@ -64,6 +64,10 @@ const ALL_COLUMNS = [
   { key: 'round1_value', label: 'Giá trị HĐ vòng 1', roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
   { key: 'round1_paid',  label: 'Đã thu V1',          roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
   { key: 'round1_debt',  label: 'Còn nợ V1',          roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'total_value',  label: 'Tổng giá trị HĐ',    roles: ['CSKH', 'LEAD_CSKH', 'SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
+  { key: 'total_paid',   label: 'Tổng đã thu',        roles: ['CSKH', 'LEAD_CSKH', 'SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
+  { key: 'total_debt',   label: 'Tổng còn nợ',        roles: ['CSKH', 'LEAD_CSKH', 'SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
+  { key: 'upsale_value', label: 'Doanh thu upsale',   roles: ['CSKH', 'LEAD_CSKH', 'SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
   { key: 'created_by_name', label: 'Người tạo', roles: ['QUAN_LY', 'CHU_DN', 'KE_TOAN'] },
 ]
 
@@ -154,7 +158,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     getAllUsers().then(res => setAllUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
   }, [])
 
-  const MONEY_KEYS = ['round1_value', 'round1_paid', 'round1_debt']
+  const MONEY_KEYS = ['round1_value', 'round1_paid', 'round1_debt', 'total_value', 'total_paid', 'total_debt', 'upsale_value']
   const visibleCols = ALL_COLUMNS
     .filter(c => !columnKeys || columnKeys.includes(c.key))
     .filter(c => !c.roles || c.roles.includes(role))
@@ -239,6 +243,14 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         return <span style={{ color: '#64748b' }}>{fmtMoney(c.round1_paid)}</span>
       case 'round1_debt':
         return <span style={{ color: c.round1_debt > 0 ? '#dc2626' : '#64748b' }}>{fmtMoney(c.round1_debt)}</span>
+      case 'total_value':
+        return <span style={{ color: '#64748b' }}>{fmtMoney(c.total_value)}</span>
+      case 'total_paid':
+        return <span style={{ color: '#15803d' }}>{fmtMoney(c.total_paid)}</span>
+      case 'total_debt':
+        return <span style={{ color: c.total_debt > 0 ? '#dc2626' : '#64748b' }}>{fmtMoney(c.total_debt)}</span>
+      case 'upsale_value':
+        return <span style={{ color: '#6d28d9' }}>{fmtMoney(c.upsale_value)}</span>
       case 'created_by_name':
         return <span style={{ color: '#64748b' }}>{c.created_by_name ?? '—'}</span>
       default:

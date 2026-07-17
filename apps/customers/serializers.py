@@ -54,13 +54,18 @@ class CustomerListSerializer(serializers.ModelSerializer):
     round1_value = serializers.SerializerMethodField()
     round1_paid = serializers.SerializerMethodField()
     round1_debt = serializers.SerializerMethodField()
+    total_value = serializers.SerializerMethodField()
+    total_paid = serializers.SerializerMethodField()
+    total_debt = serializers.SerializerMethodField()
+    upsale_value = serializers.SerializerMethodField()
     class Meta:
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
                   'data_type','data_type_display','status','status_display',
                   'call_count','customer_group','appointment_date','province',
                   'tele_name','sale_name','cskh','cskh_name','ads','ads_name',
-                  'last_bs_name','last_ktv_name','services_interest_names','round1_value','round1_paid','round1_debt','created_at']
+                  'last_bs_name','last_ktv_name','services_interest_names','round1_value','round1_paid','round1_debt',
+                  'total_value','total_paid','total_debt','upsale_value','created_at']
 
     def get_last_bs_name(self, obj):
         appt = _last_done_appt(obj)
@@ -84,6 +89,21 @@ class CustomerListSerializer(serializers.ModelSerializer):
 
     def get_round1_debt(self, obj):
         return self.get_round1_value(obj) - self.get_round1_paid(obj)
+
+    def _all_contracts(self, obj):
+        return obj.contracts.all()
+
+    def get_total_value(self, obj):
+        return sum(float(c.final_amount or 0) for c in self._all_contracts(obj))
+
+    def get_total_paid(self, obj):
+        return sum(float(c.cash_amount or 0) + float(c.transfer_amount or 0) for c in self._all_contracts(obj))
+
+    def get_total_debt(self, obj):
+        return self.get_total_value(obj) - self.get_total_paid(obj)
+
+    def get_upsale_value(self, obj):
+        return sum(float(c.final_amount or 0) for c in obj.contracts.filter(sale_round='upsale'))
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
