@@ -3,6 +3,11 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from apps.contracts.views import (
+    TreatmentCourseListCreateView, TreatmentCourseDetailView,
+    TreatmentSessionListCreateView, TreatmentSessionDetailView,
+)
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/',         include('apps.accounts.urls')),
@@ -11,6 +16,10 @@ urlpatterns = [
     path('api/appointments/', include('apps.appointments.urls')),
     path('api/rooms/',        include('apps.clinics.urls')),
     path('api/contracts/',    include('apps.contracts.urls')),
+    path('api/treatment-courses/', TreatmentCourseListCreateView.as_view()),
+    path('api/treatment-courses/<int:pk>/', TreatmentCourseDetailView.as_view()),
+    path('api/treatment-sessions/', TreatmentSessionListCreateView.as_view()),
+    path('api/treatment-sessions/<int:pk>/', TreatmentSessionDetailView.as_view()),
     path('api/services/', include('apps.services.urls')),
     path('api/attendance/',   include('apps.attendance.urls')),
     path('api/salary/',       include('apps.salary.urls')),

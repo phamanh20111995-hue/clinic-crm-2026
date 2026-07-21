@@ -58,6 +58,8 @@ class CustomerListSerializer(serializers.ModelSerializer):
     total_paid = serializers.SerializerMethodField()
     total_debt = serializers.SerializerMethodField()
     upsale_value = serializers.SerializerMethodField()
+    so_buoi_total = serializers.SerializerMethodField()
+    buoi_con_lai = serializers.SerializerMethodField()
     class Meta:
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
@@ -65,7 +67,8 @@ class CustomerListSerializer(serializers.ModelSerializer):
                   'call_count','customer_group','appointment_date','province',
                   'tele_name','sale_name','cskh','cskh_name','ads','ads_name',
                   'last_bs_name','last_ktv_name','services_interest_names','round1_value','round1_paid','round1_debt',
-                  'total_value','total_paid','total_debt','upsale_value','created_at']
+                  'total_value','total_paid','total_debt','upsale_value',
+                  'so_buoi_total','buoi_con_lai','created_at']
 
     def get_last_bs_name(self, obj):
         appt = _last_done_appt(obj)
@@ -104,6 +107,14 @@ class CustomerListSerializer(serializers.ModelSerializer):
 
     def get_upsale_value(self, obj):
         return sum(float(c.final_amount or 0) for c in obj.contracts.filter(sale_round='upsale'))
+
+    def get_so_buoi_total(self, obj):
+        return sum(int(c.so_buoi or 0) for c in self._all_contracts(obj))
+
+    def get_buoi_con_lai(self, obj):
+        total = self.get_so_buoi_total(obj)
+        da_dung = obj.appointments.filter(status='done').count() if hasattr(obj, 'appointments') else 0
+        return max(0, total - da_dung)
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):

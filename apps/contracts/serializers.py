@@ -61,7 +61,7 @@ class ContractCreateSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'contract_no',
             'customer', 'appointment', 'items', 'promotions', 'gifts',
-            'total_amount', 'discount_amount', 'final_amount', 'sale_round',
+            'total_amount', 'discount_amount', 'final_amount', 'sale_round', 'so_buoi',
             'payment_method', 'cash_amount', 'transfer_amount', 'notes',
         ]
         read_only_fields = ['id', 'contract_no']
@@ -109,7 +109,7 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
         model = Contract
         fields = [
             'items', 'promotions', 'gifts',
-            'total_amount', 'discount_amount', 'final_amount', 'sale_round',
+            'total_amount', 'discount_amount', 'final_amount', 'sale_round', 'so_buoi',
             'payment_method', 'cash_amount', 'transfer_amount', 'notes',
         ]
         read_only_fields = ['id', 'contract_no']
@@ -118,3 +118,28 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
         if self.instance and self.instance.approval_status != 'draft':
             raise serializers.ValidationError('Chỉ cập nhật được HĐ ở trạng thái Nháp.')
         return attrs
+
+from .models import TreatmentCourse, TreatmentSession
+
+
+class TreatmentSessionSerializer(serializers.ModelSerializer):
+    ktv_name = serializers.CharField(source='ktv.display_name', read_only=True)
+
+    class Meta:
+        model = TreatmentSession
+        fields = ['id', 'course', 'appointment', 'date', 'ktv', 'ktv_name', 'notes', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class TreatmentCourseSerializer(serializers.ModelSerializer):
+    service_name = serializers.CharField(source='service.name', read_only=True)
+    customer_name = serializers.CharField(source='customer.full_name', read_only=True)
+    so_buoi_da_dung = serializers.IntegerField(read_only=True)
+    buoi_con_lai = serializers.IntegerField(read_only=True)
+    sessions = TreatmentSessionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = TreatmentCourse
+        fields = ['id', 'contract', 'customer', 'customer_name', 'service', 'service_name',
+                  'so_buoi', 'so_buoi_da_dung', 'buoi_con_lai', 'note', 'sessions', 'created_at']
+        read_only_fields = ['id', 'created_at']

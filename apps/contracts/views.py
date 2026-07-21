@@ -238,3 +238,46 @@ def pending_contracts(request):
         'count': qs.count(),
         'results': ContractListSerializer(qs, many=True).data,
     })
+
+from rest_framework.permissions import IsAuthenticated
+from .models import TreatmentCourse, TreatmentSession
+from .serializers import TreatmentCourseSerializer, TreatmentSessionSerializer
+
+
+class TreatmentCourseListCreateView(generics.ListCreateAPIView):
+    serializer_class = TreatmentCourseSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = TreatmentCourse.objects.filter(is_deleted=False).select_related('service', 'customer', 'contract')
+        customer_id = self.request.query_params.get('customer')
+        contract_id = self.request.query_params.get('contract')
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        if contract_id:
+            qs = qs.filter(contract_id=contract_id)
+        return qs
+
+
+class TreatmentCourseDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TreatmentCourseSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = TreatmentCourse.objects.filter(is_deleted=False)
+
+
+class TreatmentSessionListCreateView(generics.ListCreateAPIView):
+    serializer_class = TreatmentSessionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = TreatmentSession.objects.filter(is_deleted=False).select_related('ktv', 'course')
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        return qs
+
+
+class TreatmentSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TreatmentSessionSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = TreatmentSession.objects.filter(is_deleted=False)
