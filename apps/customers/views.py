@@ -280,3 +280,57 @@ def cskh_stats(request):
         'sap_het_lt': sap_het_lt,
         'cho_danh_gia': cho_danh_gia,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sale_stats(request):
+    from django.utils import timezone
+    from django.db.models import Sum
+    from django.db.models.functions import Coalesce
+    from django.db.models import DecimalField, Value
+    from apps.contracts.models import Contract
+
+    user = request.user
+    today = timezone.localdate()
+
+    qs = _customer_queryset(user).filter(is_customer=True)
+    total = qs.count()
+
+    approved_qs = Contract.objects.filter(
+        created_by=user,
+        approval_status='approved',
+        is_deleted=False,
+    )
+
+    chot_today = approved_qs.filter(approved_at__date=today).count()
+
+    hd_pending = Contract.objects.filter(
+        created_by=user,
+        approval_status__in=['draft', 'pending_kt'],
+        is_deleted=False,
+    ).count()
+
+    month_qs = approved_qs.filter(
+        approved_at__year=today.year,
+        approved_at__month=today.month,
+    )
+
+    agg = month_qs.aggregate(
+        revenue=Coalesce(Sum('final_amount'),    Value(0), output_field=DecimalField()),
+        paid_ck=Coalesce(Sum('transfer_amount'), Value(0), output_field=DecimalField()),
+        paid_tm=Coalesce(Sum('cash_amount'),     Value(0), output_field=DecimalField()),
+    )
+
+    revenue_month = float(agg['revenue'])
+    paid          = float(agg['paid_ck'] + agg['paid_tm'])
+    debt          = revenue_month - paid
+
+    return Response({
+        'total':         total,
+        'chot_today':    chot_today,
+        'hd_pending':    hd_pending,
+        'revenue_month': revenue_month,
+        'paid':          paid,
+        'debt':          debt,
+    })

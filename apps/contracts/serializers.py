@@ -1,5 +1,6 @@
+from django.db import transaction
 from rest_framework import serializers
-from .models import Contract
+from .models import Contract, TreatmentCourse, TreatmentSession
 
 
 class ContractItemSerializer(serializers.Serializer):
@@ -100,7 +101,20 @@ class ContractCreateSerializer(serializers.ModelSerializer):
         validated_data['contract_no'] = f'HĐ-{year}-{seq:04d}'
         validated_data['created_by'] = self.context['request'].user
         validated_data['approval_status'] = 'draft'
-        return super().create(validated_data)
+
+        with transaction.atomic():
+            contract = super().create(validated_data)
+            for item in (contract.items or []):
+                service_id = item.get('service_id')
+                if service_id:
+                    TreatmentCourse.objects.create(
+                        contract=contract,
+                        customer=contract.customer,
+                        service_id=service_id,
+                        so_buoi=item.get('sessions', 1),
+                    )
+
+        return contract
 
 
 class ContractUpdateSerializer(serializers.ModelSerializer):
@@ -119,7 +133,22 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Chỉ cập nhật được HĐ ở trạng thái Nháp.')
         return attrs
 
-from .models import TreatmentCourse, TreatmentSession
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            contract = super().update(instance, validated_data)
+            # Soft-delete các TreatmentCourse cũ
+            TreatmentCourse.objects.filter(contract=contract, is_deleted=False).update(is_deleted=True)
+            # Tạo lại từ items mới
+            for item in (contract.items or []):
+                service_id = item.get('service_id')
+                if service_id:
+                    TreatmentCourse.objects.create(
+                        contract=contract,
+                        customer=contract.customer,
+                        service_id=service_id,
+                        so_buoi=item.get('sessions', 1),
+                    )
+        return contract
 
 
 class TreatmentSessionSerializer(serializers.ModelSerializer):

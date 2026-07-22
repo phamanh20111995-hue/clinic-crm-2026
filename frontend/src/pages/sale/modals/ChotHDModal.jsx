@@ -18,9 +18,14 @@ function fmtMoney(n) {
   return v.toLocaleString('vi') + ' ₫'
 }
 
+const emptyLine = () => ({ service_id: '', name: '', unit_price: 0, sessions: 1, discount: 0 })
+
+function lineTotal(line) {
+  return Math.max(0, (line.sessions || 0) * (line.unit_price || 0) - (line.discount || 0))
+}
+
 export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialData }) {
   const isEdit = !!initialData
-  const firstItem = initialData?.items?.[0]
 
   const [services,   setServices]   = useState([])
   const [customers,  setCustomers]  = useState([])
@@ -35,23 +40,33 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
   const [maGD,       setMaGD]       = useState('')
   const [saving,     setSaving]     = useState(false)
   const [form, setForm] = useState({
-    customer: defaultCustomer?.id ?? initialData?.customer ?? '',
-    service_name: firstItem?.name ?? '',
-    service_id:   String(firstItem?.service_id ?? ''),
-    loai_dv: 'tham_my',
-    bs: '',
-    gia_tri:    String(initialData?.final_amount ?? initialData?.total_amount ?? ''),
+    customer:   defaultCustomer?.id ?? initialData?.customer ?? '',
+    loai_dv:    'tham_my',
+    bs:         '',
     dot1:       String(initialData?.transfer_amount ?? initialData?.cash_amount ?? ''),
     ck_amount:  String(initialData?.transfer_amount ?? ''),
     tm_amount:  String(initialData?.cash_amount ?? ''),
     notes:      initialData?.notes ?? '',
     sale_round: initialData?.sale_round ?? 'sale',
   })
+  const [serviceLines, setServiceLines] = useState(() => {
+    if (isEdit && initialData?.items?.length) {
+      return initialData.items.map(item => ({
+        service_id: String(item.service_id ?? ''),
+        name:       item.name ?? '',
+        unit_price: item.sessions > 0 ? Math.round(item.price / item.sessions) : (item.price || 0),
+        sessions:   item.sessions ?? 1,
+        discount:   item.discount ?? 0,
+      }))
+    }
+    return [emptyLine()]
+  })
   const [gifts, setGifts] = useState(initialData?.gifts ?? [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const conNo = Math.max(0, Number(form.gia_tri || 0) - Number(form.dot1 || 0))
+  const totalAmount = serviceLines.reduce((s, l) => s + lineTotal(l), 0)
+  const conNo = Math.max(0, totalAmount - Number(form.dot1 || 0))
   const htttLabel = (() => {
     if (httt === 'ck') return ttCK === 'roi' ? 'Chuyển khoản · Đã nhận ✓' : 'Chuyển khoản · Chưa nhận'
     if (httt === 'tm') return 'Tiền mặt · Chờ KT xác nhận'
@@ -69,8 +84,30 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const updateLine = (i, field, value) => {
+    setServiceLines(lines => lines.map((l, idx) => idx === i ? { ...l, [field]: value } : l))
+  }
+
+  const selectService = (i, svcId) => {
+    const svc = services.find(s => String(s.id) === svcId)
+    setServiceLines(lines => lines.map((l, idx) => {
+      if (idx !== i) return l
+      if (!svc) return { ...l, service_id: svcId, name: '', unit_price: 0 }
+      return {
+        ...l,
+        service_id: svcId,
+        name:       svc.name,
+        unit_price: Number(svc.unit_price) || 0,
+        sessions:   svc.sessions || 1,
+      }
+    }))
+  }
+
+  const addLine = () => setServiceLines(ls => [...ls, emptyLine()])
+  const removeLine = (i) => setServiceLines(ls => ls.filter((_, idx) => idx !== i))
+
   const buildPayload = () => {
-    const finalAmount = Number(form.gia_tri) || 0
+    const finalAmount = totalAmount
     let cashAmt = 0, transferAmt = 0, paymentMethod = 'transfer'
     if (httt === 'ck')   { transferAmt = Number(form.dot1) || 0; paymentMethod = 'transfer' }
     if (httt === 'tm')   { cashAmt     = Number(form.dot1) || 0; paymentMethod = 'cash' }
@@ -78,25 +115,32 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
     const paymentStatus = (cashAmt + transferAmt) >= finalAmount ? 'received' : (cashAmt + transferAmt) > 0 ? 'partial' : 'unpaid'
     return {
       customer: form.customer,
-      items: [{ service_id: form.service_id || null, name: form.service_name || 'Dịch vụ', sessions: 1, price: finalAmount, discount: 0 }],
+      items: serviceLines.map(l => ({
+        service_id: l.service_id ? Number(l.service_id) : null,
+        name:       l.name || 'Dịch vụ',
+        sessions:   l.sessions,
+        price:      l.sessions * l.unit_price,
+        discount:   l.discount,
+      })),
       gifts,
       promotions: [],
-      total_amount: finalAmount,
-      discount_amount: 0,
-      final_amount: finalAmount,
-      payment_method: paymentMethod,
-      cash_amount: cashAmt,
+      total_amount:    finalAmount,
+      discount_amount: serviceLines.reduce((s, l) => s + (l.discount || 0), 0),
+      final_amount:    finalAmount,
+      payment_method:  paymentMethod,
+      cash_amount:     cashAmt,
       transfer_amount: transferAmt,
-      payment_status: paymentStatus,
-      sale_round: form.sale_round,
-      notes: form.notes,
+      payment_status:  paymentStatus,
+      sale_round:      form.sale_round,
+      notes:           form.notes,
     }
   }
 
   const handleSave = async (andSubmit = false) => {
     if (!form.customer) { toast.error('Chọn khách hàng'); return }
-    if (!form.service_name && !form.service_id) { toast.error('Chọn/nhập tên dịch vụ'); return }
-    if (!form.gia_tri || Number(form.gia_tri) <= 0) { toast.error('Nhập giá trị hợp đồng'); return }
+    if (!serviceLines.some(l => l.service_id)) { toast.error('Chọn ít nhất 1 dịch vụ'); return }
+    if (serviceLines.some(l => !l.sessions || l.sessions < 1)) { toast.error('Số buổi phải ≥ 1'); return }
+    if (totalAmount <= 0) { toast.error('Tổng giá trị HĐ phải > 0'); return }
     setSaving(true)
     try {
       let data
@@ -126,7 +170,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
 
   return (
     <div style={overlay} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 560, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,.22)' }}>
+      <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 620, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,.22)' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
           <div>
@@ -185,47 +229,81 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
             </div>
           )}
 
-          {/* Dịch vụ + Loại vòng + Loại DV */}
+          {/* Loại vòng + Loại DV */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Dịch vụ *</label>
-              <select value={form.service_id} onChange={e => {
-                const svc = services.find(s => String(s.id) === e.target.value)
-                set('service_id', e.target.value)
-                if (svc) { set('service_name', svc.name); set('gia_tri', String(svc.unit_price)) }
-              }} style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
-                <option value="">— Chọn dịch vụ —</option>
-                {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Loại vòng tư vấn</label>
+              <select value={form.sale_round} onChange={e => set('sale_round', e.target.value)}
+                style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
+                <option value="sale">Sale (vòng 1)</option>
+                <option value="upsale">Upsale (vòng 2+)</option>
               </select>
-              <input placeholder="Hoặc nhập tên DV" value={form.service_name} onChange={e => set('service_name', e.target.value)}
-                style={{ marginTop: 6, width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 12, boxSizing: 'border-box' }} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Loại vòng tư vấn</label>
-                <select value={form.sale_round} onChange={e => set('sale_round', e.target.value)}
-                  style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
-                  <option value="sale">Sale (vòng 1)</option>
-                  <option value="upsale">Upsale (vòng 2+)</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Loại DV *</label>
-                <select value={form.loai_dv} onChange={e => set('loai_dv', e.target.value)}
-                  style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
-                  <option value="tham_my">Thẩm mỹ — VAT 10%</option>
-                  <option value="benh_ly">Bệnh lý — Miễn VAT (cần hồ sơ)</option>
-                </select>
-              </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Loại DV *</label>
+              <select value={form.loai_dv} onChange={e => set('loai_dv', e.target.value)}
+                style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
+                <option value="tham_my">Thẩm mỹ — VAT 10%</option>
+                <option value="benh_ly">Bệnh lý — Miễn VAT (cần hồ sơ)</option>
+              </select>
             </div>
           </div>
 
-          {/* Giá trị + Đợt 1 */}
+          {/* Danh sách dịch vụ */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Dịch vụ *</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {serviceLines.map((line, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 72px 96px 96px 28px', gap: 6, alignItems: 'center' }}>
+                  {/* Dropdown chọn dịch vụ */}
+                  <select value={line.service_id} onChange={e => selectService(i, e.target.value)}
+                    style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }}>
+                    <option value="">— Chọn dịch vụ —</option>
+                    {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  {/* Số buổi */}
+                  <input type="number" min={1} value={line.sessions}
+                    onChange={e => updateLine(i, 'sessions', Math.max(1, Number(e.target.value) || 1))}
+                    placeholder="Buổi"
+                    style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 8px', fontSize: 13, boxSizing: 'border-box', textAlign: 'center' }} />
+                  {/* Chiết khấu */}
+                  <input type="number" min={0} value={line.discount || ''}
+                    onChange={e => updateLine(i, 'discount', Number(e.target.value) || 0)}
+                    placeholder="CK ₫"
+                    style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 8px', fontSize: 13, boxSizing: 'border-box', textAlign: 'right' }} />
+                  {/* Thành tiền — khoá */}
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '7px 8px', fontSize: 12, background: '#f9fafb', color: ACCENT, fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                    {fmtMoney(lineTotal(line))}
+                  </div>
+                  {/* Nút xoá */}
+                  <button onClick={() => removeLine(i)} disabled={serviceLines.length === 1}
+                    style={{ border: 'none', background: 'none', cursor: serviceLines.length === 1 ? 'default' : 'pointer', color: serviceLines.length === 1 ? '#d1d5db' : '#9ca3af', fontSize: 18, lineHeight: 1, padding: 0 }}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Header labels cho các cột */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 96px 96px 28px', gap: 6, marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: '#9ca3af' }}>Dịch vụ</span>
+              <span style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center' }}>Số buổi</span>
+              <span style={{ fontSize: 10, color: '#9ca3af', textAlign: 'right' }}>Chiết khấu</span>
+              <span style={{ fontSize: 10, color: '#9ca3af', textAlign: 'right' }}>Thành tiền</span>
+              <span />
+            </div>
+            <button onClick={addLine}
+              style={{ marginTop: 8, width: '100%', padding: '6px', border: `1px dashed ${ACCENT}`, borderRadius: 7, background: 'none', color: ACCENT, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+              + Thêm dịch vụ
+            </button>
+          </div>
+
+          {/* Tổng giá trị HĐ — khoá */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Giá trị HĐ (₫) *</label>
-              <input type="number" placeholder="0" value={form.gia_tri} onChange={e => set('gia_tri', e.target.value)}
-                style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box' }} />
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Tổng giá trị HĐ (₫)</label>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '7px 10px', fontSize: 13, background: '#f9fafb', color: ACCENT, fontWeight: 700 }}>
+                {fmtMoney(totalAmount)}
+              </div>
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Thanh toán đợt 1 (₫) *</label>
@@ -298,7 +376,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
             <p style={{ fontSize: 12, fontWeight: 700, color: ACCENT, margin: '0 0 8px' }}>Tổng kết thanh toán</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>
               <span style={{ color: '#6b7280' }}>Giá trị HĐ</span>
-              <span style={{ fontWeight: 700, textAlign: 'right' }}>{fmtMoney(form.gia_tri)}</span>
+              <span style={{ fontWeight: 700, textAlign: 'right' }}>{fmtMoney(totalAmount)}</span>
               <span style={{ color: '#6b7280' }}>Đã TT đợt 1</span>
               <span style={{ fontWeight: 700, textAlign: 'right', color: ACCENT }}>{fmtMoney(form.dot1)}</span>
               <span style={{ color: '#6b7280' }}>Còn nợ</span>

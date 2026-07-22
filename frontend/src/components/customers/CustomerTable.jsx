@@ -43,6 +43,13 @@ const UNASSIGNED_ROLE_OPTIONS = [
   { value: 'ads', label: 'Chưa có Ads' },
 ]
 
+const HD_STATUS_CFG = {
+  draft:      { bg: '#f1f5f9', color: '#64748b', label: 'Nháp' },
+  pending_kt: { bg: '#fff7ed', color: '#d97706', label: 'Chờ duyệt' },
+  approved:   { bg: '#f0fdf4', color: '#15803d', label: 'Đã duyệt' },
+  rejected:   { bg: '#fef2f2', color: '#dc2626', label: 'Từ chối' },
+}
+
 const ALL_COLUMNS = [
   { key: 'full_name', label: 'Tên khách hàng' },
   { key: 'phone', label: 'SĐT' },
@@ -61,6 +68,7 @@ const ALL_COLUMNS = [
   { key: 'ads_name', label: 'Ads phụ trách', roles: ['MKT', 'LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'last_bs_name', label: 'BS gần nhất', roles: ['BS', 'KTV', 'LE_TAN', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'last_ktv_name', label: 'KTV gần nhất', roles: ['BS', 'KTV', 'LE_TAN', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
+  { key: 'hd_status',   label: 'Tình trạng HĐ',      roles: ['SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'KE_TOAN', 'TELE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN'] },
   { key: 'round1_value', label: 'Giá trị HĐ vòng 1', roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
   { key: 'round1_paid',  label: 'Đã thu V1',          roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
   { key: 'round1_debt',  label: 'Còn nợ V1',          roles: ['TELE', 'QUAN_LY', 'CHU_DN'] },
@@ -163,6 +171,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     .filter(c => !columnKeys || columnKeys.includes(c.key))
     .filter(c => !c.roles || c.roles.includes(role))
     .filter(c => !hideMoneyColumns || !MONEY_KEYS.includes(c.key))
+    .filter(c => !(fromContext === 'truc' && c.key === 'hd_status'))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -243,6 +252,17 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         return <span style={{ color: '#64748b' }}>{fmtMoney(c.round1_paid)}</span>
       case 'round1_debt':
         return <span style={{ color: c.round1_debt > 0 ? '#dc2626' : '#64748b' }}>{fmtMoney(c.round1_debt)}</span>
+      case 'hd_status': {
+        const hs = c.hd_status
+        if (!hs || hs.latest === null) return <span style={{ color: '#94a3b8' }}>—</span>
+        const cfg = HD_STATUS_CFG[hs.latest] ?? { bg: '#f1f5f9', color: '#64748b', label: hs.latest }
+        const suffix = hs.pending_count > 0 ? ` ·${hs.pending_count}` : ''
+        return (
+          <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color }}>
+            {cfg.label}{suffix}
+          </span>
+        )
+      }
       case 'total_value':
         return <span style={{ color: '#64748b' }}>{fmtMoney(c.total_value)}</span>
       case 'total_paid':

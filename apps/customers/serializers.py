@@ -58,6 +58,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
     total_paid = serializers.SerializerMethodField()
     total_debt = serializers.SerializerMethodField()
     upsale_value = serializers.SerializerMethodField()
+    hd_status = serializers.SerializerMethodField()
     so_buoi_total = serializers.SerializerMethodField()
     buoi_con_lai = serializers.SerializerMethodField()
     class Meta:
@@ -68,7 +69,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
                   'tele_name','sale_name','cskh','cskh_name','ads','ads_name',
                   'last_bs_name','last_ktv_name','services_interest_names','round1_value','round1_paid','round1_debt',
                   'total_value','total_paid','total_debt','upsale_value',
-                  'so_buoi_total','buoi_con_lai','created_at']
+                  'so_buoi_total','buoi_con_lai','hd_status','created_at']
 
     def get_last_bs_name(self, obj):
         appt = _last_done_appt(obj)
@@ -116,6 +117,14 @@ class CustomerListSerializer(serializers.ModelSerializer):
         da_dung = obj.appointments.filter(status='done').count() if hasattr(obj, 'appointments') else 0
         return max(0, total - da_dung)
 
+
+    def get_hd_status(self, obj):
+        contracts = [c for c in obj.contracts.all() if not c.is_deleted]
+        if not contracts:
+            return {'latest': None, 'pending_count': 0}
+        latest = sorted(contracts, key=lambda c: c.created_at, reverse=True)[0]
+        pending_count = sum(1 for c in contracts if c.approval_status in ('draft', 'pending_kt'))
+        return {'latest': latest.approval_status, 'pending_count': pending_count}
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
     """Chi tiết — full 5 tab."""
