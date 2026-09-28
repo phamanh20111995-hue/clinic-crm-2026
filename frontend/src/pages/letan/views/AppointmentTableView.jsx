@@ -300,7 +300,7 @@ export default function AppointmentTableView({
             Đang tải...
           </div>
         ) : (
-          <div style={{ overflowX: 'auto', overflowY: 'scroll', flex: 1, minHeight: 0 }}>
+          <div style={{ overflowX: 'auto', overflowY: 'scroll', flex: 1, minHeight: 0, marginBottom: 52 }}>
             <table style={{ width: '100%', minWidth: 2700, borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 2 }}>
