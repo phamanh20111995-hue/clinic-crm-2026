@@ -32,6 +32,8 @@ class Appointment(models.Model):
     room         = models.ForeignKey('clinics.Room', null=True, blank=True, on_delete=models.SET_NULL)
     doctor       = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
                                      on_delete=models.SET_NULL, related_name='doctor_appointments')
+    bs_dieu_tri     = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                        on_delete=models.SET_NULL, related_name='bsdt_appointments')
     ktv          = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
                                      on_delete=models.SET_NULL, related_name='ktv_appointments')
     sale         = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,

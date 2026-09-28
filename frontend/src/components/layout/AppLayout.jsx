@@ -4,17 +4,17 @@ import SubnavTabs from './SubnavTabs'
 import BottomNav from './BottomNav'
 
 /**
- * AppLayout — v2 layout shell
+ * AppLayout Ã¢â‚¬â€ v2 layout shell
  *
  * Props:
- *   title       string           — topbar module name
- *   actions     ReactNode        — topbar right-side buttons
- *   meta        string           — small label next to title
- *   tabs        array            — [{ key, label, badge? }]  (managed subnav)
+ *   title       string           Ã¢â‚¬â€ topbar module name
+ *   actions     ReactNode        Ã¢â‚¬â€ topbar right-side buttons
+ *   meta        string           Ã¢â‚¬â€ small label next to title
+ *   tabs        array            Ã¢â‚¬â€ [{ key, label, badge? }]  (managed subnav)
  *   activeTab   string
  *   onTabChange (key) => void
- *   noPadding   bool             — skip content padding (for card-style pages)
- *   bare        bool             — skip inner wrapper; page manages its own flex layout
+ *   noPadding   bool             Ã¢â‚¬â€ skip content padding (for card-style pages)
+ *   bare        bool             Ã¢â‚¬â€ skip inner wrapper; page manages its own flex layout
  *   children    ReactNode
  */
 export default function AppLayout({
@@ -37,7 +37,7 @@ export default function AppLayout({
 
   return (
     <div style={{ minHeight: '100vh', background: '#eef1f6' }}>
-      {/* Sidebar — desktop only */}
+      {/* Sidebar Ã¢â‚¬â€ desktop only */}
       <div className="hidden md:block">
         <SidebarV2 />
       </div>
@@ -72,6 +72,19 @@ export default function AppLayout({
         }}>
           {children}
         </div>
+      ) : hasSubnav ? (
+        /* subnav mode: content fills height so inner tables/pagination anchor to bottom */
+        <div className="app-content-with-subnav" style={{
+          marginLeft: 'var(--sidebar-w)',
+          height: 'calc(100vh - (' + contentPaddingTop + ') - 40px)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <div className={noPadding ? 'pb-16 md:pb-0' : 'p-5'} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {children}
+          </div>
+        </div>
       ) : (
         <div className={hasSubnav ? 'app-content-with-subnav' : 'app-content'}>
           <div className={noPadding ? 'pb-16 md:pb-0' : 'p-5 pb-20 md:pb-5'}>
@@ -80,7 +93,7 @@ export default function AppLayout({
         </div>
       )}
 
-      {/* Bottom nav — mobile only */}
+      {/* Bottom nav Ã¢â‚¬â€ mobile only */}
       <BottomNav />
     </div>
   )

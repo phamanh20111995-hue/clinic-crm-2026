@@ -13,18 +13,21 @@ class AppointmentListSerializer(serializers.ModelSerializer):
     room_name          = serializers.CharField(source='room.name', read_only=True)
     booked_by_name     = serializers.CharField(source='booked_by.display_name', read_only=True)
     doctor_name        = serializers.CharField(source='doctor.display_name', read_only=True)
+    bs_dieu_tri_name   = serializers.CharField(source='bs_dieu_tri.display_name', read_only=True)
     ktv_name           = serializers.CharField(source='ktv.display_name', read_only=True)
     sale_name          = serializers.CharField(source='sale.display_name', read_only=True)
+    customer_detail    = CustomerListSerializer(source='customer', read_only=True)
 
     class Meta:
         model = Appointment
         fields = [
-            'id', 'customer', 'customer_name', 'customer_phone',
+            'id', 'customer', 'customer_detail', 'customer_name', 'customer_phone',
             'scheduled_at', 'service', 'service_name',
             'status', 'status_display',
             'visit_type', 'visit_type_display',
             'room', 'room_name',
             'doctor', 'doctor_name',
+            'bs_dieu_tri', 'bs_dieu_tri_name',
             'ktv', 'ktv_name',
             'sale', 'sale_name',
             'booked_by_name', 'is_walkin', 'tua_confirmed',
@@ -56,7 +59,7 @@ class AppointmentUpdateSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = [
             'scheduled_at', 'service', 'status', 'visit_type',
-            'room', 'doctor', 'ktv', 'sale', 'notes',
+            'room', 'doctor', 'bs_dieu_tri', 'ktv', 'sale', 'notes',
         ]
 
 
@@ -77,7 +80,7 @@ class AssignRoomSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Appointment
-        fields = ['room', 'doctor', 'ktv', 'sale', 'visit_type']
+        fields = ['room', 'doctor', 'bs_dieu_tri', 'ktv', 'sale', 'visit_type']
 
     def update(self, instance, validated_data):
         visit_type = validated_data.get('visit_type', instance.visit_type)

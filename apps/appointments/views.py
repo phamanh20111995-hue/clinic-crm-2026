@@ -67,7 +67,15 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 @permission_classes([IsAuthenticated])
 def today_appointments(request):
     """GET /api/appointments/today/ — Lịch hẹn hôm nay."""
-    today = timezone.localdate()
+    date_param = request.query_params.get('date')
+    if date_param:
+        from datetime import datetime
+        try:
+            today = datetime.strptime(date_param, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': 'date khong hop le, dung YYYY-MM-DD.'}, status=400)
+    else:
+        today = timezone.localdate()
     qs = _appointment_queryset(request.user).filter(
         scheduled_at__date=today
     ).exclude(status='cancelled').order_by('scheduled_at')
@@ -372,3 +380,28 @@ def available_staff(request):
     users = User.objects.filter(id__in=user_ids, is_active=True).values('id', 'first_name', 'email', 'role')
 
     return Response({'date': str(query_date), 'results': list(users)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def assign_sale(request, pk):
+    if request.user.role not in LETAN_ROLES and request.user.role not in ('QUAN_LY', 'CHU_DN'):
+        return Response({'detail': 'KhÃ´ng cÃ³ quyá»n chá»‰ Ä‘á»‹nh Sale.'}, status=403)
+    appt = Appointment.objects.filter(pk=pk).select_related('customer').first()
+    if not appt:
+        return Response({'detail': 'KhÃ´ng tÃ¬m tháº¥y lá»‹ch háº¹n.'}, status=404)
+    sale_id = request.data.get('sale_id')
+    if not sale_id:
+        return Response({'detail': 'ChÆ°a chá»n sale.'}, status=400)
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    sale = User.objects.filter(pk=sale_id, role='SALE').first()
+    if not sale:
+        return Response({'detail': 'Sale khÃ´ng há»£p lá»‡.'}, status=400)
+    with transaction.atomic():
+        appt.sale = sale
+        appt.save(update_fields=['sale'])
+        appt.customer.sale = sale
+        appt.customer.save(update_fields=['sale', 'updated_at'])
+        Appointment.objects.filter(customer=appt.customer).exclude(pk=appt.pk).update(sale=sale)
+    return Response(AppointmentListSerializer(appt).data)

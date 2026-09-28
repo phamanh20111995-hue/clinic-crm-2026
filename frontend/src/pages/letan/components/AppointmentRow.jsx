@@ -19,10 +19,11 @@ function timeDiff(scheduledAt) {
   return `${Math.floor(diff / 60)}h${diff % 60 ? diff % 60 + 'm' : ''}`
 }
 
-export default function AppointmentRow({ appt, onCheckin, onEnqueue, onAssignRoom, onToTreatment, onCheckout, onCall, isSelected, onClick }) {
+export default function AppointmentRow({ appt, onCheckin, onEnqueue, onAssignRoom, onToTreatment, onCheckout, onCall, isSelected, onClick, saleUsers = [], onAssignSale }) {
   const cfg = STATUS_CFG[appt.status] ?? STATUS_CFG.pending
   const initial = (appt.customer_name || '?')[0].toUpperCase()
   const isWaiting = appt.status === 'waiting_consult' || appt.status === 'waiting_treat'
+  const showSaleDropdown = appt.status !== 'done' && appt.status !== 'cancelled'
 
   return (
     <div
@@ -81,7 +82,7 @@ export default function AppointmentRow({ appt, onCheckin, onEnqueue, onAssignRoo
           {appt.room_name && <span>· {appt.room_name}</span>}
           {appt.doctor_name && <span>· BS: {appt.doctor_name}</span>}
           {appt.ktv_name && <span>· KTV: {appt.ktv_name}</span>}
-                {appt.sale_name && <span>· Sale: {appt.sale_name}</span>}
+          {appt.sale_name && <span>· Sale: {appt.sale_name}</span>}
           {appt.status === 'in_progress' && (
             <span style={{ color: ACCENT, fontWeight: 600 }}>
               · {timeDiff(appt.scheduled_at)} đang ĐT
@@ -93,6 +94,24 @@ export default function AppointmentRow({ appt, onCheckin, onEnqueue, onAssignRoo
             </span>
           )}
         </div>
+
+        {/* Dropdown chỉ định Sale */}
+        {showSaleDropdown && saleUsers.length > 0 && (
+          <div onClick={e => e.stopPropagation()} style={{ marginTop: 4 }}>
+            <select
+              value={appt.sale ?? ''}
+              onChange={e => onAssignSale?.(appt, e.target.value)}
+              style={{ border: '1px solid #dde3ef', borderRadius: 6, fontSize: 11, padding: '3px 6px' }}
+            >
+              <option value="">— Chỉ định sale —</option>
+              {saleUsers.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.display_name ?? u.full_name ?? u.email}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Action buttons */}

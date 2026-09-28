@@ -55,3 +55,9 @@ export const toTreatment = (id) =>
 
 export const checkoutAppointment = (id) =>
   api.post(`/api/appointments/${id}/checkout/`)
+
+export const assignSale = (id, saleId) =>
+  api.post(`/api/appointments/${id}/assign-sale/`, { sale_id: saleId })
+
+export const getSaleUsers = () =>
+  api.get('/api/auth/users-lite/', { params: { role: 'SALE' } })

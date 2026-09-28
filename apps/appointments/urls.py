@@ -8,6 +8,7 @@ urlpatterns = [
     path('available-staff/',             views.available_staff,                     name='available-staff'),
     path('<int:pk>/',                     views.AppointmentDetailView.as_view(),     name='appointment-detail'),
     path('<int:pk>/checkin/',             views.checkin_view,                        name='appointment-checkin'),
+    path('<int:pk>/assign-sale/', views.assign_sale, name='appointment-assign-sale'),
     path('<int:pk>/enqueue/',             views.enqueue,                             name='appointment-enqueue'),
     path('<int:pk>/assign-room/',         views.assign_room,                         name='appointment-assign-room'),
     path('<int:pk>/to-treatment/',        views.to_treatment,                        name='appointment-to-treatment'),
