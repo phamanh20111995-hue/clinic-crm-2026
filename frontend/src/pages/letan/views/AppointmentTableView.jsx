@@ -82,9 +82,10 @@ function HdStatusBadge({ hd_status }) {
 }
 
 const HEADERS = [
-  'Giờ hẹn', 'Loại lượt', 'Trạng thái', 'Phòng', 'BS tư vấn', 'BS điều trị', 'KTV điều trị',
   'Khách hàng', 'SĐT', 'Nguồn', 'Nhóm KH', 'Tỉnh/thành', 'Loại data', 'DV quan tâm',
-  'Tele', 'Sale', 'CSKH', 'Ads',
+  'Giờ hẹn', 'Loại lượt', 'Trạng thái', 'Phòng',
+  'Sale', 'BS tư vấn', 'BS điều trị', 'KTV điều trị',
+  'Tele', 'CSKH', 'Ads',
   'Tình trạng HĐ', 'Buổi còn lại', 'Công nợ',
 ]
 
@@ -184,11 +185,12 @@ export default function AppointmentTableView({
   }
 
   // Options for inline edit cells
-  const statusOptions = Object.entries(STATUS_CFG).map(([k, c]) => ({ value: k, label: c.label }))
-  const roomOptions   = [{ value: '', label: '— Bỏ trống —' }, ...rooms.map(r => ({ value: r.id, label: r.name }))]
-  const bsOptions     = [{ value: '', label: '— Bỏ trống —' }, ...bsList.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))]
-  const ktvOptions    = [{ value: '', label: '— Bỏ trống —' }, ...ktvList.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))]
-  const saleOptions   = saleUsers.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))
+  const statusOptions    = Object.entries(STATUS_CFG).map(([k, c]) => ({ value: k, label: c.label }))
+  const visitTypeOptions = VISIT_TYPE_OPTIONS.filter(o => o.value !== '')
+  const roomOptions      = [{ value: '', label: '— Bỏ trống —' }, ...rooms.map(r => ({ value: r.id, label: r.name }))]
+  const bsOptions        = [{ value: '', label: '— Bỏ trống —' }, ...bsList.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))]
+  const ktvOptions       = [{ value: '', label: '— Bỏ trống —' }, ...ktvList.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))]
+  const saleOptions      = saleUsers.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
@@ -334,6 +336,7 @@ export default function AppointmentTableView({
                 ) : pageItems.map(appt => {
                   const cd    = appt.customer_detail ?? {}
                   const money = fmtMoney(cd.total_debt)
+                  const isDone = appt.status === 'done' || appt.status === 'cancelled'
                   return (
                     <tr
                       key={appt.id}
@@ -342,17 +345,71 @@ export default function AppointmentTableView({
                       onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
                       onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
-                      {/* ── NHÓM LỄ TÂN ── */}
+                      {/* 1 Khách hàng */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontWeight: 600, color: '#0f2044' }}>
+                          {cd.full_name || appt.customer_name}
+                        </span>
+                        {appt.is_walkin && (
+                          <span style={{ marginLeft: 5, fontSize: 10, color: ACCENT, fontWeight: 600 }}>[Walk-in]</span>
+                        )}
+                      </td>
+
+                      {/* 2 SĐT */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontFamily: 'monospace', color: '#374151' }}>
+                          {cd.phone || appt.customer_phone || EMPTY}
+                        </span>
+                      </td>
+
+                      {/* 3 Nguồn */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        {cd.source_display || EMPTY}
+                      </td>
+
+                      {/* 4 Nhóm KH */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        {cd.customer_group || EMPTY}
+                      </td>
+
+                      {/* 5 Tỉnh/thành */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        {cd.province || EMPTY}
+                      </td>
+
+                      {/* 6 Loại data */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        {cd.data_type_display || EMPTY}
+                      </td>
+
+                      {/* 7 DV quan tâm */}
+                      <td style={{ padding: '9px 12px', maxWidth: 180 }}>
+                        <span style={{ color: '#64748b', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                          {cd.services_interest_names?.length
+                            ? cd.services_interest_names.join(', ')
+                            : EMPTY}
+                        </span>
+                      </td>
+
+                      {/* 8 Giờ hẹn */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: ACCENT }}>
                           {fmtTime(appt.scheduled_at)}
                         </span>
                       </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {appt.visit_type_display || EMPTY}
+
+                      {/* 9 Loại lượt — inline edit */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <InlineEditCell
+                          value={appt.visit_type}
+                          displayValue={appt.visit_type_display || EMPTY}
+                          options={visitTypeOptions}
+                          searchable={false}
+                          onSave={(v) => onUpdateField(appt, 'visit_type', v, { visit_type_display: VISIT_TYPE_OPTIONS.find(o => o.value === v)?.label ?? null })}
+                        />
                       </td>
 
-                      {/* Trạng thái — inline edit */}
+                      {/* 10 Trạng thái — inline edit */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                         <InlineEditCell
                           value={appt.status}
@@ -363,88 +420,23 @@ export default function AppointmentTableView({
                         />
                       </td>
 
-                      {/* Phòng — inline edit */}
+                      {/* 11 Phòng — inline edit */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                        <InlineEditCell
-                          value={appt.room}
-                          displayValue={appt.room_name || EMPTY}
-                          options={roomOptions}
-                          onSave={(v) => onUpdateField(appt, 'room', v, { room_name: v === '' ? null : (roomOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
-                        />
-                      </td>
-
-                      {/* BS tư vấn — inline edit */}
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                        <InlineEditCell
-                          value={appt.doctor}
-                          displayValue={appt.doctor_name || EMPTY}
-                          options={bsOptions}
-                          onSave={(v) => onUpdateField(appt, 'doctor', v, { doctor_name: v === '' ? null : (bsOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
-                        />
-                      </td>
-
-                      {/* BS điều trị — inline edit */}
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                        <InlineEditCell
-                          value={appt.bs_dieu_tri}
-                          displayValue={appt.bs_dieu_tri_name || EMPTY}
-                          options={bsOptions}
-                          onSave={(v) => onUpdateField(appt, 'bs_dieu_tri', v, { bs_dieu_tri_name: v === '' ? null : (bsOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
-                        />
-                      </td>
-
-                      {/* KTV điều trị — inline edit */}
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                        <InlineEditCell
-                          value={appt.ktv}
-                          displayValue={appt.ktv_name || EMPTY}
-                          options={ktvOptions}
-                          onSave={(v) => onUpdateField(appt, 'ktv', v, { ktv_name: v === '' ? null : (ktvOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
-                        />
-                      </td>
-
-                      {/* ── NHÓM KHÁCH ── */}
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontWeight: 600, color: '#0f2044' }}>
-                          {cd.full_name || appt.customer_name}
-                        </span>
-                        {appt.is_walkin && (
-                          <span style={{ marginLeft: 5, fontSize: 10, color: ACCENT, fontWeight: 600 }}>[Walk-in]</span>
+                        {!isDone ? (
+                          <InlineEditCell
+                            value={appt.room}
+                            displayValue={appt.room_name || EMPTY}
+                            options={roomOptions}
+                            onSave={(v) => onUpdateField(appt, 'room', v, { room_name: v === '' ? null : (roomOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                          />
+                        ) : (
+                          <span style={{ color: '#64748b' }}>{appt.room_name || '—'}</span>
                         )}
                       </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontFamily: 'monospace', color: '#374151' }}>
-                          {cd.phone || appt.customer_phone || EMPTY}
-                        </span>
-                      </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {cd.source_display || EMPTY}
-                      </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {cd.customer_group || EMPTY}
-                      </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {cd.province || EMPTY}
-                      </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {cd.data_type_display || EMPTY}
-                      </td>
-                      <td style={{ padding: '9px 12px', maxWidth: 180 }}>
-                        <span style={{ color: '#64748b', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                          {cd.services_interest_names?.length
-                            ? cd.services_interest_names.join(', ')
-                            : EMPTY}
-                        </span>
-                      </td>
 
-                      {/* ── NHÓM PHÂN CÔNG ── */}
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {cd.tele_name || EMPTY}
-                      </td>
-
-                      {/* Sale — inline edit (chỉ khi status khác done/cancelled) */}
+                      {/* 12 Sale — inline edit (chỉ khi chưa done/cancelled) */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                        {saleUsers.length > 0 && appt.status !== 'done' && appt.status !== 'cancelled' ? (
+                        {saleUsers.length > 0 && !isDone ? (
                           <InlineEditCell
                             value={appt.sale ?? ''}
                             displayValue={cd.sale_name || appt.sale_name || EMPTY}
@@ -456,20 +448,74 @@ export default function AppointmentTableView({
                         )}
                       </td>
 
+                      {/* 13 BS tư vấn — inline edit (chỉ khi chưa done/cancelled) */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        {!isDone ? (
+                          <InlineEditCell
+                            value={appt.doctor}
+                            displayValue={appt.doctor_name || EMPTY}
+                            options={bsOptions}
+                            onSave={(v) => onUpdateField(appt, 'doctor', v, { doctor_name: v === '' ? null : (bsOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                          />
+                        ) : (
+                          <span style={{ color: '#64748b' }}>{appt.doctor_name || '—'}</span>
+                        )}
+                      </td>
+
+                      {/* 14 BS điều trị — inline edit (chỉ khi chưa done/cancelled) */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        {!isDone ? (
+                          <InlineEditCell
+                            value={appt.bs_dieu_tri}
+                            displayValue={appt.bs_dieu_tri_name || EMPTY}
+                            options={bsOptions}
+                            onSave={(v) => onUpdateField(appt, 'bs_dieu_tri', v, { bs_dieu_tri_name: v === '' ? null : (bsOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                          />
+                        ) : (
+                          <span style={{ color: '#64748b' }}>{appt.bs_dieu_tri_name || '—'}</span>
+                        )}
+                      </td>
+
+                      {/* 15 KTV điều trị — inline edit (chỉ khi chưa done/cancelled) */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        {!isDone ? (
+                          <InlineEditCell
+                            value={appt.ktv}
+                            displayValue={appt.ktv_name || EMPTY}
+                            options={ktvOptions}
+                            onSave={(v) => onUpdateField(appt, 'ktv', v, { ktv_name: v === '' ? null : (ktvOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                          />
+                        ) : (
+                          <span style={{ color: '#64748b' }}>{appt.ktv_name || '—'}</span>
+                        )}
+                      </td>
+
+                      {/* 16 Tele */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                        {cd.tele_name || EMPTY}
+                      </td>
+
+                      {/* 17 CSKH */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         {cd.cskh_name || EMPTY}
                       </td>
+
+                      {/* 18 Ads */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         {cd.ads_name || EMPTY}
                       </td>
 
-                      {/* ── NHÓM NGHIỆP VỤ ── */}
+                      {/* 19 Tình trạng HĐ */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         <HdStatusBadge hd_status={cd.hd_status} />
                       </td>
+
+                      {/* 20 Buổi còn lại */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', textAlign: 'center' }}>
                         {cd.buoi_con_lai != null ? cd.buoi_con_lai : EMPTY}
                       </td>
+
+                      {/* 21 Công nợ */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         {money
                           ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{money}</span>

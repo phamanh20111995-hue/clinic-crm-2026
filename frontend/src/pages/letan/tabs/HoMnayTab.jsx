@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getTodayAppointments, getRooms, getUsers, checkinAppointment, toTreatment, getSaleUsers, assignSale, updateAppointment } from '../../../api/letan'
 import AppointmentTableView from '../views/AppointmentTableView'
 import DoctorCard from '../components/DoctorCard'
@@ -36,6 +37,7 @@ function StatCard({ label, value, accent }) {
 }
 
 export default function HoMnayTab({ onWalkIn }) {
+  const navigate = useNavigate()
   const [appts, setAppts]         = useState([])
   const [rooms, setRooms]         = useState([])
   const [staff, setStaff]         = useState([])
@@ -235,7 +237,7 @@ export default function HoMnayTab({ onWalkIn }) {
             onAssignRoom={openAssign}
             onCheckout={openCheckout}
             onAssignSale={handleAssignSale}
-            onRowClick={() => {}}
+            onRowClick={(appt) => { const cid = appt.customer ?? appt.customer_detail?.id; if (cid) navigate('/customers/' + cid + '?from=letan') }}
             onReload={loadAll}
             viewDate={viewDate}
             onDateChange={setViewDate}
