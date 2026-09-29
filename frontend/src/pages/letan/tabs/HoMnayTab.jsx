@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getTodayAppointments, getRooms, getUsers, checkinAppointment, toTreatment, getSaleUsers, assignSale } from '../../../api/letan'
+import { getTodayAppointments, getRooms, getUsers, checkinAppointment, toTreatment, getSaleUsers, assignSale, updateAppointment } from '../../../api/letan'
 import AppointmentTableView from '../views/AppointmentTableView'
 import DoctorCard from '../components/DoctorCard'
 import AssignRoomModal from '../modals/AssignRoomModal'
@@ -39,14 +39,24 @@ export default function HoMnayTab({ onWalkIn }) {
   const [appts, setAppts]         = useState([])
   const [rooms, setRooms]         = useState([])
   const [staff, setStaff]         = useState([])
+  const [bsList, setBsList]       = useState([])
+  const [ktvList, setKtvList]     = useState([])
   const [saleUsers, setSaleUsers] = useState([])
   const [loading, setLoading]     = useState(true)
   const [mode, setMode]           = useState('lich') // 'lich' | 'realtime'
   const [modal, setModal]         = useState(null)
   const [modalAppt, setModalAppt] = useState(null)
-  const [viewDate, setViewDate]   = useState(todayStr)
+  const [viewDate, setViewDate]   = useState(() => new URLSearchParams(window.location.search).get('date') || todayStr())
 
   const isToday = viewDate === todayStr()
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (viewDate === todayStr()) params.delete('date')
+    else params.set('date', viewDate)
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? '?' + qs : window.location.pathname)
+  }, [viewDate])
 
   const patchAppt = useCallback((updated) => {
     setAppts(prev => prev.map(a => a.id === updated.id ? updated : a))
@@ -61,10 +71,18 @@ export default function HoMnayTab({ onWalkIn }) {
 
   const loadStatic = useCallback(async () => {
     try {
-      const [roomRes, userRes, saleRes] = await Promise.all([getRooms(), getUsers(), getSaleUsers()])
+      const [roomRes, userRes, saleRes, bsRes, ktvRes] = await Promise.all([
+        getRooms(),
+        getUsers(),
+        getSaleUsers(),
+        getUsers({ role: 'BS' }),
+        getUsers({ role: 'KTV' }),
+      ])
       setRooms(roomRes.data?.results ?? roomRes.data ?? [])
       setStaff(userRes.data?.results ?? userRes.data ?? [])
       setSaleUsers(saleRes.data?.results ?? saleRes.data ?? [])
+      setBsList(bsRes.data?.results ?? bsRes.data ?? [])
+      setKtvList(ktvRes.data?.results ?? ktvRes.data ?? [])
     } catch {}
   }, [])
 
@@ -116,16 +134,34 @@ export default function HoMnayTab({ onWalkIn }) {
     }
   }
 
-  const handleAssignSale = async (appt, saleId) => {
+  const handleAssignSale = async (appt, saleId, saleName) => {
     if (!saleId) return
+    const prev = appt
+    patchAppt({ ...appt, sale: saleId, sale_name: saleName ?? appt.sale_name, customer_detail: { ...(appt.customer_detail ?? {}), sale_name: saleName ?? appt.customer_detail?.sale_name } })
     try {
       const res = await assignSale(appt.id, saleId)
       patchAppt(res.data)
       toast.success(`Đã chỉ định Sale cho ${appt.customer_name}`)
     } catch (err) {
+      patchAppt(prev)
       toast.error(err.response?.data?.detail ?? 'Lỗi chỉ định Sale')
+      throw err
     }
   }
+
+  const handleUpdateField = useCallback(async (appt, field, value, extra = {}) => {
+    const prev = appt
+    const val = value === '' ? null : value
+    patchAppt({ ...appt, [field]: val, ...extra })
+    try {
+      const res = await updateAppointment(appt.id, { [field]: val })
+      patchAppt(res.data)
+      toast.success('Đã cập nhật')
+    } catch (err) {
+      patchAppt(prev)
+      throw err
+    }
+  }, [patchAppt])
 
   const openEnqueue  = (appt) => { setModalAppt(appt); setModal('enqueue') }
   const openAssign   = (appt) => { setModalAppt(appt); setModal('assign') }
@@ -207,6 +243,10 @@ export default function HoMnayTab({ onWalkIn }) {
             onNextDate={() => setViewDate(d => shiftDate(d, 1))}
             onTodayDate={() => setViewDate(todayStr())}
             isToday={isToday}
+            rooms={rooms}
+            bsList={bsList}
+            ktvList={ktvList}
+            onUpdateField={handleUpdateField}
           />
         </div>
       )}

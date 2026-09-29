@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { IconSearch, IconRefresh, IconFilter, IconX } from '@tabler/icons-react'
+import InlineEditCell from '../../../components/common/InlineEditCell'
 
 const ACCENT = '#b45309'
 
@@ -10,7 +11,7 @@ const STATUS_CFG = {
   waiting_treat:   { label: 'Chờ ĐT',     bg: '#fce7f3', color: '#9d174d' },
   consulting:      { label: 'Đang TV',    bg: '#fef3c7', color: '#92400e' },
   in_progress:     { label: 'Đang ĐT',   bg: '#dcfce7', color: '#166534' },
-  done:            { label: 'Đã về',      bg: '#f3f4f6', color: '#9ca3af' },
+  done:            { label: 'Đã về',      bg: '#ccfbf1', color: '#0f766e' },
   cancelled:       { label: 'Đã hủy',    bg: '#fee2e2', color: '#dc2626' },
 }
 
@@ -64,7 +65,7 @@ function StatusBadge({ status, status_display }) {
   const cfg = STATUS_CFG[status] ?? { bg: '#f1f5f9', color: '#64748b' }
   return (
     <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color }}>
-      {status_display ?? cfg.label}
+      {cfg.label ?? status_display}
     </span>
   )
 }
@@ -115,6 +116,10 @@ export default function AppointmentTableView({
   onNextDate,
   onTodayDate,
   isToday,
+  rooms = [],
+  bsList = [],
+  ktvList = [],
+  onUpdateField,
 }) {
   const [search,          setSearch]         = useState('')
   const [statusFilter,    setStatusFilter]   = useState('')
@@ -177,6 +182,13 @@ export default function AppointmentTableView({
   const clearAdvanced = () => {
     setSourceF(''); setGroupF(''); setDataTypeF(''); setStaffF(''); setSaleF(''); setServiceF('')
   }
+
+  // Options for inline edit cells
+  const statusOptions = Object.entries(STATUS_CFG).map(([k, c]) => ({ value: k, label: c.label }))
+  const roomOptions   = [{ value: '', label: '— Bỏ trống —' }, ...rooms.map(r => ({ value: r.id, label: r.name }))]
+  const bsOptions     = [{ value: '', label: '— Bỏ trống —' }, ...bsList.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))]
+  const ktvOptions    = [{ value: '', label: '— Bỏ trống —' }, ...ktvList.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))]
+  const saleOptions   = saleUsers.map(u => ({ value: u.id, label: u.display_name ?? u.full_name ?? u.email }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
@@ -339,20 +351,56 @@ export default function AppointmentTableView({
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         {appt.visit_type_display || EMPTY}
                       </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        <StatusBadge status={appt.status} status_display={appt.status_display} />
+
+                      {/* Trạng thái — inline edit */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <InlineEditCell
+                          value={appt.status}
+                          displayValue={<StatusBadge status={appt.status} status_display={appt.status_display} />}
+                          options={statusOptions}
+                          searchable={false}
+                          onSave={(v) => onUpdateField(appt, 'status', v)}
+                        />
                       </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {appt.room_name || EMPTY}
+
+                      {/* Phòng — inline edit */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <InlineEditCell
+                          value={appt.room}
+                          displayValue={appt.room_name || EMPTY}
+                          options={roomOptions}
+                          onSave={(v) => onUpdateField(appt, 'room', v, { room_name: v === '' ? null : (roomOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                        />
                       </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {appt.doctor_name || EMPTY}
+
+                      {/* BS tư vấn — inline edit */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <InlineEditCell
+                          value={appt.doctor}
+                          displayValue={appt.doctor_name || EMPTY}
+                          options={bsOptions}
+                          onSave={(v) => onUpdateField(appt, 'doctor', v, { doctor_name: v === '' ? null : (bsOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                        />
                       </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {appt.bs_dieu_tri_name || EMPTY}
+
+                      {/* BS điều trị — inline edit */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <InlineEditCell
+                          value={appt.bs_dieu_tri}
+                          displayValue={appt.bs_dieu_tri_name || EMPTY}
+                          options={bsOptions}
+                          onSave={(v) => onUpdateField(appt, 'bs_dieu_tri', v, { bs_dieu_tri_name: v === '' ? null : (bsOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                        />
                       </td>
-                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                        {appt.ktv_name || EMPTY}
+
+                      {/* KTV điều trị — inline edit */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <InlineEditCell
+                          value={appt.ktv}
+                          displayValue={appt.ktv_name || EMPTY}
+                          options={ktvOptions}
+                          onSave={(v) => onUpdateField(appt, 'ktv', v, { ktv_name: v === '' ? null : (ktvOptions.find(o => String(o.value) === String(v))?.label ?? null) })}
+                        />
                       </td>
 
                       {/* ── NHÓM KHÁCH ── */}
@@ -393,24 +441,21 @@ export default function AppointmentTableView({
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         {cd.tele_name || EMPTY}
                       </td>
+
+                      {/* Sale — inline edit (chỉ khi status khác done/cancelled) */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                         {saleUsers.length > 0 && appt.status !== 'done' && appt.status !== 'cancelled' ? (
-                          <select
+                          <InlineEditCell
                             value={appt.sale ?? ''}
-                            onChange={e => onAssignSale?.(appt, e.target.value)}
-                            style={{ border: '1px solid #dde3ef', borderRadius: 6, fontSize: 11, padding: '3px 6px' }}
-                          >
-                            <option value="">— Chỉ định —</option>
-                            {saleUsers.map(u => (
-                              <option key={u.id} value={u.id}>
-                                {u.display_name ?? u.full_name ?? u.email}
-                              </option>
-                            ))}
-                          </select>
+                            displayValue={cd.sale_name || appt.sale_name || EMPTY}
+                            options={saleOptions}
+                            onSave={(v) => onAssignSale(appt, v, saleOptions.find(o => String(o.value) === String(v))?.label ?? null)}
+                          />
                         ) : (
                           <span style={{ color: '#64748b' }}>{cd.sale_name || appt.sale_name || '—'}</span>
                         )}
                       </td>
+
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         {cd.cskh_name || EMPTY}
                       </td>
