@@ -19,7 +19,7 @@ const STATUS_CHOICES = [
   { value: 'thue_bao', label: 'Thuê bao' },
   { value: 'sai_so', label: 'Sai số' },
   { value: 'tu_choi', label: 'Từ chối' },
-  { value: 'hoan_so', label: 'Hoàn số' },
+  { value: 'hoan_so', label: 'Hoãn số' },
   { value: 'dat_lich', label: 'Đặt lịch' },
   { value: 'hen_goi', label: 'Hẹn gọi lại' },
   { value: 'khong_qt', label: 'Không quan tâm' },
@@ -37,9 +37,12 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const myRole = getUserRole(currentUser)
   const canAssignCskh = ['LEAD_CSKH', 'QUAN_LY', 'CHU_DN'].includes(myRole)
   const canAssignTele = ['LEAD_TELE', 'QUAN_LY', 'CHU_DN'].includes(myRole)
-  const canAssignSale = ['LEAD_SALE', 'QUAN_LY', 'CHU_DN'].includes(myRole)
-  const canAssignAds = ['LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(myRole)
-  const lockStyle = { background: '#f8fafc', cursor: 'not-allowed' }
+  const canAssignSale = ['LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'LE_TAN'].includes(myRole)
+  const canAssignAds  = ['LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(myRole)
+  const isLetan      = myRole === 'LE_TAN'
+  const isWalkin     = form => form.source === 'walkin'
+  const lockStyle    = { background: '#f8fafc', cursor: 'not-allowed' }
+
   const [form, setForm] = useState({
     full_name: customer?.full_name ?? '',
     phone: customer?.phone ?? '',
@@ -67,6 +70,9 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const [saleUsers, setSaleUsers] = useState([])
   const [cskhUsers, setCskhUsers] = useState([])
   const [services, setServices] = useState([])
+
+  // canEditInfo: lễ tân chỉ sửa được info khi tạo mới hoặc khi KH là walk-in
+  const canEditInfo = !isLetan || !isEdit || isWalkin(form)
 
   useEffect(() => {
     getMktUsers().then(res => setMktUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
@@ -127,12 +133,14 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên *</label>
             <input required className="input" value={form.full_name}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('full_name', e.target.value)} placeholder="Nguyễn Văn A" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
             <input required className={`input ${!isEdit && phoneChecked ? 'border-red-400' : ''}`}
               value={form.phone} onChange={(e) => set('phone', e.target.value)}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onBlur={handlePhoneBlur} placeholder="0912345678" />
             {!isEdit && phoneChecked && (
               <p className="text-xs text-red-500 mt-1">⚠️ Trùng: {phoneChecked.full_name}</p>
@@ -141,11 +149,14 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input type="email" className="input" value={form.email}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('email', e.target.value)} placeholder="email@gmail.com" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
-            <select className="input" value={form.gender} onChange={(e) => set('gender', e.target.value)}>
+            <select className="input" value={form.gender}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
+              onChange={(e) => set('gender', e.target.value)}>
               <option value="">-- Chọn --</option>
               <option value="M">Nam</option>
               <option value="F">Nữ</option>
@@ -154,29 +165,38 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
             <input type="date" className="input" value={form.dob}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('dob', e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nguồn</label>
-            <select className="input" value={form.source} onChange={(e) => set('source', e.target.value)}>
+            <select className="input" value={form.source}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
+              onChange={(e) => set('source', e.target.value)}>
               {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Loại data</label>
-            <select className="input" value={form.data_type} onChange={(e) => set('data_type', e.target.value)}>
+            <select className="input" value={form.data_type}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
+              onChange={(e) => set('data_type', e.target.value)}>
               {DATA_TYPES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
-            <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
+            <select className="input" value={form.status}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
+              onChange={(e) => set('status', e.target.value)}>
               {STATUS_CHOICES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nhóm khách</label>
-            <select className="input" value={form.customer_group} onChange={(e) => set('customer_group', e.target.value)}>
+            <select className="input" value={form.customer_group}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
+              onChange={(e) => set('customer_group', e.target.value)}>
               <option value="">— Chọn nhóm —</option>
               {CUSTOMER_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
@@ -184,11 +204,13 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hẹn</label>
             <input type="date" className="input" value={form.appointment_date}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('appointment_date', e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tỉnh/TP</label>
             <input list="province-list" className="input" value={form.province}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('province', e.target.value)} placeholder="Hà Nội, TP.HCM..." />
             <datalist id="province-list">
               {PROVINCES.map((p) => <option key={p} value={p} />)}
@@ -224,10 +246,11 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Dịch vụ quan tâm</label>
-            <div style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: 8, maxHeight: 140, overflowY: 'auto' }}>
+            <div style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: 8, maxHeight: 140, overflowY: 'auto', ...(!canEditInfo ? lockStyle : {}) }}>
               {services.map((s) => (
-                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '2px 0', cursor: 'pointer' }}>
+                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '2px 0', cursor: !canEditInfo ? 'not-allowed' : 'pointer' }}>
                   <input type="checkbox"
+                    disabled={!canEditInfo}
                     checked={form.services_interest.includes(Number(s.id))}
                     onChange={() => set('services_interest',
                       form.services_interest.includes(Number(s.id))
@@ -242,16 +265,18 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
             <textarea className="input resize-none" rows={2} value={form.address}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('address', e.target.value)} placeholder="Số nhà, đường, phường..." />
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
             <textarea className="input resize-none" rows={2} value={form.notes}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('notes', e.target.value)} placeholder="Thông tin thêm..." />
           </div>
         </div>
         <div className="flex gap-2 pt-2">
-          <button type="submit" disabled={loading || (!isEdit && !!phoneChecked)} className="btn-primary">
+          <button type="submit" disabled={loading || (!isEdit && !!phoneChecked) || !canEditInfo} className="btn-primary">
             {loading ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : '+ Thêm KH'}
           </button>
           <button type="button" onClick={onClose} className="btn-secondary">Huỷ</button>

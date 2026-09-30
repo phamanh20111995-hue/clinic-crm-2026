@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Customer, CustomerImage, CallHistory, ReturnRequest
 
 
@@ -117,7 +118,6 @@ class CustomerListSerializer(serializers.ModelSerializer):
         da_dung = obj.appointments.filter(status='done').count() if hasattr(obj, 'appointments') else 0
         return max(0, total - da_dung)
 
-
     def get_hd_status(self, obj):
         contracts = [c for c in obj.contracts.all() if not c.is_deleted]
         if not contracts:
@@ -167,11 +167,13 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 
 
 class CustomerCreateSerializer(serializers.ModelSerializer):
+    appointment_time = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
     class Meta:
         model = Customer
         fields = ['full_name','phone','dob','gender','address','source','data_type',
                   'customer_group','appointment_date','province','notes','tele','sale','cskh','ads',
-                  'services_interest']
+                  'services_interest','appointment_time']
 
     def validate_phone(self, value):
         # Kiểm tra trùng SĐT (CLAUDE.md)
@@ -182,9 +184,60 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Số điện thoại đã tồn tại trong hệ thống.')
         return value
 
+    def _sync_appointment(self, customer, appt_time_str):
+        import datetime
+        from apps.appointments.models import Appointment
+
+        appt_date = customer.appointment_date
+        if not appt_date:
+            return
+
+        # Parse giờ, mặc định 09:00 nếu rỗng/sai
+        hour, minute = 9, 0
+        if appt_time_str:
+            try:
+                parts = appt_time_str.strip().split(':')
+                hour = int(parts[0])
+                minute = int(parts[1]) if len(parts) > 1 else 0
+            except (ValueError, IndexError):
+                hour, minute = 9, 0
+
+        # Dựng aware datetime theo timezone VN
+        naive_dt = datetime.datetime.combine(appt_date, datetime.time(hour, minute))
+        scheduled_at = timezone.make_aware(naive_dt, timezone.get_current_timezone())
+
+        # Tìm lịch sắp tới chưa kết thúc
+        existing = (
+            Appointment.objects
+            .filter(customer=customer, scheduled_at__date__gte=timezone.localdate())
+            .exclude(status__in=['done', 'cancelled'])
+            .order_by('scheduled_at')
+            .first()
+        )
+
+        if existing:
+            existing.scheduled_at = scheduled_at
+            existing.save(update_fields=['scheduled_at'])
+        else:
+            Appointment.objects.create(
+                customer=customer,
+                scheduled_at=scheduled_at,
+                booked_by=self.context['request'].user,
+                status='pending',
+            )
+
     def create(self, validated_data):
+        appt_time = validated_data.pop('appointment_time', '')
         validated_data['created_by'] = self.context['request'].user
-        return super().create(validated_data)
+        customer = super().create(validated_data)
+        self._sync_appointment(customer, appt_time)
+        return customer
+
+    def update(self, instance, validated_data):
+        appt_time = validated_data.pop('appointment_time', '')
+        customer = super().update(instance, validated_data)
+        self._sync_appointment(customer, appt_time)
+        return customer
 
 
 class CustomerAssignSerializer(serializers.ModelSerializer):
