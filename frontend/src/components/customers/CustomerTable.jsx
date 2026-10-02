@@ -10,6 +10,7 @@ import useAuthStore from '../../store/authStore'
 import InlineDateTimeCell from '../common/InlineDateTimeCell'
 import InlineEditCell from '../common/InlineEditCell'
 import InlineTextCell from '../common/InlineTextCell'
+import InlineMultiSelectCell from '../common/InlineMultiSelectCell'
 
 const STATUS_COLORS = {
   chua_goi: 'gray', da_goi: 'blue', khong_nghe: 'orange', thue_bao: 'orange',
@@ -291,6 +292,18 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
           )
         }
         return <span style={{ color: '#64748b' }}>{GENDER_LABELS[c.gender] ?? '—'}</span>
+      case 'services_interest_names':
+        if (canInlineEdit) {
+          return (
+            <InlineMultiSelectCell
+              value={c.services_interest || []}
+              displayValue={<span style={{ color: '#64748b' }}>{(c.services_interest_names && c.services_interest_names.length) ? c.services_interest_names.join(', ') : '—'}</span>}
+              options={services.map(s => ({ value: s.id, label: s.name }))}
+              onSave={(ids) => handleSaveField(c, 'services_interest', ids)}
+            />
+          )
+        }
+        return <span style={{ color: '#64748b' }}>{(c.services_interest_names && c.services_interest_names.length) ? c.services_interest_names.join(', ') : '—'}</span>
       case 'data_type':
         if (canInlineEdit) {
           return (
@@ -360,8 +373,6 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         return <span style={{ color: '#64748b' }}>{c.last_bs_name ?? '—'}</span>
       case 'last_ktv_name':
         return <span style={{ color: '#64748b' }}>{c.last_ktv_name ?? '—'}</span>
-      case 'services_interest_names':
-        return <span style={{ color: '#64748b' }}>{(c.services_interest_names && c.services_interest_names.length) ? c.services_interest_names.join(', ') : '—'}</span>
       case 'round1_value':
         return <span style={{ color: '#64748b' }}>{fmtMoney(c.round1_value)}</span>
       case 'round1_paid':

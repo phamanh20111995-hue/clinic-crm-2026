@@ -69,7 +69,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
                   'data_type','data_type_display','status','status_display',
                   'call_count','customer_group','appointment_date','province',
                   'tele_name','sale_name','cskh','cskh_name','ads','ads_name',
-                  'last_bs_name','last_ktv_name','services_interest_names','round1_value','round1_paid','round1_debt',
+                  'last_bs_name','last_ktv_name','services_interest','services_interest_names','round1_value','round1_paid','round1_debt',
                   'total_value','total_paid','total_debt','upsale_value',
                   'so_buoi_total','buoi_con_lai','next_appt','hd_status','created_at']
 
