@@ -220,10 +220,6 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
             except (ValueError, IndexError):
                 hour, minute = 9, 0
 
-        # Dựng aware datetime theo timezone VN
-        naive_dt = datetime.datetime.combine(appt_date, datetime.time(hour, minute))
-        scheduled_at = timezone.make_aware(naive_dt, timezone.get_current_timezone())
-
         # Tìm lịch sắp tới chưa kết thúc
         existing = (
             Appointment.objects
@@ -232,6 +228,15 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
             .order_by('scheduled_at')
             .first()
         )
+
+        # Neu khong gui gio: giu gio cu cua lich hien co (khong ep 09:00)
+        if not appt_time_str and existing:
+            local_old = timezone.localtime(existing.scheduled_at)
+            hour, minute = local_old.hour, local_old.minute
+
+        # Dựng aware datetime theo timezone VN
+        naive_dt = datetime.datetime.combine(appt_date, datetime.time(hour, minute))
+        scheduled_at = timezone.make_aware(naive_dt, timezone.get_current_timezone())
 
         if existing:
             existing.scheduled_at = scheduled_at
@@ -253,8 +258,10 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         appt_time = validated_data.pop('appointment_time', '')
+        touch_appt = ('appointment_date' in self.initial_data) or ('appointment_time' in self.initial_data)
         customer = super().update(instance, validated_data)
-        self._sync_appointment(customer, appt_time)
+        if touch_appt:
+            self._sync_appointment(customer, appt_time)
         return customer
 
 

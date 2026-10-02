@@ -9,6 +9,7 @@ import { IconSearch, IconFilter, IconX } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import InlineDateTimeCell from '../common/InlineDateTimeCell'
 import InlineEditCell from '../common/InlineEditCell'
+import InlineTextCell from '../common/InlineTextCell'
 
 const STATUS_COLORS = {
   chua_goi: 'gray', da_goi: 'blue', khong_nghe: 'orange', thue_bao: 'orange',
@@ -230,6 +231,15 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       case 'full_name':
         return <span style={{ fontWeight: 600, color: '#0f2044' }}>{c.full_name}</span>
       case 'phone':
+        if (canInlineEdit) {
+          return (
+            <InlineTextCell
+              value={c.phone || ''}
+              displayValue={<span style={{ fontFamily: 'monospace', color: '#374151' }}>{fmtPhone(c.phone)}</span>}
+              onSave={(v) => handleSaveField(c, 'phone', v)}
+            />
+          )
+        }
         return <span style={{ fontFamily: 'monospace', color: '#374151' }}>{fmtPhone(c.phone)}</span>
       case 'source':
         if (canInlineEdit) {
