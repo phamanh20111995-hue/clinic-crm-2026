@@ -63,6 +63,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
     so_buoi_total = serializers.SerializerMethodField()
     buoi_con_lai = serializers.SerializerMethodField()
     next_appt = serializers.SerializerMethodField()
+    created_by_name = serializers.CharField(source='created_by.display_name', read_only=True)
     class Meta:
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
@@ -71,7 +72,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
                   'tele_name','sale_name','cskh','cskh_name','ads','ads_name',
                   'last_bs_name','last_ktv_name','services_interest','services_interest_names','round1_value','round1_paid','round1_debt',
                   'total_value','total_paid','total_debt','upsale_value',
-                  'so_buoi_total','buoi_con_lai','next_appt','hd_status','created_at']
+                  'so_buoi_total','buoi_con_lai','next_appt','hd_status','created_by_name','created_at']
 
     def get_next_appt(self, obj):
         from django.utils import timezone
