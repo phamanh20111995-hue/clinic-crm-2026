@@ -8,18 +8,19 @@ import { fmtPhone, fmtDate } from '../../utils/format'
 import { IconSearch, IconFilter, IconX } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import InlineDateTimeCell from '../common/InlineDateTimeCell'
+import InlineEditCell from '../common/InlineEditCell'
 
 const STATUS_COLORS = {
-  moi: 'blue', dang_tu_van: 'yellow', da_tu_van: 'yellow',
-  dat_lich: 'green', da_den: 'green', dang_dieu_tri: 'purple',
-  hoan_thanh: 'green', hoan_so: 'orange', sai_so: 'red',
-  khong_lien_lac: 'gray', tu_choi: 'red',
+  chua_goi: 'gray', da_goi: 'blue', khong_nghe: 'orange', thue_bao: 'orange',
+  sai_so: 'red', tu_choi: 'red', hoan_so: 'orange', dat_lich: 'green',
+  hen_goi: 'yellow', can_tv: 'yellow', khong_qt: 'gray',
+  cho_phan_cskh: 'purple', dang_cham_soc: 'purple',
 }
 const STATUS_LABELS = {
-  moi: 'Mới', dang_tu_van: 'Đang tư vấn', da_tu_van: 'Đã tư vấn',
-  dat_lich: 'Đặt lịch', da_den: 'Đã đến', dang_dieu_tri: 'Điều trị',
-  hoan_thanh: 'Hoàn thành', hoan_so: 'Hoàn số', sai_so: 'Sai số',
-  khong_lien_lac: 'Không liên lạc', tu_choi: 'Từ chối',
+  chua_goi: 'Chưa gọi', da_goi: 'Đã gọi', khong_nghe: 'Không nghe máy', thue_bao: 'Thuê bao',
+  sai_so: 'Sai số', tu_choi: 'Từ chối', hoan_so: 'Hoàn số', dat_lich: 'Đặt lịch',
+  hen_goi: 'Hẹn gọi lại', can_tv: 'Cần tư vấn thêm', khong_qt: 'Không quan tâm',
+  cho_phan_cskh: 'Chờ phân CSKH', dang_cham_soc: 'Đang chăm sóc',
 }
 const DATA_TYPE_LABELS = { nong: '🔥 Nóng', am: '🌤 Ấm', thuong: '❄ Thường' }
 const DATA_TYPE_COLORS = { nong: 'red', am: 'yellow', thuong: 'gray' }
@@ -219,6 +220,11 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     load()
   }, [load])
 
+  const handleSaveField = useCallback(async (c, field, value) => {
+    await updateCustomer(c.id, { [field]: value })
+    load()
+  }, [load])
+
   const renderCell = (c, col) => {
     switch (col.key) {
       case 'full_name':
@@ -226,20 +232,97 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       case 'phone':
         return <span style={{ fontFamily: 'monospace', color: '#374151' }}>{fmtPhone(c.phone)}</span>
       case 'source':
+        if (canInlineEdit) {
+          return (
+            <InlineEditCell
+              value={c.source || ''}
+              displayValue={<span style={{ color: '#64748b' }}>{c.source_display ?? c.source ?? '—'}</span>}
+              options={SOURCES}
+              searchable={false}
+              onSave={(v) => handleSaveField(c, 'source', v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{c.source_display ?? c.source ?? '—'}</span>
       case 'customer_group':
+        if (canInlineEdit) {
+          return (
+            <InlineEditCell
+              value={c.customer_group || ''}
+              displayValue={<span style={{ color: '#64748b' }}>{c.customer_group || '—'}</span>}
+              options={[{ value: '', label: '— Chọn nhóm —' }, ...CUSTOMER_GROUPS.map(g => ({ value: g, label: g }))]}
+              onSave={(v) => handleSaveField(c, 'customer_group', v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{c.customer_group || '—'}</span>
       case 'province':
+        if (canInlineEdit) {
+          return (
+            <InlineEditCell
+              value={c.province || ''}
+              displayValue={<span style={{ color: '#64748b' }}>{c.province || '—'}</span>}
+              options={[{ value: '', label: '— Chọn —' }, ...PROVINCES.map(p => ({ value: p, label: p }))]}
+              onSave={(v) => handleSaveField(c, 'province', v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{c.province || '—'}</span>
       case 'gender':
+        if (canInlineEdit) {
+          return (
+            <InlineEditCell
+              value={c.gender || ''}
+              displayValue={<span style={{ color: '#64748b' }}>{GENDER_LABELS[c.gender] ?? '—'}</span>}
+              options={[{ value: '', label: '— Chọn —' }, { value: 'M', label: 'Nam' }, { value: 'F', label: 'Nữ' }]}
+              searchable={false}
+              onSave={(v) => handleSaveField(c, 'gender', v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{GENDER_LABELS[c.gender] ?? '—'}</span>
       case 'data_type':
+        if (canInlineEdit) {
+          return (
+            <InlineEditCell
+              value={c.data_type}
+              displayValue={<Badge variant={DATA_TYPE_COLORS[c.data_type] ?? 'gray'}>{DATA_TYPE_LABELS[c.data_type] ?? c.data_type ?? '—'}</Badge>}
+              options={Object.entries(DATA_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+              searchable={false}
+              onSave={(v) => handleSaveField(c, 'data_type', v)}
+            />
+          )
+        }
         return <Badge variant={DATA_TYPE_COLORS[c.data_type] ?? 'gray'}>{DATA_TYPE_LABELS[c.data_type] ?? c.data_type ?? '—'}</Badge>
       case 'status':
+        if (canInlineEdit) {
+          return (
+            <InlineEditCell
+              value={c.status}
+              displayValue={<Badge variant={STATUS_COLORS[c.status] ?? 'gray'}>{STATUS_LABELS[c.status] ?? c.status ?? '—'}</Badge>}
+              options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+              searchable={false}
+              onSave={(v) => handleSaveField(c, 'status', v)}
+            />
+          )
+        }
         return <Badge variant={STATUS_COLORS[c.status] ?? 'gray'}>{STATUS_LABELS[c.status] ?? c.status ?? '—'}</Badge>
       case 'created_at':
         return <span style={{ color: '#94a3b8', fontSize: 10 }}>{fmtDate(c.created_at)}</span>
       case 'appointment_date':
+        if (canInlineEdit) {
+          const apptDate = (c.next_appt && c.next_appt.date) || c.appointment_date || ''
+          const apptTime = (c.next_appt && c.next_appt.time) || ''
+          return (
+            <InlineDateTimeCell
+              date={apptDate}
+              time={apptTime}
+              displayDate={apptDate ? fmtDate(apptDate) : ''}
+              hideTime
+              onSave={(v) => handleSaveAppt(c, v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b', fontSize: 11 }}>{(c.next_appt && c.next_appt.date) || c.appointment_date ? fmtDate((c.next_appt && c.next_appt.date) || c.appointment_date) : '—'}</span>
       case 'appointment_time':
         if (canInlineEdit) {
@@ -249,7 +332,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
             <InlineDateTimeCell
               date={apptDate}
               time={apptTime}
-              displayDate={apptDate ? fmtDate(apptDate) : ''}
+              displayDate={''}
               onSave={(v) => handleSaveAppt(c, v)}
             />
           )

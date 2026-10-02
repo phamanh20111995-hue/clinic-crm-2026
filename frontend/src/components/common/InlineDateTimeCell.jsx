@@ -5,6 +5,7 @@ export default function InlineDateTimeCell({
   time,
   displayDate,
   disabled = false,
+  hideTime = false,
   onSave,
   accent = '#0369a1',
 }) {
@@ -87,7 +88,7 @@ export default function InlineDateTimeCell({
         {hasValue ? (
           <>
             {displayDate}
-            {time && (
+            {!hideTime && time && (
               <span style={{ fontFamily: 'monospace', marginLeft: displayDate ? 4 : 0 }}>{time}</span>
             )}
           </>

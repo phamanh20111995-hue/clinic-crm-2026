@@ -75,14 +75,20 @@ class CustomerListSerializer(serializers.ModelSerializer):
 
     def get_next_appt(self, obj):
         from django.utils import timezone
-        appt = (obj.appointments
-                .filter(scheduled_at__date__gte=timezone.localdate())
-                .exclude(status__in=['done', 'cancelled'])
-                .order_by('scheduled_at').first())
+        today = timezone.localdate()
+        upcoming = (obj.appointments
+                    .filter(scheduled_at__date__gte=today)
+                    .exclude(status='cancelled')
+                    .order_by('scheduled_at').first())
+        past = (obj.appointments
+                .filter(scheduled_at__date__lt=today)
+                .exclude(status='cancelled')
+                .order_by('-scheduled_at').first())
+        appt = upcoming or past
         if not appt:
             return None
         local = timezone.localtime(appt.scheduled_at)
-        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M')}
+        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M'), 'is_past': appt.scheduled_at.date() < today}
 
     def get_last_bs_name(self, obj):
         appt = _last_done_appt(obj)
@@ -183,7 +189,7 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        fields = ['full_name','phone','dob','gender','address','source','data_type',
+        fields = ['full_name','phone','dob','gender','address','source','data_type','status',
                   'customer_group','appointment_date','province','notes','tele','sale','cskh','ads',
                   'services_interest','appointment_time']
 
