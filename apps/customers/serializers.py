@@ -62,6 +62,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
     hd_status = serializers.SerializerMethodField()
     so_buoi_total = serializers.SerializerMethodField()
     buoi_con_lai = serializers.SerializerMethodField()
+    next_appt = serializers.SerializerMethodField()
     class Meta:
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
@@ -70,7 +71,18 @@ class CustomerListSerializer(serializers.ModelSerializer):
                   'tele_name','sale_name','cskh','cskh_name','ads','ads_name',
                   'last_bs_name','last_ktv_name','services_interest_names','round1_value','round1_paid','round1_debt',
                   'total_value','total_paid','total_debt','upsale_value',
-                  'so_buoi_total','buoi_con_lai','hd_status','created_at']
+                  'so_buoi_total','buoi_con_lai','next_appt','hd_status','created_at']
+
+    def get_next_appt(self, obj):
+        from django.utils import timezone
+        appt = (obj.appointments
+                .filter(scheduled_at__date__gte=timezone.localdate())
+                .exclude(status__in=['done', 'cancelled'])
+                .order_by('scheduled_at').first())
+        if not appt:
+            return None
+        local = timezone.localtime(appt.scheduled_at)
+        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M')}
 
     def get_last_bs_name(self, obj):
         appt = _last_done_appt(obj)

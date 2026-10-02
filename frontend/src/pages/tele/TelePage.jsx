@@ -65,7 +65,7 @@ export default function TelePage() {
         }}
       >
         <IconPhone size={14} stroke={2} />
-        Gọi điện
+        Telesale
       </button>
     </div>
   ) : null

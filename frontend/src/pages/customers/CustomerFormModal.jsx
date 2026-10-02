@@ -54,6 +54,7 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
     status: customer?.status ?? 'chua_goi',
     customer_group: customer?.customer_group ?? '',
     appointment_date: customer?.appointment_date ?? '',
+    appointment_time: customer?.appointment_time ?? '',
     province: customer?.province ?? '',
     address: customer?.address ?? '',
     tele: customer?.tele ?? '',
@@ -102,6 +103,7 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
       const payload = { ...form,
         dob: form.dob || null,
         appointment_date: form.appointment_date || null,
+        appointment_time: form.appointment_time || '',
         tele: form.tele || null,
         sale: form.sale || null,
         cskh: form.cskh || null,
@@ -206,6 +208,12 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
             <input type="date" className="input" value={form.appointment_date}
               disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('appointment_date', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Giờ hẹn</label>
+            <input type="time" className="input" value={form.appointment_time}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
+              onChange={(e) => set('appointment_time', e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tỉnh/TP</label>

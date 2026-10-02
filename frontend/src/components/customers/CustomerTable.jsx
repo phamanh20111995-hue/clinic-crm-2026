@@ -2,11 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Spinner from '../ui/Spinner'
 import Badge from '../ui/Badge'
-import { getCustomers } from '../../api/customers'
+import { getCustomers, updateCustomer } from '../../api/customers'
 import { getServices, getAllUsers } from '../../api/letan'
 import { fmtPhone, fmtDate } from '../../utils/format'
 import { IconSearch, IconFilter, IconX } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
+import InlineDateTimeCell from '../common/InlineDateTimeCell'
 
 const STATUS_COLORS = {
   moi: 'blue', dang_tu_van: 'yellow', da_tu_van: 'yellow',
@@ -20,7 +21,7 @@ const STATUS_LABELS = {
   hoan_thanh: 'Hoàn thành', hoan_so: 'Hoàn số', sai_so: 'Sai số',
   khong_lien_lac: 'Không liên lạc', tu_choi: 'Từ chối',
 }
-const DATA_TYPE_LABELS = { nong: '🔥 Nóng', am: '🌤 Âm', thuong: '❄ Thường' }
+const DATA_TYPE_LABELS = { nong: '🔥 Nóng', am: '🌤 Ấm', thuong: '❄ Thường' }
 const DATA_TYPE_COLORS = { nong: 'red', am: 'yellow', thuong: 'gray' }
 const GENDER_LABELS = { M: 'Nam', F: 'Nữ' }
 
@@ -62,6 +63,7 @@ const ALL_COLUMNS = [
   { key: 'status', label: 'Trạng thái' },
   { key: 'created_at', label: 'Ngày tạo' },
   { key: 'appointment_date', label: 'Ngày hẹn', roles: ['TELE', 'LEAD_TELE', 'SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
+  { key: 'appointment_time', label: 'Giờ hẹn', roles: ['TELE', 'LEAD_TELE', 'SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'tele_name', label: 'Tele phụ trách', roles: ['TELE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'sale_name', label: 'Sale phụ trách', roles: ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'cskh_name', label: 'CSKH phụ trách', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
@@ -161,6 +163,8 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
   const [services, setServices] = useState([])
   const [allUsers, setAllUsers] = useState([])
 
+  const canInlineEdit = ['tele', 'truc'].includes(fromContext)
+
   useEffect(() => {
     getServices().then(res => setServices(res.data?.results ?? res.data ?? [])).catch(() => {})
     getAllUsers().then(res => setAllUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
@@ -210,6 +214,11 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
 
   useEffect(() => { load() }, [load])
 
+  const handleSaveAppt = useCallback(async (c, { date, time }) => {
+    await updateCustomer(c.id, { appointment_date: date || null, appointment_time: time || '' })
+    load()
+  }, [load])
+
   const renderCell = (c, col) => {
     switch (col.key) {
       case 'full_name':
@@ -231,7 +240,21 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       case 'created_at':
         return <span style={{ color: '#94a3b8', fontSize: 10 }}>{fmtDate(c.created_at)}</span>
       case 'appointment_date':
-        return <span style={{ color: '#64748b', fontSize: 11 }}>{c.appointment_date ? fmtDate(c.appointment_date) : '—'}</span>
+        return <span style={{ color: '#64748b', fontSize: 11 }}>{(c.next_appt && c.next_appt.date) || c.appointment_date ? fmtDate((c.next_appt && c.next_appt.date) || c.appointment_date) : '—'}</span>
+      case 'appointment_time':
+        if (canInlineEdit) {
+          const apptDate = (c.next_appt && c.next_appt.date) || c.appointment_date || ''
+          const apptTime = (c.next_appt && c.next_appt.time) || ''
+          return (
+            <InlineDateTimeCell
+              date={apptDate}
+              time={apptTime}
+              displayDate={apptDate ? fmtDate(apptDate) : ''}
+              onSave={(v) => handleSaveAppt(c, v)}
+            />
+          )
+        }
+        return <span style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace' }}>{(c.next_appt && c.next_appt.time) || '—'}</span>
       case 'tele_name':
         return <span style={{ color: '#64748b' }}>{c.tele_name ?? '—'}</span>
       case 'sale_name':

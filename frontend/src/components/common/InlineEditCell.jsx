@@ -14,14 +14,15 @@ export default function InlineEditCell({
   disabled = false,
   accent = '#b45309',
 }) {
-  const [open, setOpen]           = useState(false)
-  const [search, setSearch]       = useState('')
-  const [current, setCurrent]     = useState(value)
-  const [saving, setSaving]       = useState(false)
-  const containerRef              = useRef(null)
-  const searchRef                 = useRef(null)
+  const [open, setOpen]       = useState(false)
+  const [search, setSearch]   = useState('')
+  const [current, setCurrent] = useState(value)
+  const [draft, setDraft]     = useState(value)
+  const [saving, setSaving]   = useState(false)
+  const containerRef          = useRef(null)
+  const searchRef             = useRef(null)
+  const listRef               = useRef(null)
 
-  // sync external value changes
   useEffect(() => { setCurrent(value) }, [value])
 
   const showSearch = searchable && options.length > 6
@@ -33,43 +34,24 @@ export default function InlineEditCell({
   const openDropdown = useCallback((e) => {
     if (disabled || saving) return
     e.stopPropagation()
-    setOpen(true)
+    setDraft(current)
     setSearch('')
-  }, [disabled, saving])
+    setOpen(true)
+  }, [disabled, saving, current])
 
   const closeDropdown = useCallback(() => {
     setOpen(false)
     setSearch('')
   }, [])
 
-  // click-outside + Escape
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') closeDropdown() }
-    const onMouse = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) closeDropdown()
-    }
-    document.addEventListener('mousedown', onMouse)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onMouse)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open, closeDropdown])
-
-  // auto-focus search input
-  useEffect(() => {
-    if (open && showSearch && searchRef.current) searchRef.current.focus()
-  }, [open, showSearch])
-
-  const handleSelect = useCallback(async (newVal) => {
-    if (newVal === current) { closeDropdown(); return }
-    const previous = current
+  const commit = useCallback(async (val) => {
     closeDropdown()
-    setCurrent(newVal)
+    if (val === current) return
+    const previous = current
+    setCurrent(val)
     setSaving(true)
     try {
-      await onSave?.(newVal)
+      await onSave?.(val)
     } catch (err) {
       setCurrent(previous)
       try {
@@ -83,12 +65,58 @@ export default function InlineEditCell({
     }
   }, [current, onSave, closeDropdown])
 
+  // click-outside + keyboard navigation
+  useEffect(() => {
+    if (!open) return
+
+    const onMouse = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) closeDropdown()
+    }
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') { closeDropdown(); return }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        commit(draft)
+        return
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (filtered.length === 0) return
+        const idx = filtered.findIndex(o => String(o.value) === String(draft))
+        let next
+        if (e.key === 'ArrowDown') next = idx < filtered.length - 1 ? idx + 1 : 0
+        else next = idx > 0 ? idx - 1 : filtered.length - 1
+        setDraft(filtered[next].value)
+        // scroll item into view
+        if (listRef.current) {
+          const items = listRef.current.querySelectorAll('[data-opt]')
+          if (items[next]) items[next].scrollIntoView({ block: 'nearest' })
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', onMouse)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onMouse)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open, closeDropdown, commit, draft, filtered])
+
+  useEffect(() => {
+    if (open && showSearch && searchRef.current) searchRef.current.focus()
+  }, [open, showSearch])
+
+  // when search changes, if draft no longer in filtered list, reset draft to first filtered
+  useEffect(() => {
+    if (!open) return
+    const still = filtered.find(o => String(o.value) === String(draft))
+    if (!still && filtered.length > 0) setDraft(filtered[0].value)
+  }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div
-      ref={containerRef}
-      style={{ position: 'relative', display: 'inline-block' }}
-    >
-      {/* Display value */}
+    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
       <span
         onDoubleClick={openDropdown}
         onClick={e => e.stopPropagation()}
@@ -117,7 +145,6 @@ export default function InlineEditCell({
         )}
       </span>
 
-      {/* Dropdown */}
       {open && (
         <div
           onClick={e => e.stopPropagation()}
@@ -154,38 +181,58 @@ export default function InlineEditCell({
               }}
             />
           )}
-          <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+          <div ref={listRef} style={{ maxHeight: 240, overflowY: 'auto' }}>
             {filtered.length === 0 ? (
               <div style={{ padding: '8px 10px', fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>
                 Không tìm thấy
               </div>
             ) : filtered.map(o => {
-              const isActive = String(o.value) === String(current)
+              const isDraft = String(o.value) === String(draft)
               return (
                 <div
                   key={o.value}
-                  onClick={() => handleSelect(o.value)}
+                  data-opt
+                  onClick={() => setDraft(o.value)}
+                  onDoubleClick={() => commit(o.value)}
                   style={{
                     padding: '7px 10px',
                     borderRadius: 6,
                     fontSize: 12,
                     cursor: 'pointer',
-                    fontWeight: isActive ? 600 : 400,
-                    background: isActive ? '#fff7ed' : 'transparent',
-                    color: isActive ? accent : '#111827',
+                    fontWeight: isDraft ? 600 : 400,
+                    background: isDraft ? '#fff7ed' : 'transparent',
+                    color: isDraft ? accent : '#111827',
                   }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#fff7ed' }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                  onMouseEnter={e => { if (!isDraft) e.currentTarget.style.background = '#f8fafc' }}
+                  onMouseLeave={e => { if (!isDraft) e.currentTarget.style.background = 'transparent' }}
                 >
                   {o.label}
                 </div>
               )
             })}
           </div>
+          {/* Nút Lưu */}
+          <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => commit(draft)}
+              style={{
+                padding: '4px 12px',
+                borderRadius: 6,
+                border: 'none',
+                background: accent,
+                color: '#fff',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Lưu
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Spinner keyframe — injected once */}
       <style>{`@keyframes iec-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
