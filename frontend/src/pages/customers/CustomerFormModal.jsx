@@ -36,7 +36,7 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const currentUser = useAuthStore(s => s.user)
   const myRole = getUserRole(currentUser)
   const canAssignCskh = ['LEAD_CSKH', 'QUAN_LY', 'CHU_DN'].includes(myRole)
-  const canAssignTele = ['LEAD_TELE', 'QUAN_LY', 'CHU_DN'].includes(myRole)
+  const canAssignTele = ['LEAD_TELE', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(myRole)
   const canAssignSale = ['LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'LE_TAN'].includes(myRole)
   const canAssignAds  = ['LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(myRole)
   const isLetan      = myRole === 'LE_TAN'

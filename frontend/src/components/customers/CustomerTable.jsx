@@ -7,6 +7,7 @@ import { getServices, getAllUsers } from '../../api/letan'
 import { fmtPhone, fmtDate } from '../../utils/format'
 import { IconSearch, IconFilter, IconX } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
 import InlineDateTimeCell from '../common/InlineDateTimeCell'
 import InlineEditCell from '../common/InlineEditCell'
 import InlineTextCell from '../common/InlineTextCell'
@@ -144,7 +145,8 @@ const selectStyle = { padding: '7px 10px', border: '1px solid #dde3ef', borderRa
 
 export default function CustomerTable({ baseParams = {}, columnKeys, onCountChange, onAdd, addLabel = 'Thêm', reloadKey, hideMoneyColumns = false, fromContext }) {
   const navigate = useNavigate()
-  const role = useAuthStore(s => s.user)?.role || ''
+  const _authUser = useAuthStore(s => s.user)
+  const role = getUserRole(_authUser) || ''
   const [customers, setCustomers] = useState([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
@@ -167,6 +169,15 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
   const [allUsers, setAllUsers] = useState([])
 
   const canInlineEdit = ['tele', 'truc'].includes(fromContext)
+  const canAssignTele = ['LEAD_TELE', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(role)
+  const canAssignSale = ['LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'LE_TAN'].includes(role)
+  const canAssignCskh = ['LEAD_CSKH', 'QUAN_LY', 'CHU_DN'].includes(role)
+  const canAssignAds  = ['LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(role)
+
+  const teleOptions = [{ value: '', label: '— Chưa giao —' }, ...allUsers.filter(u => u.role === 'TELE').map(u => ({ value: u.id, label: u.display_name ?? u.email }))]
+  const saleOptions = [{ value: '', label: '— Chưa giao —' }, ...allUsers.filter(u => u.role === 'SALE').map(u => ({ value: u.id, label: u.display_name ?? u.email }))]
+  const cskhOptions = [{ value: '', label: '— Chưa giao —' }, ...allUsers.filter(u => u.role === 'CSKH').map(u => ({ value: u.id, label: u.display_name ?? u.email }))]
+  const adsOptions  = [{ value: '', label: '— Chưa giao —' }, ...allUsers.filter(u => u.role === 'MKT').map(u => ({ value: u.id, label: u.display_name ?? u.email }))]
 
   useEffect(() => {
     getServices().then(res => setServices(res.data?.results ?? res.data ?? [])).catch(() => {})
@@ -362,12 +373,52 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         }
         return <span style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace' }}>{(c.next_appt && c.next_appt.time) || '—'}</span>
       case 'tele_name':
+        if (canAssignTele) {
+          return (
+            <InlineEditCell
+              value={c.tele ?? ''}
+              displayValue={<span style={{ color: '#64748b' }}>{c.tele_name ?? '—'}</span>}
+              options={teleOptions}
+              onSave={(v) => handleSaveField(c, 'tele', v === '' ? null : v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{c.tele_name ?? '—'}</span>
       case 'sale_name':
+        if (canAssignSale) {
+          return (
+            <InlineEditCell
+              value={c.sale ?? ''}
+              displayValue={<span style={{ color: '#64748b' }}>{c.sale_name ?? '—'}</span>}
+              options={saleOptions}
+              onSave={(v) => handleSaveField(c, 'sale', v === '' ? null : v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{c.sale_name ?? '—'}</span>
       case 'cskh_name':
+        if (canAssignCskh) {
+          return (
+            <InlineEditCell
+              value={c.cskh ?? ''}
+              displayValue={<span style={{ color: '#64748b' }}>{c.cskh_name ?? '—'}</span>}
+              options={cskhOptions}
+              onSave={(v) => handleSaveField(c, 'cskh', v === '' ? null : v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{c.cskh_name ?? '—'}</span>
       case 'ads_name':
+        if (canAssignAds) {
+          return (
+            <InlineEditCell
+              value={c.ads ?? ''}
+              displayValue={<span style={{ color: '#64748b' }}>{c.ads_name ?? '—'}</span>}
+              options={adsOptions}
+              onSave={(v) => handleSaveField(c, 'ads', v === '' ? null : v)}
+            />
+          )
+        }
         return <span style={{ color: '#64748b' }}>{c.ads_name ?? '—'}</span>
       case 'last_bs_name':
         return <span style={{ color: '#64748b' }}>{c.last_bs_name ?? '—'}</span>
