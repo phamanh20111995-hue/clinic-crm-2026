@@ -221,14 +221,22 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
             except (ValueError, IndexError):
                 hour, minute = 9, 0
 
-        # Tìm lịch sắp tới chưa kết thúc
+        # Tìm lịch của ĐÚNG ngày appointment_date (update, không đẻ trùng); fallback lịch sắp tới gần nhất
         existing = (
             Appointment.objects
-            .filter(customer=customer, scheduled_at__date__gte=timezone.localdate())
-            .exclude(status__in=['done', 'cancelled'])
-            .order_by('scheduled_at')
+            .filter(customer=customer, scheduled_at__date=appt_date)
+            .exclude(status='cancelled')
+            .order_by('-scheduled_at')
             .first()
         )
+        if not existing:
+            existing = (
+                Appointment.objects
+                .filter(customer=customer, scheduled_at__date__gte=timezone.localdate())
+                .exclude(status__in=['done', 'cancelled'])
+                .order_by('scheduled_at')
+                .first()
+            )
 
         # Neu khong gui gio: giu gio cu cua lich hien co (khong ep 09:00)
         if not appt_time_str and existing:
