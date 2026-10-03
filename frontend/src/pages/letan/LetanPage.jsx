@@ -1,24 +1,22 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { IconDoorEnter, IconPlus } from '@tabler/icons-react'
+import { IconPlus } from '@tabler/icons-react'
 import AppLayout from '../../components/layout/AppLayout'
 import HoMnayTab from './tabs/HoMnayTab'
 import SoDoTab from './tabs/SoDoTab'
 import ChiaTuaTab from './tabs/ChiaTuaTab'
-import AnhDieuTriTab from './tabs/AnhDieuTriTab'
 import LichTuanTab from './tabs/LichTuanTab'
+import PhongNhanSuTab from './tabs/PhongNhanSuTab'
 import WalkInModal from './modals/WalkInModal'
-import AppointmentsTab from '../shared/AppointmentsTab'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 
 const TABS = [
-  { key: 'homnay',    label: 'Hôm nay' },
-  { key: 'sodo',      label: 'Sơ đồ BS/KTV' },
-  { key: 'chiatua',  label: 'Chia tua' },
-  { key: 'anhdieurt',label: 'Ảnh điều trị' },
+  { key: 'homnay',    label: 'Lịch hẹn' },
+  { key: 'phong',     label: 'Phòng & Nhân sự realtime' },
+  { key: 'sodo',      label: 'Lịch làm việc cơ sở' },
+  { key: 'chiatua',  label: 'Bảng tua' },
   { key: 'lichtuan', label: 'Lịch tuần' },
-  { key: 'lichhens', label: 'Lịch hẹn' },
 ]
 
 const ALLOWED_ROLES = ['LE_TAN', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN']
@@ -61,11 +59,10 @@ export default function LetanPage() {
       onTabChange={setActiveTab}
     >
       {activeTab === 'homnay'    && <HoMnayTab onWalkIn={() => setShowWalkIn(true)} />}
+      {activeTab === 'phong'     && <PhongNhanSuTab />}
       {activeTab === 'sodo'      && <SoDoTab />}
       {activeTab === 'chiatua'   && <ChiaTuaTab />}
-      {activeTab === 'anhdieurt' && <AnhDieuTriTab />}
       {activeTab === 'lichtuan'  && <LichTuanTab />}
-      {activeTab === 'lichhens'  && <AppointmentsTab accent="#b45309" />}
 
       {showWalkIn && (
         <WalkInModal onClose={() => setShowWalkIn(false)} onDone={() => {

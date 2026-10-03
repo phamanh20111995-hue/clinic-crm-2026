@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getTodayAppointments, getRooms, getUsers, checkinAppointment, toTreatment, getSaleUsers, assignSale, updateAppointment } from '../../../api/letan'
 import AppointmentTableView from '../views/AppointmentTableView'
-import DoctorCard from '../components/DoctorCard'
 import AssignRoomModal from '../modals/AssignRoomModal'
 import CheckOutModal from '../modals/CheckOutModal'
 import EnqueueModal from '../modals/EnqueueModal'
@@ -40,12 +39,10 @@ export default function HoMnayTab({ onWalkIn }) {
   const navigate = useNavigate()
   const [appts, setAppts]         = useState([])
   const [rooms, setRooms]         = useState([])
-  const [staff, setStaff]         = useState([])
   const [bsList, setBsList]       = useState([])
   const [ktvList, setKtvList]     = useState([])
   const [saleUsers, setSaleUsers] = useState([])
   const [loading, setLoading]     = useState(true)
-  const [mode, setMode]           = useState('lich') // 'lich' | 'realtime'
   const [modal, setModal]         = useState(null)
   const [modalAppt, setModalAppt] = useState(null)
   const [viewDate, setViewDate]   = useState(() => new URLSearchParams(window.location.search).get('date') || todayStr())
@@ -73,15 +70,13 @@ export default function HoMnayTab({ onWalkIn }) {
 
   const loadStatic = useCallback(async () => {
     try {
-      const [roomRes, userRes, saleRes, bsRes, ktvRes] = await Promise.all([
+      const [roomRes, saleRes, bsRes, ktvRes] = await Promise.all([
         getRooms(),
-        getUsers(),
         getSaleUsers(),
         getUsers({ role: 'BS' }),
         getUsers({ role: 'KTV' }),
       ])
       setRooms(roomRes.data?.results ?? roomRes.data ?? [])
-      setStaff(userRes.data?.results ?? userRes.data ?? [])
       setSaleUsers(saleRes.data?.results ?? saleRes.data ?? [])
       setBsList(bsRes.data?.results ?? bsRes.data ?? [])
       setKtvList(ktvRes.data?.results ?? ktvRes.data ?? [])
@@ -170,46 +165,10 @@ export default function HoMnayTab({ onWalkIn }) {
   const openCheckout = (appt) => { setModalAppt(appt); setModal('checkout') }
   const closeModal   = () => setModal(null)
 
-  // Staff enriched
-  const enrichedStaff = staff.map(u => {
-    const currentAppt = appts.find(a => a.status === 'in_progress' && (a.doctor === u.id || a.ktv === u.id))
-    return { ...u, current_appointment: currentAppt ?? null }
-  })
-  const freeStaff = enrichedStaff.filter(u => !u.current_appointment)
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      {/* Mode toggle + waiting badge */}
+      {/* Waiting badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14, flexShrink: 0 }}>
-        {/* Mode toggle */}
-        <div style={{ display: 'flex', gap: 1, background: '#f1f5f9', borderRadius: 8, padding: 2, flexShrink: 0 }}>
-          <button
-            onClick={() => setMode('lich')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 14px', borderRadius: 6, border: 'none',
-              background: mode === 'lich' ? ACCENT : 'transparent',
-              color: mode === 'lich' ? '#fff' : '#6b7280',
-              fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .15s',
-            }}
-          >
-            📅 Lịch hẹn
-          </button>
-          <button
-            onClick={() => setMode('realtime')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 14px', borderRadius: 6, border: 'none',
-              background: mode === 'realtime' ? ACCENT : 'transparent',
-              color: mode === 'realtime' ? '#fff' : '#6b7280',
-              fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .15s',
-            }}
-          >
-            🏥 Phòng &amp; BS
-          </button>
-        </div>
-
-        {/* Waiting badge */}
         {waitingAll > 0 && (
           <span style={{ fontSize: 11, background: '#ede9fe', color: '#6d28d9', padding: '2px 8px', borderRadius: 99, fontWeight: 700 }}>
             ⏳ {waitingAll} KH đang chờ phân phòng
@@ -217,7 +176,7 @@ export default function HoMnayTab({ onWalkIn }) {
         )}
       </div>
 
-      {/* Stat cards — always visible */}
+      {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14, flexShrink: 0 }}>
         <StatCard label="Tổng KH hôm nay"  value={total}      accent={ACCENT} />
         <StatCard label="Đang điều trị"     value={inProgress} accent="#15803d" />
@@ -225,89 +184,31 @@ export default function HoMnayTab({ onWalkIn }) {
         <StatCard label="Chờ phân phòng"    value={waitingAll} accent="#7c3aed" />
       </div>
 
-      {/* Mode: Lịch hẹn */}
-      {mode === 'lich' && (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <AppointmentTableView
-            appointments={appts}
-            saleUsers={saleUsers}
-            loading={loading}
-            onCheckin={handleCheckin}
-            onEnqueue={openEnqueue}
-            onAssignRoom={openAssign}
-            onCheckout={openCheckout}
-            onAssignSale={handleAssignSale}
-            onRowClick={(appt) => { const cid = appt.customer ?? appt.customer_detail?.id; if (cid) navigate('/customers/' + cid + '?from=letan') }}
-            onReload={loadAll}
-            viewDate={viewDate}
-            onDateChange={setViewDate}
-            onPrevDate={() => setViewDate(d => shiftDate(d, -1))}
-            onNextDate={() => setViewDate(d => shiftDate(d, 1))}
-            onTodayDate={() => setViewDate(todayStr())}
-            isToday={isToday}
-            rooms={rooms}
-            bsList={bsList}
-            ktvList={ktvList}
-            onUpdateField={handleUpdateField}
-          />
-        </div>
-      )}
-
-      {/* Mode: Phòng & BS */}
-      {mode === 'realtime' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {/* BS / KTV */}
-          <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #dde3ef', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>BS / KTV realtime</span>
-              <span style={{ fontSize: 11, color: '#9ca3af' }}>{freeStaff.length} trống</span>
-            </div>
-            <div style={{ padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {enrichedStaff.slice(0, 20).map(u => (
-                <DoctorCard key={u.id} person={u} />
-              ))}
-              {enrichedStaff.length === 0 && (
-                <div style={{ gridColumn: '1/-1', textAlign: 'center', color: '#9ca3af', padding: '16px 0', fontSize: 12 }}>
-                  Chưa có dữ liệu nhân viên
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Trạng thái phòng */}
-          <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #dde3ef', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Trạng thái phòng</span>
-            </div>
-            <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {rooms.map(r => {
-                const occupying = appts.find(a =>
-                  (a.status === 'in_progress' || a.status === 'consulting') && String(a.room) === String(r.id)
-                )
-                return (
-                  <div key={r.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '7px 10px', borderRadius: 8,
-                    background: occupying ? '#fef2f2' : '#f0fdf4',
-                    border: `1px solid ${occupying ? '#fecaca' : '#a7f3d0'}`,
-                    fontSize: 12,
-                  }}>
-                    <span style={{ fontWeight: 600, color: occupying ? '#dc2626' : '#166534' }}>
-                      {r.name}
-                    </span>
-                    <span style={{ color: occupying ? '#dc2626' : '#166534', fontSize: 11 }}>
-                      {occupying ? `🔴 ${occupying.customer_name?.split(' ').pop()}` : '🟢 Trống'}
-                    </span>
-                  </div>
-                )
-              })}
-              {rooms.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#9ca3af', padding: '12px 0', fontSize: 12 }}>Chưa có phòng</div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Lịch hẹn */}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <AppointmentTableView
+          appointments={appts}
+          saleUsers={saleUsers}
+          loading={loading}
+          onCheckin={handleCheckin}
+          onEnqueue={openEnqueue}
+          onAssignRoom={openAssign}
+          onCheckout={openCheckout}
+          onAssignSale={handleAssignSale}
+          onRowClick={(appt) => { const cid = appt.customer ?? appt.customer_detail?.id; if (cid) navigate('/customers/' + cid + '?from=letan') }}
+          onReload={loadAll}
+          viewDate={viewDate}
+          onDateChange={setViewDate}
+          onPrevDate={() => setViewDate(d => shiftDate(d, -1))}
+          onNextDate={() => setViewDate(d => shiftDate(d, 1))}
+          onTodayDate={() => setViewDate(todayStr())}
+          isToday={isToday}
+          rooms={rooms}
+          bsList={bsList}
+          ktvList={ktvList}
+          onUpdateField={handleUpdateField}
+        />
+      </div>
 
       {/* Modals */}
       {modal === 'enqueue' && modalAppt && (
