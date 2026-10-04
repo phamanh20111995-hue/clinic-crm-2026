@@ -12,4 +12,6 @@ urlpatterns = [
     path('<int:pk>/assign/',      views.assign_customer,                name='customer-assign'),
     path('<int:pk>/assign-cskh/', views.assign_cskh,                   name='customer-assign-cskh'),
     path('<int:pk>/images/',      views.upload_image,                   name='customer-upload-image'),
+    path('notes/',              views.CustomerNoteListCreateView.as_view(), name='customer-note-list'),
+    path('notes/<int:pk>/',     views.CustomerNoteDeleteView.as_view(),     name='customer-note-delete'),
 ]

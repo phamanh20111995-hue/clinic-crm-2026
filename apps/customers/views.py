@@ -370,3 +370,39 @@ def sale_stats(request):
         'paid':          paid,
         'debt':          debt,
     })
+
+class CustomerNoteListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import CustomerNoteSerializer
+        return CustomerNoteSerializer
+
+    def get_queryset(self):
+        from .models import CustomerNote
+        qs = CustomerNote.objects.filter(is_deleted=False).select_related('author')
+        cid = self.request.query_params.get('customer')
+        channel = self.request.query_params.get('channel')
+        if cid:     qs = qs.filter(customer_id=cid)
+        if channel: qs = qs.filter(channel=channel)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class CustomerNoteDeleteView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        from .models import CustomerNote
+        return CustomerNote.objects.filter(is_deleted=False)
+
+    def delete(self, request, *args, **kwargs):
+        note = self.get_object()
+        u = request.user
+        if note.author_id != u.id and u.role not in ('QUAN_LY', 'CHU_DN'):
+            return Response({'detail': 'Chỉ người tạo ghi chú hoặc quản lý mới được xóa.'}, status=403)
+        note.is_deleted = True
+        note.save(update_fields=['is_deleted'])
+        return Response(status=204)

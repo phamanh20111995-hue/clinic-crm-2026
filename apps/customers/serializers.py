@@ -158,6 +158,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     last_bs_name = serializers.SerializerMethodField()
     last_ktv_name = serializers.SerializerMethodField()
     services_interest_names = serializers.SerializerMethodField()
+    next_appt = serializers.SerializerMethodField()
     calls = CallHistorySerializer(many=True, read_only=True)
     images = CustomerImageSerializer(many=True, read_only=True)
     class Meta:
@@ -168,7 +169,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
                   'customer_group','appointment_date','province','notes',
                   'tele','tele_name','sale','sale_name','cskh','cskh_name','ads','ads_name',
                   'last_bs_name','last_ktv_name',
-                  'services_interest','services_interest_names',
+                  'services_interest','services_interest_names','next_appt',
                   'created_by_name','created_at','updated_at',
                   'calls','images']
         read_only_fields = ['id','call_count','created_by_name','created_at','updated_at']
@@ -184,6 +185,23 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_services_interest_names(self, obj):
         return [s.name for s in obj.services_interest.all()]
 
+
+    def get_next_appt(self, obj):
+        from django.utils import timezone
+        today = timezone.localdate()
+        upcoming = (obj.appointments
+                    .filter(scheduled_at__date__gte=today)
+                    .exclude(status='cancelled')
+                    .order_by('scheduled_at').first())
+        past = (obj.appointments
+                .filter(scheduled_at__date__lt=today)
+                .exclude(status='cancelled')
+                .order_by('-scheduled_at').first())
+        appt = upcoming or past
+        if not appt:
+            return None
+        local = timezone.localtime(appt.scheduled_at)
+        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M'), 'is_past': appt.scheduled_at.date() < today}
 
 class CustomerCreateSerializer(serializers.ModelSerializer):
     appointment_time = serializers.CharField(required=False, allow_blank=True, write_only=True)
@@ -286,3 +304,13 @@ class CustomerCskhAssignSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['cskh']
+
+class CustomerNoteSerializer(serializers.ModelSerializer):
+    author_name     = serializers.CharField(source='author.display_name', read_only=True)
+    channel_display = serializers.CharField(source='get_channel_display', read_only=True)
+
+    class Meta:
+        from .models import CustomerNote
+        model = CustomerNote
+        fields = ['id', 'customer', 'author', 'author_name', 'channel', 'channel_display', 'content', 'created_at']
+        read_only_fields = ['id', 'author', 'author_name', 'channel_display', 'created_at']

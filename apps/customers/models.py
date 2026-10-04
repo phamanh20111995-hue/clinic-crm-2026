@@ -99,3 +99,25 @@ class ReturnRequest(models.Model):
 
     class Meta:
         verbose_name='Yêu cầu hoàn số'; ordering=['-created_at']
+
+class CustomerNote(models.Model):
+    """Ghi chu khach hang da-kenh (kieu Getfly). Ai cung them; chi tac gia + QL/CDN xoa."""
+    CHANNEL_CHOICES = [
+        ('khai_thac', 'Khai thác'),
+        ('cham_soc',  'Chăm sóc'),
+        ('dieu_tri',  'Điều trị'),
+        ('noi_bo',    'Nội bộ'),
+    ]
+    customer   = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='note_entries')
+    author     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='customer_notes')
+    channel    = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default='khai_thac')
+    content    = models.TextField()
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Ghi chú khách hàng'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.get_channel_display()} — {self.customer} ({self.created_at:%d/%m %H:%M})'
