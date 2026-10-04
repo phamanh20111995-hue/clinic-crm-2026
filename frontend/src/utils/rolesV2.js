@@ -86,7 +86,7 @@ const ALL_NAV = [
     path: '/customers',
     label: 'Khách hàng',
     Icon: IconUsers,
-    roles: ['QUAN_LY', 'CHU_DN', 'LEAD_SALE', 'LEAD_TELE', 'LEAD_CSKH', 'SALE', 'CSKH', 'KE_TOAN', 'BS', 'KTV'],
+    roles: ['QUAN_LY', 'CHU_DN', 'KE_TOAN'],
   },
   {
     key: 'tele',

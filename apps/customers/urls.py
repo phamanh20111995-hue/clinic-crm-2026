@@ -7,6 +7,7 @@ urlpatterns = [
     path('page-stats/', views.page_stats, name='customer-page-stats'),
     path('cskh-stats/', views.cskh_stats, name='customer-cskh-stats'),
     path('sale-stats/', views.sale_stats, name='customer-sale-stats'),
+    path('customers-stats/', views.customers_stats, name='customer-customers-stats'),
     path('<int:pk>/',           views.CustomerDetailView.as_view(),     name='customer-detail'),
     path('<int:pk>/assign/',      views.assign_customer,                name='customer-assign'),
     path('<int:pk>/assign-cskh/', views.assign_cskh,                   name='customer-assign-cskh'),

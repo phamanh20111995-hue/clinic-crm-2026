@@ -284,6 +284,42 @@ def cskh_stats(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def customers_stats(request):
+    from django.utils import timezone
+    from django.db.models import Sum, Value, DecimalField
+    from django.db.models.functions import Coalesce
+    from apps.contracts.models import Contract
+
+    user = request.user
+    today = timezone.localdate()
+
+    qs = _customer_queryset(user).filter(is_customer=True)
+    total = qs.count()
+    new_month = qs.filter(created_at__year=today.year, created_at__month=today.month).count()
+    cham_soc = qs.filter(status='dang_cham_soc').count()
+
+    con = Contract.objects.filter(customer__in=qs, approval_status='approved', is_deleted=False)
+    agg = con.aggregate(
+        revenue=Coalesce(Sum('final_amount'),    Value(0), output_field=DecimalField()),
+        paid_ck=Coalesce(Sum('transfer_amount'), Value(0), output_field=DecimalField()),
+        paid_tm=Coalesce(Sum('cash_amount'),     Value(0), output_field=DecimalField()),
+    )
+    revenue = float(agg['revenue'])
+    paid    = float(agg['paid_ck'] + agg['paid_tm'])
+    debt    = revenue - paid
+
+    return Response({
+        'total':     total,
+        'new_month': new_month,
+        'cham_soc':  cham_soc,
+        'revenue':   revenue,
+        'paid':      paid,
+        'debt':      debt,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def sale_stats(request):
     from django.utils import timezone
     from django.db.models import Sum
