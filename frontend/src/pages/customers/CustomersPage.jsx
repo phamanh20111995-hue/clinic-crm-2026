@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
+import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
 import AppLayout from '../../components/layout/AppLayout'
 import CustomerTable from '../../components/customers/CustomerTable'
 import StatCard from '../tele/components/StatCard'
 import { getCustomersStats } from '../../api/customers'
 
 const ACCENT = '#6d28d9'
+const ALLOWED = ['QUAN_LY', 'CHU_DN', 'KE_TOAN']
 
 function fmtMoney(n) {
   if (n == null) return '—'
@@ -12,6 +15,8 @@ function fmtMoney(n) {
 }
 
 export default function CustomersPage() {
+  const user = useAuthStore(s => s.user)
+  const role = getUserRole(user)
   const [count, setCount] = useState(0)
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -28,7 +33,19 @@ export default function CustomersPage() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { if (ALLOWED.includes(role)) load() }, [load, role])
+
+  if (user && !ALLOWED.includes(role)) {
+    return (
+      <AppLayout title="Khách hàng">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: 8 }}>
+          <div style={{ fontSize: 32 }}>🔒</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2044' }}>Bạn không có quyền truy cập màn Khách hàng</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>Dữ liệu khách của bạn đã có đầy đủ trong màn làm việc riêng</div>
+        </div>
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout
