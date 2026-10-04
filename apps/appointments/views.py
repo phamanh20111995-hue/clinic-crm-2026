@@ -289,7 +289,28 @@ def checkout(request, pk):
     appt.notes = (appt.notes + f'\n[Khách về {now:%H:%M %d/%m/%Y} — ghi bởi {request.user.display_name}]').strip()
     appt.save(update_fields=['status', 'checked_out_at', 'room', 'notes'])
 
-    return Response(AppointmentListSerializer(appt).data)
+    # Ghi nhận buổi liệu trình: tạo TreatmentSession cho mỗi gói được chọn (chống trùng theo appointment x course)
+    ghi_buoi = 0
+    course_ids = request.data.get('course_ids') or appt.treatment_course_ids or []
+    if course_ids:
+        from apps.contracts.models import TreatmentCourse, TreatmentSession
+        for cid in course_ids:
+            course = TreatmentCourse.objects.filter(id=cid, customer=appt.customer, is_deleted=False).first()
+            if not course:
+                continue
+            if TreatmentSession.objects.filter(appointment=appt, course=course, is_deleted=False).exists():
+                continue
+            TreatmentSession.objects.create(
+                course=course,
+                appointment=appt,
+                date=now.date(),
+                ktv=appt.ktv or appt.bs_dieu_tri,
+            )
+            ghi_buoi += 1
+
+    data = AppointmentListSerializer(appt).data
+    data['ghi_buoi'] = ghi_buoi
+    return Response(data)
 
 
 @api_view(['POST'])

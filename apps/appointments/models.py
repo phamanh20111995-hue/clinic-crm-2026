@@ -46,6 +46,7 @@ class Appointment(models.Model):
     is_walkin    = models.BooleanField(default=False)
     tua_confirmed          = models.BooleanField(default=False)
     tua_confirmed_via_zalo = models.BooleanField(default=False)
+    treatment_course_ids = models.JSONField(default=list, blank=True, help_text='Cac goi lieu trinh lam trong buoi nay')
 
     class Meta:
         verbose_name = 'Lịch hẹn'

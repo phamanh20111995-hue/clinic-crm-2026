@@ -31,7 +31,7 @@ class AppointmentListSerializer(serializers.ModelSerializer):
             'ktv', 'ktv_name',
             'sale', 'sale_name',
             'booked_by_name', 'is_walkin', 'tua_confirmed',
-            'tua_confirmed_via_zalo', 'notes',
+            'tua_confirmed_via_zalo', 'notes', 'treatment_course_ids',
             'checked_out_at', 'created_at',
         ]
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { IconSearch, IconRefresh, IconFilter, IconX } from '@tabler/icons-react'
 import InlineEditCell from '../../../components/common/InlineEditCell'
+import InlineCourseCell from '../../../components/common/InlineCourseCell'
 
 const ACCENT = '#b45309'
 
@@ -86,7 +87,7 @@ const HEADERS = [
   'Giờ hẹn', 'Loại lượt', 'Trạng thái', 'Phòng',
   'Sale', 'BS tư vấn', 'BS điều trị', 'KTV điều trị',
   'Tele', 'CSKH', 'Ads',
-  'Tình trạng HĐ', 'Buổi còn lại', 'Công nợ',
+  'Tình trạng HĐ', 'Điều trị hôm nay', 'Buổi còn lại', 'Công nợ',
 ]
 
 const navBtnStyle = {
@@ -315,7 +316,7 @@ export default function AppointmentTableView({
           </div>
         ) : (
           <div style={{ overflowX: 'auto', overflowY: 'scroll', flex: 1, minHeight: 0, marginBottom: 30 }}>
-            <table style={{ width: '100%', minWidth: 2700, borderCollapse: 'collapse', fontSize: 12 }}>
+            <table style={{ width: '100%', minWidth: 2900, borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 2 }}>
                   {HEADERS.map(h => (
@@ -510,12 +511,23 @@ export default function AppointmentTableView({
                         <HdStatusBadge hd_status={cd.hd_status} />
                       </td>
 
-                      {/* 20 Buổi còn lại */}
+                      {/* 20 Điều trị hôm nay — InlineCourseCell */}
+                      <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <InlineCourseCell
+                          customerId={appt.customer ?? appt.customer_detail?.id}
+                          value={appt.treatment_course_ids ?? []}
+                          visitType={appt.visit_type}
+                          disabled={isDone || appt.visit_type !== 'dieu_tri'}
+                          onSave={(ids) => onUpdateField(appt, 'treatment_course_ids', ids)}
+                        />
+                      </td>
+
+                      {/* 21 Buổi còn lại */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', textAlign: 'center' }}>
                         {cd.buoi_con_lai != null ? cd.buoi_con_lai : EMPTY}
                       </td>
 
-                      {/* 21 Công nợ */}
+                      {/* 22 Công nợ */}
                       <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
                         {money
                           ? <span style={{ color: '#dc2626', fontWeight: 600 }}>{money}</span>

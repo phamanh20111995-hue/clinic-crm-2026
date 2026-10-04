@@ -153,11 +153,38 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
 
 class TreatmentSessionSerializer(serializers.ModelSerializer):
     ktv_name = serializers.CharField(source='ktv.display_name', read_only=True)
+    time           = serializers.SerializerMethodField()
+    bs_dieu_tri_name = serializers.SerializerMethodField()
+    room_name      = serializers.SerializerMethodField()
 
     class Meta:
         model = TreatmentSession
-        fields = ['id', 'course', 'appointment', 'date', 'ktv', 'ktv_name', 'notes', 'created_at']
+        fields = ['id', 'course', 'appointment', 'date', 'time', 'ktv', 'ktv_name',
+                  'bs_dieu_tri_name', 'room_name', 'notes', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def get_time(self, obj):
+        appt = obj.appointment
+        if not appt:
+            return None
+        dt = appt.checked_out_at or appt.scheduled_at
+        if not dt:
+            return None
+        from django.utils import timezone as _tz
+        local = _tz.localtime(dt)
+        return local.strftime('%H:%M')
+
+    def get_bs_dieu_tri_name(self, obj):
+        appt = obj.appointment
+        if appt and appt.bs_dieu_tri:
+            return appt.bs_dieu_tri.display_name
+        return None
+
+    def get_room_name(self, obj):
+        appt = obj.appointment
+        if appt and appt.room:
+            return appt.room.name
+        return None
 
 
 class TreatmentCourseSerializer(serializers.ModelSerializer):

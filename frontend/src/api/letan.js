@@ -53,11 +53,14 @@ export const enqueueAppointment = (id, visitType) =>
 export const toTreatment = (id) =>
   api.post(`/api/appointments/${id}/to-treatment/`)
 
-export const checkoutAppointment = (id) =>
-  api.post(`/api/appointments/${id}/checkout/`)
+export const checkoutAppointment = (id, courseIds = []) =>
+  api.post(`/api/appointments/${id}/checkout/`, { course_ids: courseIds })
 
 export const assignSale = (id, saleId) =>
   api.post(`/api/appointments/${id}/assign-sale/`, { sale_id: saleId })
+
+export const getCustomerCourses = (customerId) =>
+  api.get(`/api/treatment-courses/`, { params: { customer: customerId } })
 
 export const getSaleUsers = () =>
   api.get('/api/auth/users-lite/', { params: { role: 'SALE' } })
