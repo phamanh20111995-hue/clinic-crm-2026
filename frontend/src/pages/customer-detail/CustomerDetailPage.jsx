@@ -29,10 +29,10 @@ function getTabsForRole(role, from) {
     { key: 'lieutrinh', label: 'Liệu trình' },
     { key: 'anh',       label: 'Ảnh điều trị' },
   ]
-  if (FULL_ROLES.includes(role)) return hideFinance ? ALL.filter(t => t.key !== 'taichinh') : ALL
+  if (FULL_ROLES.includes(role)) return hideFinance ? ALL.filter(t => t.key !== 'taichinch') : ALL
   if (CSKH_ROLES.includes(role)) return ALL.filter(t => t.key !== 'taichinch')
-  if (role === 'SALE') return hideFinance ? ALL.filter(t => t.key !== 'taichinh') : ALL
-  if (role === 'TELE' || role === 'LE_TAN') return hideFinance ? ALL.filter(t => t.key !== 'taichinh') : ALL
+  if (role === 'SALE') return hideFinance ? ALL.filter(t => t.key !== 'taichinch') : ALL
+  if (role === 'TELE' || role === 'LE_TAN') return ALL.filter(t => t.key !== 'taichinch')
   // TELE, LE_TAN, MKT, TRUC_PAGE
   return ALL.filter(t => t.key !== 'taichinch')
 }
