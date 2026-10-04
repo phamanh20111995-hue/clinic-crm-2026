@@ -22,9 +22,13 @@ const PAYMENT_CFG = {
 }
 
 export default function TaiChinhTab({ contracts }) {
-  const totalValue = contracts.reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
-  const totalPaid  = contracts.filter(c => c.payment_status === 'paid').reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
+  const approved = contracts.filter(c => c.approval_status === 'approved')
+
+  const totalValue = approved.reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
+  const totalPaid  = approved.reduce((s, c) => s + Number(c.cash_amount ?? 0) + Number(c.transfer_amount ?? 0), 0)
   const debt       = totalValue - totalPaid
+  const v1Value    = approved.filter(c => c.sale_round !== 'upsale').reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
+  const upsaleValue = approved.filter(c => c.sale_round === 'upsale').reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -35,6 +39,8 @@ export default function TaiChinhTab({ contracts }) {
           { label: 'Đã thanh toán',   value: fmtMoney(totalPaid),   color: '#15803d' },
           { label: 'Còn nợ',          value: fmtMoney(debt),        color: debt > 0 ? '#dc2626' : '#9ca3af' },
           { label: 'Số hợp đồng',     value: contracts.length,      color: '#6d28d9' },
+          { label: 'Doanh thu Vòng 1', value: fmtMoney(v1Value),    color: '#0369a1' },
+          { label: 'Doanh thu Upsale', value: fmtMoney(upsaleValue), color: '#b45309' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, padding: '14px 18px' }}>
             <p style={{ fontSize: 20, fontWeight: 700, color, margin: 0 }}>{value}</p>
@@ -55,7 +61,7 @@ export default function TaiChinhTab({ contracts }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
-                  {['Mã HĐ', 'Dịch vụ / Items', 'Giá trị', 'Hình thức TT', 'Duyệt', 'Thanh toán', 'Ngày'].map(h => (
+                  {['Mã HĐ', 'Vòng', 'Dịch vụ / Items', 'Giá trị', 'Hình thức TT', 'Nhân sự bán', 'Duyệt', 'Thanh toán', 'Ngày'].map(h => (
                     <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: 600, borderBottom: '1px solid #dde3ef', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -67,14 +73,21 @@ export default function TaiChinhTab({ contracts }) {
                   const itemNames = Array.isArray(c.items_detail)
                     ? c.items_detail.map(it => it.name).join(', ')
                     : (c.items_detail ? JSON.stringify(c.items_detail) : '—')
+                  const isUpsale = c.sale_round === 'upsale'
                   return (
                     <tr key={c.id} style={{ borderBottom: i < contracts.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                       <td style={{ padding: '10px 12px', fontWeight: 700, color: ACCENT }}>{c.contract_no}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: isUpsale ? '#fef3c7' : '#dbeafe', color: isUpsale ? '#b45309' : '#0369a1' }}>
+                          {isUpsale ? 'Upsale' : 'Vòng 1'}
+                        </span>
+                      </td>
                       <td style={{ padding: '10px 12px', maxWidth: 200 }}>
                         <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemNames}</p>
                       </td>
                       <td style={{ padding: '10px 12px', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtMoney(c.final_amount)}</td>
                       <td style={{ padding: '10px 12px' }}>{c.payment_method_display ?? c.payment_method ?? '—'}</td>
+                      <td style={{ padding: '10px 12px', color: '#374151' }}>{c.created_by_name ?? '—'}</td>
                       <td style={{ padding: '10px 12px' }}>
                         <span style={{ fontSize: 11, fontWeight: 700, background: apr.bg, color: apr.color, padding: '2px 8px', borderRadius: 99 }}>{apr.label}</span>
                       </td>

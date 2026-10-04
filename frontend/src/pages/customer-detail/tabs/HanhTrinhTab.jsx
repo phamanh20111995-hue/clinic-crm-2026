@@ -6,13 +6,13 @@ function fmtDateTime(s) {
 }
 
 const CALL_RESULT_CFG = {
-  no_answer:    { color: '#9ca3af', icon: '📵' },
-  wrong_number: { color: '#ef4444', icon: '❌' },
-  callback:     { color: '#f59e0b', icon: '🔄' },
-  interested:   { color: '#10b981', icon: '✅' },
+  no_answer:      { color: '#9ca3af', icon: '🔵' },
+  wrong_number:   { color: '#ef4444', icon: '❌' },
+  callback:       { color: '#f59e0b', icon: '🔄' },
+  interested:     { color: '#10b981', icon: '✅' },
   not_interested: { color: '#6b7280', icon: '👎' },
-  booked:       { color: '#3b82f6', icon: '📅' },
-  default:      { color: '#9ca3af', icon: '📞' },
+  booked:         { color: '#3b82f6', icon: '📅' },
+  default:        { color: '#9ca3af', icon: '📞' },
 }
 
 const APPT_STATUS_CFG = {
@@ -45,8 +45,7 @@ function TimelineItem({ icon, iconBg, title, sub, time, person, content, last })
   )
 }
 
-export default function HanhTrinhTab({ customer, appointments }) {
-  // Build combined timeline events
+export default function HanhTrinhTab({ customer, appointments, contracts = [] }) {
   const events = []
 
   // Customer created
@@ -82,7 +81,24 @@ export default function HanhTrinhTab({ customer, appointments }) {
     })
   })
 
-  // Sort by time desc
+  // Contracts — mua liệu trình
+  contracts.forEach(c => {
+    if (c.approval_status === 'rejected' || c.is_deleted === true) return
+    const itemNames = Array.isArray(c.items_detail) ? c.items_detail.map(it => it.name).join(', ') : null
+    const sub = [itemNames, c.so_buoi ? `${c.so_buoi} buổi` : null].filter(Boolean).join(' · ') || undefined
+    events.push({
+      ts: c.approved_at || c.created_at,
+      type: 'contract',
+      icon: '💰',
+      iconBg: '#fef3c7',
+      title: `Mua liệu trình (${c.sale_round === 'upsale' ? 'Upsale' : 'Sale vòng 1'}) — ${c.contract_no}`,
+      sub,
+      person: c.created_by_name,
+      content: `${Number(c.final_amount ?? 0).toLocaleString('vi')}₫ · ${c.approval_status === 'approved' ? 'Đã duyệt' : (c.approval_status_display ?? c.approval_status)}`,
+    })
+  })
+
+  // Sort desc
   events.sort((a, b) => new Date(b.ts ?? 0) - new Date(a.ts ?? 0))
 
   if (events.length === 0) {

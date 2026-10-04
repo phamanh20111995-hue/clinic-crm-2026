@@ -164,7 +164,7 @@ export default function CustomerDetailPage() {
 
           {/* Tab content */}
           {activeTab === 'tongquan'  && <TongQuanTab  customer={customer} contracts={contracts} />}
-          {activeTab === 'hanhtrinh' && <HanhTrinhTab customer={customer} appointments={appts} />}
+          {activeTab === 'hanhtrinh' && <HanhTrinhTab customer={customer} appointments={appts} contracts={contracts} />}
           {activeTab === 'taichinch' && <TaiChinhTab  contracts={contracts} />}
           {activeTab === 'lieutrinh' && <LieuTrinhTab appointments={appts} />}
           {activeTab === 'anh'       && <AnhTab customer={customer} images={customer.images ?? []} canUpload={canUploadPhoto(role)} />}
