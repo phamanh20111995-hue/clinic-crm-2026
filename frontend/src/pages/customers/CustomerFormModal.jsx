@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Modal from '../../components/ui/Modal'
 import { createCustomer, updateCustomer, checkPhone } from '../../api/customers'
 import { getMktUsers, getTeleUsers, getServices, getAllUsers } from '../../api/letan'
@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 const SOURCES = ['facebook', 'zalo', 'google', 'tiktok', 'referral', 'walkin', 'other']
 const DATA_TYPES = [
   { value: 'nong', label: '🔥 Nóng' },
-  { value: 'am',   label: '🌤 Âm' },
+  { value: 'am',   label: '🌤 Ấm' },
   { value: 'thuong', label: '❄ Thường' },
 ]
 const STATUS_CHOICES = [
@@ -30,6 +30,12 @@ const STATUS_CHOICES = [
 const PROVINCES = ['Hà Nội','TP. Hồ Chí Minh','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','Tuyên Quang','Lào Cai','Thái Nguyên','Phú Thọ','Bắc Ninh','Hưng Yên','Ninh Bình','Quảng Trị','Quảng Ngãi','Gia Lai','Khánh Hòa','Lâm Đồng','Đắk Lắk','Đồng Nai','Tây Ninh','Vĩnh Long','Đồng Tháp','Cà Mau','An Giang','Cao Bằng','Điện Biên','Hà Tĩnh','Lai Châu','Lạng Sơn','Nghệ An','Quảng Ninh','Thanh Hóa','Sơn La']
 
 const CUSTOMER_GROUPS = ['Khách mới','Khách thường','Khách thân thiết','VIP','VVIP','Khách giới thiệu','Khách nội bộ']
+
+const SectionTitle = ({ children }) => (
+  <div className="col-span-2">
+    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-3">{children}</p>
+  </div>
+)
 
 export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const isEdit = !!customer
@@ -71,8 +77,10 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
   const [saleUsers, setSaleUsers] = useState([])
   const [cskhUsers, setCskhUsers] = useState([])
   const [services, setServices] = useState([])
+  const [svcOpen, setSvcOpen] = useState(false)
+  const svcRef = useRef(null)
 
-  // canEditInfo: lễ tân chỉ sửa được info khi tạo mới hoặc khi KH là walk-in
+  // lễ tân chỉ sửa được info khi tạo mới hoặc khi KH là walk-in
   const canEditInfo = !isLetan || !isEdit || isWalkin(form)
 
   useEffect(() => {
@@ -82,6 +90,16 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
     getAllUsers({ role: 'SALE' }).then(res => setSaleUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
     getAllUsers({ role: 'CSKH' }).then(res => setCskhUsers(res.data?.results ?? res.data ?? [])).catch(() => {})
   }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!svcOpen) return
+    const handler = (e) => {
+      if (svcRef.current && !svcRef.current.contains(e.target)) setSvcOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [svcOpen])
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -128,16 +146,24 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
     }
   }
 
+  // Tên các dịch vụ đã chọn để hiển thị trên nút
+  const selectedSvcLabel = form.services_interest.length > 0
+    ? services.filter(s => form.services_interest.includes(Number(s.id))).map(s => s.name).join(', ')
+    : '— Chọn dịch vụ —'
+
   return (
     <Modal open onClose={onClose} title={isEdit ? 'Sửa thông tin khách hàng' : 'Thêm khách hàng mới'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
+
+          {/* ── NHÓM 1: THÔNG TIN CÁ NHÂN ── */}
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên *</label>
             <input required className="input" value={form.full_name}
               disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('full_name', e.target.value)} placeholder="Nguyễn Văn A" />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
             <input required className={`input ${!isEdit && phoneChecked ? 'border-red-400' : ''}`}
@@ -154,6 +180,7 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('email', e.target.value)} placeholder="email@gmail.com" />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
             <select className="input" value={form.gender}
@@ -170,6 +197,10 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('dob', e.target.value)} />
           </div>
+
+          {/* ── NHÓM 2: NGUỒN & PHÂN LOẠI ── */}
+          <SectionTitle>Nguồn & phân loại</SectionTitle>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nguồn</label>
             <select className="input" value={form.source}
@@ -186,6 +217,7 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               {DATA_TYPES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
             <select className="input" value={form.status}
@@ -203,6 +235,10 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               {CUSTOMER_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
+
+          {/* ── NHÓM 3: LỊCH HẸN & ĐỊA CHỈ ── */}
+          <SectionTitle>Lịch hẹn & địa chỉ</SectionTitle>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hẹn</label>
             <input type="date" className="input" value={form.appointment_date}
@@ -215,22 +251,26 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
               onChange={(e) => set('appointment_time', e.target.value)} />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tỉnh/TP</label>
-            <input list="province-list" className="input" value={form.province}
+            <select className="input" value={form.province}
               disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
-              onChange={(e) => set('province', e.target.value)} placeholder="Hà Nội, TP.HCM..." />
-            <datalist id="province-list">
-              {PROVINCES.map((p) => <option key={p} value={p} />)}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ads phụ trách</label>
-            <select className="input" value={form.ads} disabled={!canAssignAds} style={!canAssignAds ? lockStyle : undefined} onChange={(e) => set('ads', e.target.value)}>
-              <option value="">— Chưa giao —</option>
-              {mktUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
+              onChange={(e) => set('province', e.target.value)}>
+              <option value="">— Chọn tỉnh/TP —</option>
+              {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ chi tiết</label>
+            <input className="input" value={form.address}
+              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
+              onChange={(e) => set('address', e.target.value)} placeholder="Số nhà, đường, phường, quận (dán từ tin nhắn khách)" />
+          </div>
+
+          {/* ── NHÓM 4: PHÂN CÔNG ── */}
+          <SectionTitle>Phân công</SectionTitle>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tele phụ trách</label>
             <select className="input" value={form.tele} disabled={!canAssignTele} style={!canAssignTele ? lockStyle : undefined} onChange={(e) => set('tele', e.target.value)}>
@@ -245,6 +285,7 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               {saleUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
             </select>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">CSKH phụ trách</label>
             <select className="input" value={form.cskh} disabled={!canAssignCskh} style={!canAssignCskh ? lockStyle : undefined} onChange={(e) => set('cskh', e.target.value)}>
@@ -252,42 +293,96 @@ export default function CustomerFormModal({ onClose, customer, onSaved }) {
               {cskhUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
             </select>
           </div>
-          <div className="col-span-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ads phụ trách</label>
+            <select className="input" value={form.ads} disabled={!canAssignAds} style={!canAssignAds ? lockStyle : undefined} onChange={(e) => set('ads', e.target.value)}>
+              <option value="">— Chưa giao —</option>
+              {mktUsers.map((u) => <option key={u.id} value={u.id}>{u.display_name ?? u.full_name ?? u.email}</option>)}
+            </select>
+          </div>
+
+          {/* ── NHÓM 5: DỊCH VỤ ── */}
+          <SectionTitle>Dịch vụ</SectionTitle>
+
+          <div className="col-span-2" ref={svcRef} style={{ position: 'relative' }}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Dịch vụ quan tâm</label>
-            <div style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: 8, maxHeight: 140, overflowY: 'auto', ...(!canEditInfo ? lockStyle : {}) }}>
-              {services.map((s) => (
-                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '2px 0', cursor: !canEditInfo ? 'not-allowed' : 'pointer' }}>
-                  <input type="checkbox"
-                    disabled={!canEditInfo}
-                    checked={form.services_interest.includes(Number(s.id))}
-                    onChange={() => set('services_interest',
-                      form.services_interest.includes(Number(s.id))
-                        ? form.services_interest.filter(x => x !== Number(s.id))
-                        : [...form.services_interest, Number(s.id)]
-                    )} />
-                  {s.name}
-                </label>
-              ))}
+            {/* Trigger button */}
+            <div
+              onClick={() => { if (canEditInfo) setSvcOpen(v => !v) }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                border: '1px solid #dde3ef', borderRadius: 7, padding: '8px 10px',
+                fontSize: 13, cursor: canEditInfo ? 'pointer' : 'not-allowed',
+                background: canEditInfo ? '#fff' : '#f8fafc',
+                color: form.services_interest.length > 0 ? '#111827' : '#9ca3af',
+                userSelect: 'none',
+              }}
+            >
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                {selectedSvcLabel}
+              </span>
+              <span style={{ marginLeft: 8, fontSize: 10, color: '#9ca3af', flexShrink: 0 }}>▾</span>
             </div>
+
+            {/* Dropdown panel */}
+            {svcOpen && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                background: '#fff', border: '1px solid #dde3ef', borderRadius: 7,
+                boxShadow: '0 8px 24px rgba(0,0,0,.12)', marginTop: 4,
+                maxHeight: 200, overflowY: 'auto',
+              }}>
+                {services.map((s) => {
+                  const checked = form.services_interest.includes(Number(s.id))
+                  return (
+                    <label
+                      key={s.id}
+                      onClick={() => set('services_interest',
+                        checked
+                          ? form.services_interest.filter(x => x !== Number(s.id))
+                          : [...form.services_interest, Number(s.id)]
+                      )}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 12px', fontSize: 13, cursor: 'pointer',
+                        background: checked ? '#eff6ff' : 'transparent',
+                        borderBottom: '1px solid #f8fafc',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {}}
+                        onClick={e => e.stopPropagation()}
+                        style={{ accentColor: '#1e40af', width: 14, height: 14, flexShrink: 0 }}
+                      />
+                      <span style={{ fontWeight: checked ? 600 : 400, color: checked ? '#1e40af' : '#374151' }}>
+                        {s.name}
+                      </span>
+                    </label>
+                  )
+                })}
+                <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    onClick={() => setSvcOpen(false)}
+                    style={{ padding: '4px 14px', borderRadius: 6, border: 'none', background: '#1e40af', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Xong
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-            <textarea className="input resize-none" rows={2} value={form.address}
-              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
-              onChange={(e) => set('address', e.target.value)} placeholder="Số nhà, đường, phường..." />
-          </div>
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-            <textarea className="input resize-none" rows={2} value={form.notes}
-              disabled={!canEditInfo} style={!canEditInfo ? lockStyle : undefined}
-              onChange={(e) => set('notes', e.target.value)} placeholder="Thông tin thêm..." />
-          </div>
+
         </div>
+
         <div className="flex gap-2 pt-2">
           <button type="submit" disabled={loading || (!isEdit && !!phoneChecked) || !canEditInfo} className="btn-primary">
             {loading ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : '+ Thêm KH'}
           </button>
-          <button type="button" onClick={onClose} className="btn-secondary">Huỷ</button>
+          <button type="button" onClick={onClose} className="btn-secondary">Hủy</button>
         </div>
       </form>
     </Modal>

@@ -166,7 +166,7 @@ export default function TongQuanTab({ customer, contracts }) {
             <InfoRow label="Số điện thoại"    value={customer.phone} />
             <InfoRow label="Giới tính"        value={genderLabel} />
             <InfoRow label="Ngày sinh"        value={fmtDate(customer.dob)} />
-            <InfoRow label="Địa chỉ"          value={customer.address} />
+            <InfoRow label="Địa chỉ"          value={[customer.address, customer.province].filter(Boolean).join(', ') || null} />
             <InfoRow label="Email"            value={customer.email} />
             <InfoRow label="Dịch vụ quan tâm" value={(customer.services_interest_names && customer.services_interest_names.length) ? customer.services_interest_names.join(', ') : null} />
             <InfoRow label="Nguồn"            value={customer.source_display} />
