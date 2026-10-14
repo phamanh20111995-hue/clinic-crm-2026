@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Spinner from '../ui/Spinner'
 import Badge from '../ui/Badge'
-import { getCustomers, updateCustomer } from '../../api/customers'
+import { getCustomers, updateCustomer, updateCustomerFrom } from '../../api/customers'
 import { getServices, getAllUsers } from '../../api/letan'
 import { fmtPhone, fmtDate } from '../../utils/format'
 import { IconSearch, IconFilter, IconX } from '@tabler/icons-react'
@@ -12,6 +12,8 @@ import InlineDateTimeCell from '../common/InlineDateTimeCell'
 import InlineEditCell from '../common/InlineEditCell'
 import InlineTextCell from '../common/InlineTextCell'
 import InlineMultiSelectCell from '../common/InlineMultiSelectCell'
+import InlineCourseCell from '../common/InlineCourseCell'
+import { updateAppointment } from '../../api/appointments'
 
 const STATUS_COLORS = {
   chua_goi: 'gray', da_goi: 'blue', khong_nghe: 'orange', thue_bao: 'orange',
@@ -28,6 +30,13 @@ const STATUS_LABELS = {
 const DATA_TYPE_LABELS = { nong: '🔥 Nóng', am: '🌤 Ấm', thuong: '❄ Thường' }
 const DATA_TYPE_COLORS = { nong: 'red', am: 'yellow', thuong: 'gray' }
 const GENDER_LABELS = { M: 'Nam', F: 'Nữ' }
+const CARE_STATUS_LABELS = {
+  dang_theo: 'Đang theo LT', khieu_nai: 'Khiếu nại/chưa hài lòng', tam_dung: 'Tạm dừng',
+  hen_quay_lai: 'Hẹn quay lại', ngung: 'Ngừng/bỏ LT', hoan_thanh: 'Hoàn thành',
+}
+const CARE_STATUS_COLORS = {
+  dang_theo: 'blue', khieu_nai: 'red', tam_dung: 'orange', hen_quay_lai: 'purple', ngung: 'gray', hoan_thanh: 'green',
+}
 
 const SOURCES = [
   { value: 'facebook', label: 'Facebook' },
@@ -63,13 +72,20 @@ const ALL_COLUMNS = [
   { key: 'province', label: 'Tỉnh/thành' },
   { key: 'gender', label: 'Giới tính' },
   { key: 'services_interest_names', label: 'Dịch vụ quan tâm', roles: ['TELE', 'LEAD_TELE', 'SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
+  { key: 'services_bought_names', label: 'Dịch vụ đã mua', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'] },
   { key: 'data_type', label: 'Loại data', roles: ['TELE', 'LEAD_TELE', 'SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'status', label: 'Trạng thái' },
+  { key: 'care_status', label: 'Trạng thái CS', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'buoi_con_lai', label: 'Buổi còn lại', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'can_lien_he', label: 'Cần liên hệ', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'last_treat_date', label: 'Điều trị gần nhất', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'last_care_date', label: 'Chăm sóc gần nhất', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'] },
+  { key: 'next_course', label: 'Dịch vụ buổi tới', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'] },
   { key: 'created_at', label: 'Ngày tạo' },
   { key: 'appointment_date', label: 'Ngày hẹn', roles: ['TELE', 'LEAD_TELE', 'SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'appointment_time', label: 'Giờ hẹn', roles: ['TELE', 'LEAD_TELE', 'SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'tele_name', label: 'Tele phụ trách', roles: ['TELE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
-  { key: 'sale_name', label: 'Sale phụ trách', roles: ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
+  { key: 'sale_name', label: 'Sale phụ trách', roles: ['SALE', 'LEAD_SALE', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'cskh_name', label: 'CSKH phụ trách', roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'ads_name', label: 'Ads phụ trách', roles: ['MKT', 'LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
   { key: 'last_bs_name', label: 'BS gần nhất', roles: ['BS', 'KTV', 'LE_TAN', 'CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN', 'KE_TOAN', 'TRUC_PAGE'] },
@@ -173,6 +189,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
   const canAssignSale = ['LEAD_SALE', 'QUAN_LY', 'CHU_DN', 'LE_TAN'].includes(role)
   const canAssignCskh = ['LEAD_CSKH', 'QUAN_LY', 'CHU_DN'].includes(role)
   const canAssignAds  = ['LEAD_MKT', 'QUAN_LY', 'CHU_DN', 'TRUC_PAGE'].includes(role)
+  const canEditCskh = fromContext === 'cskh'
 
   const teleOptions = [{ value: '', label: '— Chưa giao —' }, ...allUsers.filter(u => u.role === 'TELE').map(u => ({ value: u.id, label: u.display_name ?? u.email }))]
   const saleOptions = [{ value: '', label: '— Chưa giao —' }, ...allUsers.filter(u => u.role === 'SALE').map(u => ({ value: u.id, label: u.display_name ?? u.email }))]
@@ -190,6 +207,10 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     .filter(c => !c.roles || c.roles.includes(role))
     .filter(c => !hideMoneyColumns || !MONEY_KEYS.includes(c.key))
     .filter(c => !(fromContext === 'truc' && c.key === 'hd_status'))
+    .filter(c => fromContext === 'cskh' || !['services_bought_names','care_status','buoi_con_lai','can_lien_he','last_treat_date','last_care_date','next_course'].includes(c.key))
+  const visibleColsOrdered = columnKeys
+    ? columnKeys.map(k => visibleCols.find(c => c.key === k)).filter(Boolean)
+    : visibleCols
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -229,7 +250,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
   useEffect(() => { load() }, [load])
 
   const handleSaveAppt = useCallback(async (c, { date, time }) => {
-    await updateCustomer(c.id, { appointment_date: date || null, appointment_time: time || '' })
+    await updateCustomerFrom(c.id, { appointment_date: date || null, appointment_time: time || '' }, fromContext === 'cskh' ? 'cskh' : null)
     load()
   }, [load])
 
@@ -344,7 +365,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       case 'created_at':
         return <span style={{ color: '#94a3b8', fontSize: 10 }}>{fmtDate(c.created_at)}</span>
       case 'appointment_date':
-        if (canInlineEdit) {
+        if (canInlineEdit || canEditCskh) {
           const apptDate = (c.next_appt && c.next_appt.date) || c.appointment_date || ''
           const apptTime = (c.next_appt && c.next_appt.time) || ''
           return (
@@ -359,7 +380,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         }
         return <span style={{ color: '#64748b', fontSize: 11 }}>{(c.next_appt && c.next_appt.date) || c.appointment_date ? fmtDate((c.next_appt && c.next_appt.date) || c.appointment_date) : '—'}</span>
       case 'appointment_time':
-        if (canInlineEdit) {
+        if (canInlineEdit || canEditCskh) {
           const apptDate = (c.next_appt && c.next_appt.date) || c.appointment_date || ''
           const apptTime = (c.next_appt && c.next_appt.time) || ''
           return (
@@ -451,6 +472,51 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
         return <span style={{ color: '#6d28d9' }}>{fmtMoney(c.upsale_value)}</span>
       case 'created_by_name':
         return <span style={{ color: '#64748b' }}>{c.created_by_name ?? '—'}</span>
+      case 'services_bought_names':
+        return <span style={{ color: '#64748b' }}>{(c.services_bought_names && c.services_bought_names.length) ? c.services_bought_names.join(', ') : '—'}</span>
+      case 'care_status':
+        if (canEditCskh) {
+          return (
+            <InlineEditCell
+              value={c.care_status}
+              displayValue={<Badge variant={CARE_STATUS_COLORS[c.care_status] ?? 'gray'}>{CARE_STATUS_LABELS[c.care_status] ?? c.care_status ?? '—'}</Badge>}
+              options={Object.entries(CARE_STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+              searchable={false}
+              onSave={(v) => handleSaveField(c, 'care_status', v)}
+            />
+          )
+        }
+        return <Badge variant={CARE_STATUS_COLORS[c.care_status] ?? 'gray'}>{CARE_STATUS_LABELS[c.care_status] ?? c.care_status ?? '—'}</Badge>
+      case 'buoi_con_lai':
+        return <span style={{ color: '#64748b', fontWeight: 600 }}>{c.buoi_con_lai ?? 0}</span>
+      case 'can_lien_he': {
+        const cl = c.can_lien_he
+        if (!cl) return <span style={{ color: '#94a3b8' }}>—</span>
+        const CL = { complaint:['red','Xử lý khiếu nại gấp'], winback:['orange', cl.label && cl.label.indexOf('not')>-1 ? cl.label.replace('Moi lam not','Mời làm nốt').replace('buoi','buổi') : 'Mời quay lại làm tiếp'], upsell:['pink','Mời mua gói mới'], review:['pink','Đánh giá + mời mua tiếp'], callback:['purple','Gọi theo hẹn'], wait:['purple','Chờ đến hẹn'], care:['blue','Gọi chăm sóc'], book:['orange','Nhắc đặt lịch'], risk:['red','Quá hạn — nguy cơ rơi'], low:['yellow','Sắp hết gói'], ok:['green', cl.label==='Da co lich'?'Đã có lịch':'OK'], muted:['gray','Không nhắc'] }
+        const cfg = CL[cl.kind] ?? ['gray', cl.label]; return <Badge variant={cfg[0]}>{cfg[1]}</Badge>
+      }
+      case 'last_treat_date':
+        return <span style={{ color: '#64748b', fontSize: 11 }}>{c.last_treat_date ? fmtDate(c.last_treat_date) : '—'}</span>
+      case 'last_care_date':
+        return <span style={{ color: '#64748b', fontSize: 11 }}>{c.last_care_date ? fmtDate(c.last_care_date) : '—'}</span>
+      case 'next_course': {
+        const na = c.next_appt
+        if (na && na.id && na.visit_type === 'dieu_tri') {
+          return (
+            <span onClick={e => e.stopPropagation()}>
+              <InlineCourseCell
+                customerId={c.id}
+                value={na.treatment_course_ids ?? []}
+                labels={na.treatment_course_names ?? []}
+                visitType={na.visit_type}
+                accent="#be185d"
+                onSave={(ids) => updateAppointment(na.id, { treatment_course_ids: ids }).then(load)}
+              />
+            </span>
+          )
+        }
+        return <span style={{ color: '#94a3b8', fontSize: 11 }}>— đặt lịch trước —</span>
+      }
       default:
         return '—'
     }
@@ -588,7 +654,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
               <table style={{ width: '100%', minWidth: 1700, borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 2 }}>
-                    {visibleCols.map(col => (
+                    {visibleColsOrdered.map(col => (
                       <th key={col.key} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', background: '#f8fafc' }}>{col.label}</th>
                     ))}
                   </tr>
@@ -596,7 +662,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
                 <tbody>
                   {customers.length === 0 ? (
                     <tr>
-                      <td colSpan={visibleCols.length} style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
+                      <td colSpan={visibleColsOrdered.length} style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
                         <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
                         Không có khách hàng
                       </td>
@@ -609,7 +675,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
                       onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
                       onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
-                      {visibleCols.map(col => (
+                      {visibleColsOrdered.map(col => (
                         <td key={col.key} style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{renderCell(c, col)}</td>
                       ))}
                     </tr>

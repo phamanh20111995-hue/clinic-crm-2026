@@ -79,8 +79,8 @@ class CustomerFilter(django_filters.FilterSet):
 
 class CustomerListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/customers/        — Danh sách KH (filter theo role tự động)
-    POST /api/customers/        — Tạo KH mới
+    GET  /api/customers/        – Danh sách KH (filter theo role tự động)
+    POST /api/customers/        – Tạo KH mới
     """
     permission_classes = [IsAuthenticated]
     pagination_class = CustomerPagination
@@ -111,8 +111,8 @@ class CustomerListCreateView(generics.ListCreateAPIView):
 
 class CustomerDetailView(generics.RetrieveUpdateAPIView):
     """
-    GET   /api/customers/{id}/  — Chi tiết KH
-    PATCH /api/customers/{id}/  — Cập nhật
+    GET   /api/customers/{id}/  – Chi tiết KH
+    PATCH /api/customers/{id}/  – Cập nhật
     """
     permission_classes = [IsAuthenticated]
 
@@ -128,7 +128,7 @@ class CustomerDetailView(generics.RetrieveUpdateAPIView):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def check_phone(request):
-    """GET /api/customers/check-phone/?phone= — Kiểm tra trùng SĐT."""
+    """GET /api/customers/check-phone/?phone= – Kiểm tra trùng SĐT."""
     phone = request.query_params.get('phone', '').strip()
     if not phone:
         return Response({'detail': 'Thiếu tham số phone.'}, status=400)
@@ -146,7 +146,7 @@ def check_phone(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def assign_customer(request, pk):
-    """POST /api/customers/{id}/assign/ — Phân công Tele/Sale (Lead+)."""
+    """POST /api/customers/{id}/assign/ – Phân công Tele/Sale (Lead+)."""
     if request.user.role not in ('LEAD_TELE','LEAD_SALE','QUAN_LY','CHU_DN'):
         return Response({'detail': 'Không có quyền phân công.'}, status=403)
     customer = Customer.objects.filter(pk=pk, is_deleted=False).first()
@@ -171,7 +171,7 @@ def assign_customer(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def assign_cskh(request, pk):
-    """POST /api/customers/{id}/assign-cskh/ — Phân công CSKH (Lead CSKH+)."""
+    """POST /api/customers/{id}/assign-cskh/ – Phân công CSKH (Lead CSKH+)."""
     if request.user.role not in ('LEAD_CSKH', 'QUAN_LY', 'CHU_DN'):
         return Response({'detail': 'Không có quyền phân công CSKH.'}, status=403)
     customer = Customer.objects.filter(pk=pk, is_deleted=False).first()
@@ -199,7 +199,7 @@ def assign_cskh(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_image(request, pk):
-    """POST /api/customers/{id}/images/ — Upload ảnh KH."""
+    """POST /api/customers/{id}/images/ – Upload ảnh KH."""
     customer = _customer_queryset(request.user).filter(pk=pk).first()
     if not customer:
         return Response({'detail': 'Không tìm thấy KH.'}, status=404)
@@ -272,6 +272,13 @@ def cskh_stats(request):
     sap_het_lt = 0
     cho_danh_gia = 0
 
+    from . import care
+    flags = [care.compute_care_flag(c, today) for c in qs]
+    goi_cham_soc = sum(1 for f in flags if f['kind'] == 'care')
+    nhac_dat_lich = sum(1 for f in flags if f['kind'] in ('book', 'risk'))
+    sap_het = sum(1 for f in flags if f['kind'] == 'low')
+    co_lich = sum(1 for c in qs if c.appointments.filter(scheduled_at__date__gte=today).exclude(status='cancelled').exists())
+
     return Response({
         'total': total,
         'cham_soc_today': cham_soc_today,
@@ -279,6 +286,10 @@ def cskh_stats(request):
         'tai_kham_due': tai_kham_due,
         'sap_het_lt': sap_het_lt,
         'cho_danh_gia': cho_danh_gia,
+        'goi_cham_soc': goi_cham_soc,
+        'nhac_dat_lich': nhac_dat_lich,
+        'sap_het': sap_het,
+        'co_lich': co_lich,
     })
 
 

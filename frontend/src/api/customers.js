@@ -11,3 +11,4 @@ export const uploadImage = (id, formData) =>
   api.post(`/api/customers/${id}/images/`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+export const updateCustomerFrom = (id, data, from) => api.patch(`/api/customers/${id}/`, data, { params: from ? { from } : {} })

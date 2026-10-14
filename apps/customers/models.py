@@ -13,7 +13,7 @@ class Customer(models.Model):
         ('gioi_thieu','Giới thiệu'),('walkin','Walk-in'),('khac','Không xác định'),
     ]
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
-    DATA_TYPE_CHOICES = [('nong','Nóng'),('am','Âm'),('thuong','Thường')]
+    DATA_TYPE_CHOICES = [('nong','Nóng'),('am','Ấm'),('thuong','Thường')]
     data_type = models.CharField(max_length=10, choices=DATA_TYPE_CHOICES, default='thuong')
     sale = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='customers', limit_choices_to={'role':'SALE'})
@@ -27,7 +27,7 @@ class Customer(models.Model):
     STATUS_CHOICES = [
         ('chua_goi','Chưa gọi'),('da_goi','Đã gọi'),
         ('khong_nghe','Không nghe máy'),('thue_bao','Thuê bao'),
-        ('sai_so','Sai số'),('tu_choi','Từ chối'),('hoan_so','Hoàn số'),
+        ('sai_so','Sai số'),('tu_choi','Từ chối'),('hoan_so','Hoãn số'),
         ('dat_lich','Đặt lịch'),('hen_goi','Hẹn gọi lại'),
         ('can_tv','Cần tư vấn thêm'),('khong_qt','Không quan tâm'),
         ('cho_phan_cskh','Chờ phân CSKH'),
@@ -45,12 +45,21 @@ class Customer(models.Model):
         null=True, related_name='created_customers')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    CARE_STATUS_CHOICES = [
+        ('dang_theo','Đang theo liệu trình'),
+        ('khieu_nai','Khiếu nại/chưa hài lòng'),
+        ('tam_dung','Tạm dừng'),
+        ('hen_quay_lai','Hẹn quay lại'),
+        ('ngung','Ngừng/bỏ liệu trình'),
+        ('hoan_thanh','Hoàn thành'),
+    ]
+    care_status = models.CharField(max_length=20, choices=CARE_STATUS_CHOICES, default='dang_theo')
 
     class Meta:
         verbose_name='Khách hàng'; verbose_name_plural='Khách hàng'; ordering=['-created_at']
 
     def __str__(self):
-        return f'{self.full_name} — {self.phone}'
+        return f'{self.full_name} – {self.phone}'
 
 
 class CustomerImage(models.Model):
@@ -120,4 +129,21 @@ class CustomerNote(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.get_channel_display()} — {self.customer} ({self.created_at:%d/%m %H:%M})'
+        return f'{self.get_channel_display()} – {self.customer} ({self.created_at:%d/%m %H:%M})'
+
+
+class CareRule(models.Model):
+    """Nhip cham soc cau hinh duoc. service=null -> quy tac mac dinh toan he."""
+    service = models.ForeignKey('services.Service', null=True, blank=True,
+        on_delete=models.CASCADE, related_name='care_rules')
+    care_days = models.PositiveIntegerField(default=1)
+    rebook_days = models.PositiveIntegerField(default=14)
+    risk_days = models.PositiveIntegerField(default=21)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Quy tac cham soc'
+
+    def __str__(self):
+        ten = self.service.name if self.service else 'MAC DINH'
+        return f'CareRule({ten}: {self.care_days}/{self.rebook_days}/{self.risk_days})'

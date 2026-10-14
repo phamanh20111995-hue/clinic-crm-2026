@@ -4,6 +4,13 @@ import StatCard from '../../tele/components/StatCard'
 import CustomerTable from '../../../components/customers/CustomerTable'
 
 const ACCENT = '#be185d'
+const CSKH_COLUMNS = [
+  'full_name', 'phone', 'source', 'customer_group', 'province', 'gender',
+  'services_interest_names', 'services_bought_names',
+  'care_status', 'can_lien_he', 'buoi_con_lai', 'last_treat_date', 'last_care_date',
+  'appointment_date', 'appointment_time', 'next_course',
+  'sale_name', 'cskh_name', 'last_bs_name', 'total_debt',
+]
 
 export default function CskhPageView({ reloadKey }) {
   const [stats, setStats] = useState(null)
@@ -39,7 +46,7 @@ export default function CskhPageView({ reloadKey }) {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <CustomerTable baseParams={{ is_customer: true }} reloadKey={reloadKey} fromContext="cskh" />
+        <CustomerTable baseParams={{ is_customer: true }} reloadKey={reloadKey} fromContext="cskh" columnKeys={CSKH_COLUMNS} />
       </div>
     </div>
   )

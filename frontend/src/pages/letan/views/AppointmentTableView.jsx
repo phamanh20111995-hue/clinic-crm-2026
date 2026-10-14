@@ -516,6 +516,7 @@ export default function AppointmentTableView({
                         <InlineCourseCell
                           customerId={appt.customer ?? appt.customer_detail?.id}
                           value={appt.treatment_course_ids ?? []}
+                          labels={appt.treatment_course_names ?? []}
                           visitType={appt.visit_type}
                           disabled={isDone || appt.visit_type !== 'dieu_tri'}
                           onSave={(ids) => onUpdateField(appt, 'treatment_course_ids', ids)}

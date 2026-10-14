@@ -13,6 +13,7 @@ const spinKeyframes = `@keyframes icc-spin{to{transform:rotate(360deg)}}`
 export default function InlineCourseCell({
   customerId,
   value = [],
+  labels = [],
   visitType,
   disabled = false,
   onSave,
@@ -92,7 +93,7 @@ export default function InlineCourseCell({
   }
 
   const displayText = value.length
-    ? `✓ ${value.length} gói`
+    ? (labels && labels.length ? labels.join(', ') : `✓ ${value.length} gói`)
     : '— chọn gói —'
 
   const displayColor = value.length ? accent : '#94a3b8'

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Customer, CustomerImage, CallHistory, ReturnRequest
+from . import care
 
 
 class CustomerImageSerializer(serializers.ModelSerializer):
@@ -36,6 +37,15 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
         read_only_fields = ['id','status','requested_by_name','reviewed_by_name','reviewed_at','created_at']
 
 
+def _course_names(ids):
+    if not ids:
+        return []
+    from apps.contracts.models import TreatmentCourse
+    qs = TreatmentCourse.objects.filter(id__in=ids).select_related('service')
+    by_id = {c.id: (c.service.name if c.service else '') for c in qs}
+    return [by_id[i] for i in ids if by_id.get(i)]
+
+
 def _last_done_appt(obj):
     return obj.appointments.filter(status='done').order_by('-scheduled_at').first()
 
@@ -63,16 +73,25 @@ class CustomerListSerializer(serializers.ModelSerializer):
     so_buoi_total = serializers.SerializerMethodField()
     buoi_con_lai = serializers.SerializerMethodField()
     next_appt = serializers.SerializerMethodField()
+    care_status_display = serializers.CharField(source='get_care_status_display', read_only=True)
+    last_treat_date = serializers.SerializerMethodField()
+    last_care_date = serializers.SerializerMethodField()
+    services_bought_names = serializers.SerializerMethodField()
+    can_lien_he = serializers.SerializerMethodField()
     created_by_name = serializers.CharField(source='created_by.display_name', read_only=True)
+
     class Meta:
         model = Customer
         fields = ['id','full_name','phone','gender','source','source_display',
                   'data_type','data_type_display','status','status_display',
                   'call_count','customer_group','appointment_date','province',
                   'tele','tele_name','sale','sale_name','cskh','cskh_name','ads','ads_name',
-                  'last_bs_name','last_ktv_name','services_interest','services_interest_names','round1_value','round1_paid','round1_debt',
+                  'last_bs_name','last_ktv_name','services_interest','services_interest_names',
+                  'round1_value','round1_paid','round1_debt',
                   'total_value','total_paid','total_debt','upsale_value',
-                  'so_buoi_total','buoi_con_lai','next_appt','hd_status','created_by_name','created_at']
+                  'so_buoi_total','buoi_con_lai','next_appt','hd_status','created_by_name','created_at',
+                  'care_status','care_status_display','last_treat_date','last_care_date',
+                  'services_bought_names','can_lien_he']
 
     def get_next_appt(self, obj):
         from django.utils import timezone
@@ -89,7 +108,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
         if not appt:
             return None
         local = timezone.localtime(appt.scheduled_at)
-        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M'), 'is_past': appt.scheduled_at.date() < today}
+        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M'), 'is_past': appt.scheduled_at.date() < today, 'visit_type': appt.visit_type, 'treatment_course_ids': appt.treatment_course_ids or [], 'treatment_course_names': _course_names(appt.treatment_course_ids or [])}
 
     def get_last_bs_name(self, obj):
         appt = _last_done_appt(obj)
@@ -130,12 +149,28 @@ class CustomerListSerializer(serializers.ModelSerializer):
         return sum(float(c.final_amount or 0) for c in obj.contracts.filter(sale_round='upsale'))
 
     def get_so_buoi_total(self, obj):
-        return sum(int(c.so_buoi or 0) for c in self._all_contracts(obj))
+        return sum(int(c.so_buoi or 0) for c in obj.treatment_courses.filter(is_deleted=False))
 
     def get_buoi_con_lai(self, obj):
-        total = self.get_so_buoi_total(obj)
-        da_dung = obj.appointments.filter(status='done').count() if hasattr(obj, 'appointments') else 0
-        return max(0, total - da_dung)
+        return care.get_buoi_con_lai(obj)
+
+    def get_last_treat_date(self, obj):
+        s = care.last_session(obj)
+        return s.date.strftime('%Y-%m-%d') if s and s.date else None
+
+    def get_last_care_date(self, obj):
+        n = obj.note_entries.filter(channel='cham_soc', is_deleted=False).order_by('-created_at').first()
+        return timezone.localtime(n.created_at).strftime('%Y-%m-%d') if n else None
+
+    def get_services_bought_names(self, obj):
+        names = []
+        for c in obj.treatment_courses.filter(is_deleted=False, contract__approval_status='approved').select_related('service'):
+            if c.service and c.service.name not in names:
+                names.append(c.service.name)
+        return names
+
+    def get_can_lien_he(self, obj):
+        return care.compute_care_flag(obj)
 
     def get_hd_status(self, obj):
         contracts = [c for c in obj.contracts.all() if not c.is_deleted]
@@ -144,6 +179,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
         latest = sorted(contracts, key=lambda c: c.created_at, reverse=True)[0]
         pending_count = sum(1 for c in contracts if c.approval_status in ('draft', 'pending_kt'))
         return {'latest': latest.approval_status, 'pending_count': pending_count}
+
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
     """Chi tiết — full 5 tab."""
@@ -185,7 +221,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_services_interest_names(self, obj):
         return [s.name for s in obj.services_interest.all()]
 
-
     def get_next_appt(self, obj):
         from django.utils import timezone
         today = timezone.localdate()
@@ -201,14 +236,15 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         if not appt:
             return None
         local = timezone.localtime(appt.scheduled_at)
-        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M'), 'is_past': appt.scheduled_at.date() < today}
+        return {'id': appt.id, 'date': local.strftime('%Y-%m-%d'), 'time': local.strftime('%H:%M'), 'is_past': appt.scheduled_at.date() < today, 'visit_type': appt.visit_type, 'treatment_course_ids': appt.treatment_course_ids or [], 'treatment_course_names': _course_names(appt.treatment_course_ids or [])}
+
 
 class CustomerCreateSerializer(serializers.ModelSerializer):
     appointment_time = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = Customer
-        fields = ['full_name','phone','dob','gender','address','source','data_type','status',
+        fields = ['full_name','phone','dob','gender','address','source','data_type','status','care_status',
                   'customer_group','appointment_date','province','notes','tele','sale','cskh','ads',
                   'services_interest','appointment_time']
 
@@ -239,7 +275,7 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
             except (ValueError, IndexError):
                 hour, minute = 9, 0
 
-        # Tìm lịch của ĐÚNG ngày appointment_date (update, không đẻ trùng); fallback lịch sắp tới gần nhất
+        # Tìm lịch của ĐÚNG ngày appointment_date (update, không để trùng); fallback lịch sắp tới gần nhất
         existing = (
             Appointment.objects
             .filter(customer=customer, scheduled_at__date=appt_date)
@@ -269,11 +305,13 @@ class CustomerCreateSerializer(serializers.ModelSerializer):
             existing.scheduled_at = scheduled_at
             existing.save(update_fields=['scheduled_at'])
         else:
+            _vt = 'dieu_tri' if (self.context.get('request') and self.context['request'].query_params.get('from') == 'cskh') else 'tu_van'
             Appointment.objects.create(
                 customer=customer,
                 scheduled_at=scheduled_at,
                 booked_by=self.context['request'].user,
                 status='pending',
+                visit_type=_vt,
             )
 
     def create(self, validated_data):

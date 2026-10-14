@@ -17,6 +17,15 @@ class AppointmentListSerializer(serializers.ModelSerializer):
     ktv_name           = serializers.CharField(source='ktv.display_name', read_only=True)
     sale_name          = serializers.CharField(source='sale.display_name', read_only=True)
     customer_detail    = CustomerListSerializer(source='customer', read_only=True)
+    treatment_course_names = serializers.SerializerMethodField()
+
+    def get_treatment_course_names(self, obj):
+        ids = obj.treatment_course_ids or []
+        if not ids:
+            return []
+        from apps.contracts.models import TreatmentCourse
+        by_id = {c.id: (c.service.name if c.service else '') for c in TreatmentCourse.objects.filter(id__in=ids).select_related('service')}
+        return [by_id[i] for i in ids if by_id.get(i)]
 
     class Meta:
         model = Appointment
@@ -31,7 +40,7 @@ class AppointmentListSerializer(serializers.ModelSerializer):
             'ktv', 'ktv_name',
             'sale', 'sale_name',
             'booked_by_name', 'is_walkin', 'tua_confirmed',
-            'tua_confirmed_via_zalo', 'notes', 'treatment_course_ids',
+            'tua_confirmed_via_zalo', 'notes', 'treatment_course_ids', 'treatment_course_names',
             'checked_out_at', 'created_at',
         ]
 
@@ -60,6 +69,7 @@ class AppointmentUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'scheduled_at', 'service', 'status', 'visit_type',
             'room', 'doctor', 'bs_dieu_tri', 'ktv', 'sale', 'notes',
+            'treatment_course_ids',
         ]
 
 
