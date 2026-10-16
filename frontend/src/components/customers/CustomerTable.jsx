@@ -169,6 +169,8 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
   const [pageSize, setPageSize] = useState(20)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [canLienHeFilter, setCanLienHeFilter] = useState('')
+  const [cskhFilter, setCskhFilter] = useState('')
   const [timePreset, setTimePreset] = useState('')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
@@ -218,13 +220,20 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       const params = { page, page_size: pageSize, ...baseParams }
       if (search) params.search = search
       if (statusFilter) params.status = statusFilter
+      if (fromContext === 'cskh' && cskhFilter) {
+        if (cskhFilter.startsWith('cs:')) params.care_status = cskhFilter.slice(3)
+      }
       if (timePreset === 'custom') {
-        if (customFrom) params.created_after = customFrom
-        if (customTo) params.created_before = customTo
+        const af = fromContext === 'cskh' ? 'appt_after' : 'created_after'
+        const bf = fromContext === 'cskh' ? 'appt_before' : 'created_before'
+        if (customFrom) params[af] = customFrom
+        if (customTo) params[bf] = customTo
       } else if (timePreset) {
         const range = getDateRange(timePreset)
-        if (range.created_after) params.created_after = range.created_after
-        if (range.created_before) params.created_before = range.created_before
+        const af = fromContext === 'cskh' ? 'appt_after' : 'created_after'
+        const bf = fromContext === 'cskh' ? 'appt_before' : 'created_before'
+        if (range.created_after) params[af] = range.created_after
+        if (range.created_before) params[bf] = range.created_before
       }
       if (sourceFilter) params.source = sourceFilter
       if (groupFilter) params.customer_group = groupFilter
@@ -245,7 +254,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, search, statusFilter, timePreset, customFrom, customTo, sourceFilter, groupFilter, provinceFilter, genderFilter, serviceFilter, assignedTo, unassignedRole, reloadKey])
+  }, [page, pageSize, search, statusFilter, cskhFilter, timePreset, customFrom, customTo, sourceFilter, groupFilter, provinceFilter, genderFilter, serviceFilter, assignedTo, unassignedRole, reloadKey])
 
   useEffect(() => { load() }, [load])
 
@@ -492,7 +501,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
       case 'can_lien_he': {
         const cl = c.can_lien_he
         if (!cl) return <span style={{ color: '#94a3b8' }}>—</span>
-        const CL = { complaint:['red','Xử lý khiếu nại gấp'], winback:['orange', cl.label && cl.label.indexOf('not')>-1 ? cl.label.replace('Moi lam not','Mời làm nốt').replace('buoi','buổi') : 'Mời quay lại làm tiếp'], upsell:['pink','Mời mua gói mới'], review:['pink','Đánh giá + mời mua tiếp'], callback:['purple','Gọi theo hẹn'], wait:['purple','Chờ đến hẹn'], care:['blue','Gọi chăm sóc'], book:['orange','Nhắc đặt lịch'], risk:['red','Quá hạn — nguy cơ rơi'], low:['yellow','Sắp hết gói'], ok:['green', cl.label==='Da co lich'?'Đã có lịch':'OK'], muted:['gray','Không nhắc'] }
+        const CL = { complaint:['red','Xử lý khiếu nại gấp'], winback:['orange', cl.label && cl.label.indexOf('not')>-1 ? cl.label.replace('Moi lam not','Mời làm nốt').replace('buoi','buổi') : 'Mời quay lại làm tiếp'], upsell:['pink','Mời mua gói mới'], review:['pink','Đánh giá + mời mua tiếp'], callback:['purple','Gọi theo hẹn'], wait:['purple','Chờ đến hẹn'], care:['blue','Gọi chăm sóc'], book:['orange','Nhắc đặt lịch'], risk:['red','Quá hạn — nguy cơ rơi'], missed:['red','Lỡ hẹn — gọi lại'], low:['yellow','Sắp hết gói'], ok:['green', cl.label==='Da co lich'?'Đã có lịch':'OK'], muted:['gray','Không nhắc'] }
         const cfg = CL[cl.kind] ?? ['gray', cl.label]; return <Badge variant={cfg[0]}>{cfg[1]}</Badge>
       }
       case 'last_treat_date':
@@ -522,6 +531,18 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
     }
   }
 
+  const displayedCustomers = (() => {
+    let rows = customers
+    if (fromContext === 'cskh' && canLienHeFilter === 'need') {
+      rows = rows.filter(c => c.can_lien_he && !['ok','muted'].includes(c.can_lien_he.kind))
+    }
+    if (fromContext === 'cskh' && cskhFilter.startsWith('cl:')) {
+      const k = cskhFilter.slice(3)
+      rows = rows.filter(c => c.can_lien_he && c.can_lien_he.kind === k)
+    }
+    return rows
+  })()
+
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
@@ -537,6 +558,7 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
               style={{ width: '100%', paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7, border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
             />
           </div>
+          {fromContext !== 'cskh' && (
           <select
             value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
@@ -547,13 +569,38 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
               <option key={v} value={v}>{l}</option>
             ))}
           </select>
+          )}
+          {fromContext === 'cskh' && (
+          <select
+            value={cskhFilter}
+            onChange={e => { setCskhFilter(e.target.value); setPage(1) }}
+            style={selectStyle}
+          >
+            <option value="">Tất cả khách</option>
+            <optgroup label="── Việc cần làm ──">
+              <option value="cl:care">Cần gọi chăm sóc</option>
+              <option value="cl:book">Cần nhắc đặt lịch</option>
+              <option value="cl:risk">Quá hạn / nguy cơ rơi</option>
+              <option value="cl:missed">Lỡ hẹn — gọi lại</option>
+              <option value="cl:complaint">Khiếu nại gấp</option>
+              <option value="cl:review">Đánh giá + mời mua</option>
+            </optgroup>
+            <optgroup label="── Trạng thái CS ──">
+              <option value="cs:dang_theo">Đang theo LT</option>
+              <option value="cs:tam_dung">Tạm dừng</option>
+              <option value="cs:hen_quay_lai">Hẹn quay lại</option>
+              <option value="cs:ngung">Ngừng/bỏ LT</option>
+              <option value="cs:hoan_thanh">Hoàn thành</option>
+            </optgroup>
+          </select>
+          )}
           <select
             value={timePreset}
             onChange={e => { setTimePreset(e.target.value); setPage(1) }}
             style={selectStyle}
           >
             {TIME_PRESETS.map(p => (
-              <option key={p.value} value={p.value}>{p.label}</option>
+              <option key={p.value} value={p.value}>{p.value === '' && fromContext === 'cskh' ? 'Tất cả lịch hẹn' : p.label}</option>
             ))}
           </select>
           {timePreset === 'custom' && (
@@ -660,14 +707,14 @@ export default function CustomerTable({ baseParams = {}, columnKeys, onCountChan
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.length === 0 ? (
+                  {displayedCustomers.length === 0 ? (
                     <tr>
                       <td colSpan={visibleColsOrdered.length} style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
                         <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
                         Không có khách hàng
                       </td>
                     </tr>
-                  ) : customers.map(c => (
+                  ) : displayedCustomers.map(c => (
                     <tr
                       key={c.id}
                       onClick={() => navigate(`/customers/${c.id}` + (fromContext ? `?from=${fromContext}` : ''))}

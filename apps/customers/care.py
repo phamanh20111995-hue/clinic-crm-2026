@@ -44,6 +44,9 @@ def compute_care_flag(customer, today=None):
     has_upcoming = (customer.appointments
                     .filter(scheduled_at__date__gte=today)
                     .exclude(status='cancelled').exists())
+    has_missed = (customer.appointments
+                  .filter(scheduled_at__date__lt=today, status='pending')
+                  .exists())
     cared_after_treat = (last_treat is not None and last_care is not None and last_care >= last_treat)
 
     # Khieu nai - uu tien cao nhat
@@ -73,6 +76,8 @@ def compute_care_flag(customer, today=None):
         return {'kind': 'callback', 'label': 'Goi theo hen'}
 
     # Dang theo lieu trinh - nhip chuan
+    if has_missed and not has_upcoming:
+        return {'kind': 'missed', 'label': 'Lo hen - goi lai'}
     if has_upcoming:
         return {'kind': 'ok', 'label': 'Da co lich'}
     if days is not None and care_d <= days <= care_d + 1 and not cared_after_treat:

@@ -56,10 +56,12 @@ class CustomerFilter(django_filters.FilterSet):
     services_interest = django_filters.NumberFilter(field_name='services_interest', lookup_expr='exact')
     assigned_to = django_filters.NumberFilter(method='filter_assigned_to')
     unassigned_role = django_filters.CharFilter(method='filter_unassigned_role')
+    appt_after = django_filters.DateFilter(method='filter_appt_after')
+    appt_before = django_filters.DateFilter(method='filter_appt_before')
 
     class Meta:
         model = Customer
-        fields = ['source', 'status', 'data_type', 'gender', 'province', 'sale', 'tele', 'cskh', 'is_customer', 'customer_group', 'ads']
+        fields = ['source', 'status', 'care_status', 'data_type', 'gender', 'province', 'sale', 'tele', 'cskh', 'is_customer', 'customer_group', 'ads']
 
     def filter_unassigned(self, queryset, name, value):
         if value:
@@ -75,6 +77,12 @@ class CustomerFilter(django_filters.FilterSet):
         if value in m:
             return queryset.filter(**{m[value]: True})
         return queryset
+
+    def filter_appt_after(self, queryset, name, value):
+        return queryset.filter(appointments__scheduled_at__date__gte=value).exclude(appointments__status='cancelled').distinct()
+
+    def filter_appt_before(self, queryset, name, value):
+        return queryset.filter(appointments__scheduled_at__date__lte=value).exclude(appointments__status='cancelled').distinct()
 
 
 class CustomerListCreateView(generics.ListCreateAPIView):
