@@ -125,7 +125,7 @@ def approve_contract(request, pk):
     KT duyệt HĐ → pending_kt → approved.
     Ghi nhận approved_by, approved_at.
     """
-    if request.user.role not in ('KE_TOAN',) | MANAGEMENT_ROLES:
+    if request.user.role not in {'KE_TOAN'} | MANAGEMENT_ROLES:
         return Response({'detail': 'Chỉ Kế toán mới duyệt HĐ.'}, status=403)
 
     contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
@@ -274,7 +274,7 @@ def reject_contract(request, pk):
     KT từ chối HĐ. Body: {"reason": "..."}
     pending_kt → rejected
     """
-    if request.user.role not in ('KE_TOAN',) | MANAGEMENT_ROLES:
+    if request.user.role not in {'KE_TOAN'} | MANAGEMENT_ROLES:
         return Response({'detail': 'Chỉ Kế toán mới từ chối HĐ.'}, status=403)
 
     contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
@@ -327,7 +327,7 @@ def pending_contracts(request):
     GET /api/contracts/pending/
     KT xem danh sách HĐ chờ duyệt — realtime dashboard.
     """
-    if request.user.role not in ('KE_TOAN',) | MANAGEMENT_ROLES:
+    if request.user.role not in {'KE_TOAN'} | MANAGEMENT_ROLES:
         return Response({'detail': 'Không có quyền.'}, status=403)
 
     qs = Contract.objects.filter(
