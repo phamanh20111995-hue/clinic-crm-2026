@@ -13,6 +13,7 @@ from .serializers import (
 from apps.accounts.models import MANAGEMENT_ROLES
 from apps.accounts.permissions import IsKeToan
 from apps.chat.notifications import send_notification, send_notification_to_roles
+from apps.inventory.models import Product, StockMovement
 
 
 def _contract_queryset(user):
@@ -151,6 +152,51 @@ def approve_contract(request, pk):
             customer.status = 'cho_phan_cskh'
         customer.save(update_fields=['status', 'is_customer', 'updated_at'])
 
+        # --- Track 2: xu ly dong SAN PHAM trong items (chi commit khi KT duyet) ---
+        items = contract.items or []
+        changed = False
+        for item in items:
+            product_id = item.get('product_id')
+            if not product_id or item.get('service_id'):
+                continue  # dong dich vu -> bo qua
+            if item.get('delivery_status') == 'da_giao':
+                continue  # da xu ly truoc do
+            qty = int(item.get('qty', 1) or 1)
+            is_gift = bool(item.get('is_gift'))
+            delivery = item.get('delivery_status') or 'giao_ngay'
+            product = Product.objects.select_for_update().filter(id=product_id).first()
+            if not product:
+                continue
+            if is_gift:
+                # hang tang: tru ton ngay, doanh thu 0, ghi chi phi khuyen mai
+                product.stock = product.stock - qty
+                product.save(update_fields=['stock'])
+                StockMovement.objects.create(
+                    product=product, change=-qty, reason='tang',
+                    ref_type='contract', ref_id=contract.id,
+                    cost_at_time=product.cost_price, created_by=request.user)
+                item['cost_price'] = int(product.cost_price)
+                item['delivery_status'] = 'da_giao'
+                changed = True
+            elif delivery == 'dat_truoc' or product.stock < qty:
+                # hang chua ve / khong du ton -> dat truoc, cho giao, chua tru ton
+                item['delivery_status'] = 'cho_giao'
+                changed = True
+            else:
+                # co san + giao ngay -> tru ton ngay
+                product.stock = product.stock - qty
+                product.save(update_fields=['stock'])
+                StockMovement.objects.create(
+                    product=product, change=-qty, reason='ban',
+                    ref_type='contract', ref_id=contract.id,
+                    cost_at_time=product.cost_price, created_by=request.user)
+                item['cost_price'] = int(product.cost_price)
+                item['delivery_status'] = 'da_giao'
+                changed = True
+        if changed:
+            contract.items = items
+            contract.save(update_fields=['items'])
+
     send_notification(
         contract.created_by,
         'hd_approved',
@@ -164,6 +210,60 @@ def approve_contract(request, pk):
         data={'contract_id': contract.id, 'customer_id': contract.customer.id},
     )
     return Response(ContractDetailSerializer(contract).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def deliver_contract(request, pk):
+    """
+    POST /api/contracts/{id}/deliver/
+    Giao hang cho dong SAN PHAM dat truoc (delivery_status='cho_giao') -> tru ton, chuyen 'da_giao'.
+    Body tuy chon: {"product_id": N} de giao rieng 1 san pham; khong co -> giao tat ca dong du ton.
+    Quyen: Sale tao HD hoac Management.
+    """
+    contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
+    if not contract:
+        return Response({'detail': 'Không tìm thấy HĐ.'}, status=404)
+    if not (contract.created_by_id == request.user.id or request.user.role in MANAGEMENT_ROLES):
+        return Response({'detail': 'Chỉ Sale của HĐ hoặc Quản lý mới giao hàng.'}, status=403)
+    if contract.approval_status != 'approved':
+        return Response({'detail': 'HĐ chưa duyệt, không thể giao hàng.'}, status=400)
+
+    only_product = request.data.get('product_id')
+    items = contract.items or []
+    delivered, thieu_ton = [], []
+    with transaction.atomic():
+        for item in items:
+            product_id = item.get('product_id')
+            if not product_id or item.get('service_id'):
+                continue
+            if item.get('delivery_status') != 'cho_giao':
+                continue
+            if only_product and str(product_id) != str(only_product):
+                continue
+            qty = int(item.get('qty', 1) or 1)
+            product = Product.objects.select_for_update().filter(id=product_id).first()
+            if not product:
+                continue
+            if product.stock < qty:
+                thieu_ton.append(item.get('name') or str(product_id))
+                continue
+            product.stock = product.stock - qty
+            product.save(update_fields=['stock'])
+            StockMovement.objects.create(
+                product=product, change=-qty, reason='ban',
+                ref_type='contract', ref_id=contract.id,
+                cost_at_time=product.cost_price, created_by=request.user)
+            item['cost_price'] = int(product.cost_price)
+            item['delivery_status'] = 'da_giao'
+            delivered.append(product.name)
+        contract.items = items
+        contract.save(update_fields=['items'])
+
+    msg = ('Đã giao: ' + ', '.join(delivered)) if delivered else 'Không có dòng nào được giao.'
+    if thieu_ton:
+        msg += ' | Thiếu tồn (cần nhập kho): ' + ', '.join(thieu_ton)
+    return Response({'detail': msg, 'delivered': delivered, 'thieu_ton': thieu_ton})
 
 
 @api_view(['POST'])
