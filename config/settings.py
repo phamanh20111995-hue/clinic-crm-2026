@@ -15,7 +15,7 @@ INSTALLED_APPS = [
     'channels',
     'apps.accounts','apps.clinics','apps.services','apps.customers',
     'apps.appointments','apps.contracts','apps.attendance','apps.salary','apps.chat','apps.kpi',
-    'apps.integrations',
+    'apps.integrations','apps.inventory',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware','corsheaders.middleware.CorsMiddleware',

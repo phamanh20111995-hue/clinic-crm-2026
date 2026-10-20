@@ -72,3 +72,66 @@ class TreatmentSession(models.Model):
 
     def __str__(self):
         return f'Buoi {self.date} - {self.course}'
+
+
+class Payment(models.Model):
+    """Mot lan thu tien cho hop dong. 1 HD co the co nhieu Payment (tra gop)."""
+    contract = models.ForeignKey('Contract', on_delete=models.CASCADE, related_name='payments')
+    total = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tong lan thu = tien mat + chuyen khoan + tra gop')
+    cash_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    transfer_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    installment_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan tra gop qua don vi tai chinh')
+    received_at = models.DateField(null=True, blank=True)
+    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments_received')
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Phieu thu tien'
+        ordering = ['-received_at', '-created_at']
+
+    def __str__(self):
+        return f'{self.contract.contract_no} - {self.total}'
+
+
+class Installment(models.Model):
+    """Chi tiet phan tra gop cua mot Payment: nha tai tro, phi chuyen doi, lai, giai ngan."""
+    PROVIDER_TYPE_CHOICES = [
+        ('vay_tieu_dung', 'Vay tiêu dùng'),
+        ('the_tin_dung', 'Thẻ tín dụng'),
+    ]
+    BEARER_CHOICES = [
+        ('pk', 'Phòng khám chịu'),
+        ('khach', 'Khách chịu'),
+        ('chia', 'Chia'),
+    ]
+    STATUS_CHOICES = [
+        ('cho_duyet', 'Chờ duyệt hồ sơ'),
+        ('cho_giai_ngan', 'Chờ giải ngân'),
+        ('da_ve', 'Đã về két'),
+    ]
+    payment = models.ForeignKey('Payment', on_delete=models.CASCADE, related_name='installments')
+    provider = models.CharField(max_length=100, help_text='Home Credit / FE Credit / VNPAY...')
+    provider_type = models.CharField(max_length=20, choices=PROVIDER_TYPE_CHOICES, default='vay_tieu_dung')
+    principal = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Goc - khau tru no khach')
+    conversion_fee = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phi chuyen doi')
+    fee_bearer = models.CharField(max_length=10, choices=BEARER_CHOICES, default='khach')
+    fee_pk = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    fee_khach = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    interest = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Lai tra gop')
+    interest_bearer = models.CharField(max_length=10, choices=BEARER_CHOICES, default='khach')
+    interest_pk = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Lai PK chiu (hoan khach)')
+    interest_khach = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    pk_net = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='PK thuc nhan')
+    pk_cost = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Chi phi PK = fee_pk + interest_pk')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='cho_giai_ngan')
+    expected_date = models.DateField(null=True, blank=True, help_text='Ngay du kien ve ket (T+1 tru T6/7/CN)')
+    actual_date = models.DateField(null=True, blank=True, help_text='Ngay thuc ve ket')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Khoan tra gop'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.provider} - {self.principal}'
