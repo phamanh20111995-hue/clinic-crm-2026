@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import { IconCoin, IconCheck, IconClock, IconWallet, IconUpload } from '@tabler/icons-react'
 import { getSalaryMonthly } from '../../../api/ketoan'
 import GuiLinkZaloModal from '../modals/GuiLinkZaloModal'
+import KetoanListShell from '../components/KetoanListShell'
 
 const fmt = n => Number(n ?? 0).toLocaleString('vi-VN')
 
 export default function LuongTuaTab() {
   const [records, setRecords] = useState([])
   const [guiTarget, setGuiTarget] = useState(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
   useEffect(() => {
     getSalaryMonthly().then(r => {
@@ -23,10 +26,10 @@ export default function LuongTuaTab() {
   const totalLuong = records.reduce((s, r) => s + Number(r.total ?? 0), 0)
   const now = new Date()
   const monthLabel = `T${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`
+  const paged = records.slice((page - 1) * pageSize, page * pageSize)
+  useEffect(() => { setPage(1) }, [pageSize])
 
-  return (
-    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Stats */}
+  const stats = (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {[
           { icon: <IconCoin size={13} color="#5b21b6" />, l: 'Tổng tua BS/KTV', v: fmt(totalTua) + 'đ', sub: `${records.length} người · ${totalSessions} buổi`, c: '#5b21b6', bc: '#5b21b6' },
@@ -41,32 +44,35 @@ export default function LuongTuaTab() {
           </div>
         ))}
       </div>
+  )
 
-      {/* Table */}
-      <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+  const toolbar = (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#0f2044' }}>Bảng tua BS/KTV {monthLabel}</span>
           <button style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #dde3ef', borderRadius: 6, background: '#fff', fontSize: 11, cursor: 'pointer' }}>
             <IconUpload size={11} /> Xuất bảng lương
           </button>
         </div>
+  )
 
+  return (
+    <KetoanListShell stats={stats} toolbar={toolbar} pagination={{ page, pageSize, count: records.length, onPage: setPage, onPageSize: setPageSize }}>
         {records.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>
             API lương chưa có dữ liệu · Sẽ hiển thị khi backend triển khai
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ minWidth: 1900 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
                   {['BS/KTV', 'Số buổi', 'Đơn giá', 'Tổng tua', 'Trạng thái', 'Link Zalo'].map(h => (
-                    <th key={h} style={{ padding: '7px 11px', textAlign: ['Số buổi', 'Đơn giá', 'Tổng tua'].includes(h) ? 'right' : 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th key={h} style={{ padding: '7px 11px', textAlign: ['Số buổi', 'Đơn giá', 'Tổng tua'].includes(h) ? 'right' : 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {records.map(r => (
+                {paged.map(r => (
                   <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '7px 11px' }}>
                       <b>{r.user_name}</b>{' '}
@@ -105,9 +111,7 @@ export default function LuongTuaTab() {
             </table>
           </div>
         )}
-      </div>
-
-      {guiTarget && <GuiLinkZaloModal record={guiTarget} onClose={() => setGuiTarget(null)} />}
-    </div>
+        {guiTarget && <GuiLinkZaloModal record={guiTarget} onClose={() => setGuiTarget(null)} />}
+    </KetoanListShell>
   )
 }

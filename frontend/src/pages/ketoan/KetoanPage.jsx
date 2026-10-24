@@ -42,6 +42,7 @@ export default function KetoanPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'duyet'
   const setTab = (k) => setSearchParams({ tab: k }, { replace: true })
+  const scrollWrap = { flex: 1, minHeight: 0, minWidth: 0, overflowX: 'hidden', overflowY: 'auto' }
 
   useEffect(() => {
     if (!ALLOWED.includes(role)) return
@@ -67,9 +68,9 @@ export default function KetoanPage() {
 
   return (
     <AppLayout title="Kế toán" bare>
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Subnav */}
-      <div style={{ height: 40, background: '#fff', borderBottom: '1px solid #dde3ef', display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, gap: 2, flexShrink: 0, overflowX: 'auto' }}>
+      <div style={{ height: 40, background: '#fff', borderBottom: '1px solid #dde3ef', display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, gap: 2, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden' }}>
         {TABS.map((t, i) => {
           if (t === null) return <div key={`sep-${i}`} style={{ width: 1, height: 20, background: '#dde3ef', flexShrink: 0, margin: '0 4px' }} />
           const Icon = t.icon
@@ -102,16 +103,18 @@ export default function KetoanPage() {
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {tab === 'duyet'  && <DuyetHDTab />}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Tab dùng shell (tự cuộn trong + footer bám đáy) */}
         {tab === 'dt'     && <DoanhThuTab />}
-        {tab === 'no'     && <CongNoTab />}
         {tab === 'luong'  && <LuongTuaTab />}
         {tab === 'kho'    && <KhoTab />}
-        {tab === 'thue'   && <HoSoThueTab />}
-        {tab === 'chamcong' && <ChamCongTab />}
-        {tab === 'ca'     && <CaLamViecTab />}
-        {tab === 'tao_hd' && <HoaDonTab />}
+        {/* Tab chưa shell: bọc vùng cuổn full-height riêng */}
+        {tab === 'duyet'  && <div style={scrollWrap}><DuyetHDTab /></div>}
+        {tab === 'no'     && <div style={scrollWrap}><CongNoTab /></div>}
+        {tab === 'thue'   && <div style={scrollWrap}><HoSoThueTab /></div>}
+        {tab === 'chamcong' && <div style={scrollWrap}><ChamCongTab /></div>}
+        {tab === 'ca'     && <div style={scrollWrap}><CaLamViecTab /></div>}
+        {tab === 'tao_hd' && <div style={scrollWrap}><HoaDonTab /></div>}
       </div>
     </div>
     {showChot && <ChotHDModal onClose={() => setShowChot(false)} onDone={() => setShowChot(false)} />}

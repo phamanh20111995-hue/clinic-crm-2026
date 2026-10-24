@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { IconTrendingUp, IconClock, IconReceipt, IconPercentage, IconUpload } from '@tabler/icons-react'
 import { getContracts, getKpiDashboard } from '../../../api/ketoan'
+import KetoanListShell from '../components/KetoanListShell'
 
 const fmt = n => Number(n ?? 0).toLocaleString('vi-VN')
 
@@ -12,6 +13,8 @@ export default function DoanhThuTab() {
   const [kpi, setKpi] = useState(null)
   const [filterLoai, setFilterLoai] = useState('')
   const [filterSale, setFilterSale] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
   useEffect(() => {
     getContracts({ approval_status: 'approved' }).then(r => setContracts(r.data?.results ?? r.data ?? [])).catch(() => {})
@@ -34,10 +37,10 @@ export default function DoanhThuTab() {
   const pct = target ? Math.round((revenue / target) * 100) : 0
 
   const salesList = [...new Set(contracts.map(c => c.created_by_name).filter(Boolean))]
+  const paged = filtered.slice((page - 1) * pageSize, page * pageSize)
+  useEffect(() => { setPage(1) }, [filterLoai, filterSale, pageSize])
 
-  return (
-    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Stats */}
+  const stats = (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {[
           { icon: <IconTrendingUp size={13} color="#15803d" />, label: 'DT đã duyệt (chính thức)', val: fmt(revenue) + 'đ', sub: target ? `Mục tiêu: ${fmt(target)}đ · ${pct}%` : '—', c: '#15803d', bc: '#15803d' },
@@ -52,10 +55,10 @@ export default function DoanhThuTab() {
           </div>
         ))}
       </div>
+  )
 
-      {/* Table */}
-      <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+  const toolbar = (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#0f2044' }}>Chi tiết DT theo HĐ đã duyệt</span>
           <div style={{ display: 'flex', gap: 6 }}>
             <select value={filterLoai} onChange={e => setFilterLoai(e.target.value)}
@@ -74,19 +77,23 @@ export default function DoanhThuTab() {
             </button>
           </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+  )
+
+  return (
+    <KetoanListShell stats={stats} toolbar={toolbar} pagination={{ page, pageSize, count: filtered.length, onPage: setPage, onPageSize: setPageSize }}>
+        <div style={{ minWidth: 1900 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
                 {['Số HĐ', 'KH', 'Dịch vụ', 'Loại', 'Sale nhập', 'KT duyệt', 'Hình thức TT', 'Nhận tiền', 'HĐ điện tử'].map(h => (
-                  <th key={h} style={{ padding: '7px 11px', textAlign: h.includes('nhập') || h.includes('duyệt') ? 'right' : 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '7px 11px', textAlign: h.includes('nhập') || h.includes('duyệt') ? 'right' : 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {paged.length === 0 ? (
                 <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Không có dữ liệu</td></tr>
-              ) : filtered.map(c => {
+              ) : paged.map(c => {
                 const isBL = c.loai_dv === 'benh_ly'
                 const isReceived = c.payment_status === 'received'
                 return (
@@ -130,7 +137,6 @@ export default function DoanhThuTab() {
             )}
           </table>
         </div>
-      </div>
-    </div>
+    </KetoanListShell>
   )
 }
