@@ -85,6 +85,15 @@ class Payment(models.Model):
     received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments_received')
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    VERIFY_STATUS_CHOICES = [
+        ('cho_xac_nhan', 'Chờ xác nhận'),
+        ('da_xac_nhan', 'Đã xác nhận'),
+        ('lech', 'Lệch - cần sửa'),
+    ]
+    verify_status = models.CharField(max_length=15, choices=VERIFY_STATUS_CHOICES, default='cho_xac_nhan')
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments_verified')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verify_note = models.TextField(blank=True)
 
     class Meta:
         verbose_name = 'Phieu thu tien'
@@ -108,7 +117,7 @@ class Installment(models.Model):
     STATUS_CHOICES = [
         ('cho_duyet', 'Chờ duyệt hồ sơ'),
         ('cho_giai_ngan', 'Chờ giải ngân'),
-        ('da_ve', 'Đã về két'),
+        ('da_ve', 'Đã giải ngân'),
     ]
     payment = models.ForeignKey('Payment', on_delete=models.CASCADE, related_name='installments')
     provider = models.CharField(max_length=100, help_text='Home Credit / FE Credit / VNPAY...')

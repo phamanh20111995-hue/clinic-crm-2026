@@ -108,9 +108,9 @@ export default function KetoanPage() {
         {tab === 'dt'     && <DoanhThuTab />}
         {tab === 'luong'  && <LuongTuaTab />}
         {tab === 'kho'    && <KhoTab />}
+        {tab === 'no'     && <CongNoTab />}
         {/* Tab chưa shell: bọc vùng cuổn full-height riêng */}
         {tab === 'duyet'  && <div style={scrollWrap}><DuyetHDTab /></div>}
-        {tab === 'no'     && <div style={scrollWrap}><CongNoTab /></div>}
         {tab === 'thue'   && <div style={scrollWrap}><HoSoThueTab /></div>}
         {tab === 'chamcong' && <div style={scrollWrap}><ChamCongTab /></div>}
         {tab === 'ca'     && <div style={scrollWrap}><CaLamViecTab /></div>}

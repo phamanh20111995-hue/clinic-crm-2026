@@ -9,7 +9,7 @@ export default function KetoanListShell({ stats, toolbar, children, pagination, 
   const btnStyle = dis => ({ padding: '6px 12px', borderRadius: 7, border: '1px solid #dde3ef', background: '#fff', fontSize: 12, cursor: dis ? 'default' : 'pointer', opacity: dis ? 0.4 : 1, fontFamily: 'inherit' })
 
   const scrollInner = (
-    <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1, minHeight: 0, minWidth: 0 }}>
+    <div style={{ overflowX: 'scroll', overflowY: 'auto', flex: 1, minHeight: 0, minWidth: 0 }}>
       {children}
     </div>
   )

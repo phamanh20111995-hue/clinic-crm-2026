@@ -1,0 +1,910 @@
+@CLAUDE.md @apps/contracts/models.py @apps/contracts/payment_api.py @apps/contracts/views.py @apps/contracts/urls.py
+
+QUAN TRỌNG:
+- CHỈ sửa backend app contracts. KHÔNG tạo file migration (tôi tự chạy makemigrations). KHÔNG đụng frontend.
+- GIỮ NGUYÊN mọi dòng/logic khác của các file. Chỉ thêm/sửa đúng các mục dưới.
+- ZIP phẳng đúng path gốc: apps/contracts/models.py, apps/contracts/payment_api.py, apps/contracts/views.py, apps/contracts/urls.py.
+- xuất zip: backend_doisoat_nen.zip
+
+BỐI CẢNH: Thêm bước "đối soát" cho mỗi lần thu tiền. Sale được ghi thu (cho KH của mình) nhưng tiền do QL/KT xác nhận. Mỗi Payment có trạng thái xác nhận.
+
+VIỆC CẦN LÀM:
+
+1) models.py — class Payment: thêm các field sau (ngay sau field created_at, TRƯỚC class Meta):
+    VERIFY_STATUS_CHOICES = [
+        ('cho_xac_nhan', 'Chờ xác nhận'),
+        ('da_xac_nhan', 'Đã xác nhận'),
+        ('lech', 'Lệch - cần sửa'),
+    ]
+    verify_status = models.CharField(max_length=15, choices=VERIFY_STATUS_CHOICES, default='cho_xac_nhan')
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments_verified')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verify_note = models.TextField(blank=True)
+
+2) models.py — class Installment, trong STATUS_CHOICES: đổi ('da_ve', 'Đã về két') thành ('da_ve', 'Đã giải ngân'). GIỮ nguyên key 'da_ve'.
+
+3) payment_api.py — PaymentOutSerializer: thêm 2 field hiển thị và đưa vào fields:
+   verify_status_display = serializers.CharField(source='get_verify_status_display', read_only=True)
+   verified_by_name = serializers.CharField(source='verified_by.display_name', read_only=True)
+   fields thêm: 'verify_status', 'verify_status_display', 'verified_by', 'verified_by_name', 'verified_at', 'verify_note'
+
+4) payment_api.py — hàm contract_payments, nhánh POST:
+   - Thay kiểm quyền hiện tại bằng: cho phép SALE ghi thu cho KH của mình, ngoài PAYMENT_ROLES:
+        role = getattr(request.user, 'role', None)
+        if role not in (PAYMENT_ROLES | {'SALE'}):
+            return Response({'detail': 'Ban khong co quyen thu tien.'}, status=403)
+        if role == 'SALE' and contract.customer.sale_id != request.user.id:
+            return Response({'detail': 'Sale chi thu tien cho KH do minh phu trach.'}, status=403)
+   - Khi tạo Payment: set verify_status theo người ghi. Nếu người ghi thuộc PAYMENT_ROLES (KT/QL/CDN) thì auto 'da_xac_nhan' + verified_by/verified_at = now; nếu là SALE thì 'cho_xac_nhan'. Thêm vào Payment.objects.create(...):
+        verify_status=('da_xac_nhan' if role in PAYMENT_ROLES else 'cho_xac_nhan'),
+        verified_by=(request.user if role in PAYMENT_ROLES else None),
+        verified_at=(timezone.now() if role in PAYMENT_ROLES else None),
+
+5) payment_api.py — thêm 2 hàm mới ở cuối file:
+   @api_view(['GET'])
+   @permission_classes([IsAuthenticated])
+   def payments_pending(request):
+       """Hop thu doi soat: cac lan thu dang cho xac nhan (KT/QL)."""
+       if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+           return Response({'detail': 'Khong co quyen.'}, status=403)
+       qs = (Payment.objects.filter(verify_status='cho_xac_nhan')
+             .select_related('contract', 'contract__customer', 'received_by')
+             .prefetch_related('installments'))
+       data = []
+       for p in qs:
+           row = PaymentOutSerializer(p).data
+           row['customer_name'] = p.contract.customer.full_name
+           row['final_amount'] = int(p.contract.final_amount)
+           data.append(row)
+       return Response(data)
+
+   @api_view(['POST'])
+   @permission_classes([IsAuthenticated])
+   def verify_payment(request, pk):
+       """QL/KT xac nhan hoac bao lech mot lan thu. Body: {action:'confirm'|'flag', note}."""
+       if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+           return Response({'detail': 'Ban khong co quyen doi soat.'}, status=403)
+       payment = Payment.objects.filter(pk=pk).first()
+       if not payment:
+           return Response({'detail': 'Khong tim thay lan thu.'}, status=404)
+       action = (request.data or {}).get('action')
+       if action == 'confirm':
+           payment.verify_status = 'da_xac_nhan'
+       elif action == 'flag':
+           payment.verify_status = 'lech'
+       else:
+           return Response({'detail': "action phai la 'confirm' hoac 'flag'."}, status=400)
+       payment.verified_by = request.user
+       payment.verified_at = timezone.now()
+       payment.verify_note = (request.data or {}).get('note', '')
+       payment.save(update_fields=['verify_status', 'verified_by', 'verified_at', 'verify_note'])
+       return Response(PaymentOutSerializer(payment).data)
+
+6) views.py — hàm approve_contract: XOÁ đoạn tự đặt đã thanh toán (để duyệt HĐ KHÔNG còn bị coi là đã thu đủ):
+   Xoá 3 dòng:
+        # Nếu KH đã thanh toán khi tạo HĐ → ghi nhận
+        if contract.final_amount > 0:
+            contract.payment_status = 'received'
+   (giữ nguyên contract.save() và mọi dòng khác)
+
+7) urls.py — thêm 2 route (đặt ngay sau dòng installments/<int:pk>/confirm/):
+    path('payments/pending/', payment_api.payments_pending, name='payments-pending'),
+    path('payments/<int:pk>/verify/', payment_api.verify_payment, name='payment-verify'),
+
+xuất zip: backend_doisoat_nen.zip
+
+
+=======================================================================
+=============== FULL 4 FILE HIỆN TẠI (sửa trên đúng bản) ===============
+=======================================================================
+
+===================== apps/contracts/models.py =====================
+from django.db import models
+from django.conf import settings
+class Contract(models.Model):
+    contract_no = models.CharField(max_length=20, unique=True)
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='contracts')
+    appointment = models.ForeignKey('appointments.Appointment', null=True, blank=True, on_delete=models.SET_NULL)
+    items = models.JSONField(default=list)
+    promotions = models.JSONField(default=list)
+    gifts = models.JSONField(default=list)
+    total_amount = models.DecimalField(max_digits=15, decimal_places=0)
+    discount_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    final_amount = models.DecimalField(max_digits=15, decimal_places=0)
+    PAYMENT_METHOD_CHOICES = [('cash','Tiền mặt'),('transfer','Chuyển khoản'),('combined','Kết hợp')]
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    cash_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    transfer_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    PAYMENT_STATUS_CHOICES = [('pending','Chưa nhận'),('received','Đã nhận'),('partial','Nhận một phần')]
+    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    APPROVAL_STATUS_CHOICES = [('draft','Nháp'),('pending_kt','Chờ KT duyệt'),('approved','Đã duyệt'),('rejected','Từ chối')]
+    approval_status = models.CharField(max_length=15, choices=APPROVAL_STATUS_CHOICES, default='draft')
+    SALE_ROUND_CHOICES = [('sale', 'Sale (vòng 1)'), ('upsale', 'Upsale (vòng 2+)')]
+    sale_round = models.CharField(max_length=10, choices=SALE_ROUND_CHOICES, default='sale')
+    so_buoi = models.PositiveIntegerField(default=0, help_text='Tong so buoi lieu trinh mua')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_contracts')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_contracts')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+    class Meta: verbose_name='Hợp đồng'; ordering=['-created_at']
+    def __str__(self): return f'{self.contract_no} — {self.customer}'
+
+class TreatmentCourse(models.Model):
+    """Lieu trinh theo tung dich vu, sinh ra khi chot HD."""
+    contract = models.ForeignKey('Contract', on_delete=models.CASCADE, related_name='courses')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='treatment_courses')
+    service = models.ForeignKey('services.Service', on_delete=models.PROTECT, related_name='courses')
+    so_buoi = models.PositiveIntegerField(default=0, help_text='Tong so buoi mua cho dich vu nay')
+    note = models.TextField(blank=True)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Lieu trinh'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.customer} - {self.service} ({self.so_buoi} buoi)'
+
+    @property
+    def so_buoi_da_dung(self):
+        return self.sessions.filter(is_deleted=False).count()
+
+    @property
+    def buoi_con_lai(self):
+        return max(0, self.so_buoi - self.so_buoi_da_dung)
+
+
+class TreatmentSession(models.Model):
+    """Tung buoi thuc hien lieu trinh."""
+    course = models.ForeignKey('TreatmentCourse', on_delete=models.CASCADE, related_name='sessions')
+    appointment = models.ForeignKey('appointments.Appointment', null=True, blank=True, on_delete=models.SET_NULL, related_name='treatment_sessions')
+    date = models.DateField(null=True, blank=True)
+    ktv = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='treatment_sessions')
+    notes = models.TextField(blank=True)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Buoi dieu tri'
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'Buoi {self.date} - {self.course}'
+
+
+class Payment(models.Model):
+    """Mot lan thu tien cho hop dong. 1 HD co the co nhieu Payment (tra gop)."""
+    contract = models.ForeignKey('Contract', on_delete=models.CASCADE, related_name='payments')
+    total = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tong lan thu = tien mat + chuyen khoan + tra gop')
+    cash_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    transfer_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    installment_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan tra gop qua don vi tai chinh')
+    received_at = models.DateField(null=True, blank=True)
+    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments_received')
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Phieu thu tien'
+        ordering = ['-received_at', '-created_at']
+
+    def __str__(self):
+        return f'{self.contract.contract_no} - {self.total}'
+
+
+class Installment(models.Model):
+    """Chi tiet phan tra gop cua mot Payment: nha tai tro, phi chuyen doi, lai, giai ngan."""
+    PROVIDER_TYPE_CHOICES = [
+        ('vay_tieu_dung', 'Vay tiêu dùng'),
+        ('the_tin_dung', 'Thẻ tín dụng'),
+    ]
+    BEARER_CHOICES = [
+        ('pk', 'Phòng khám chịu'),
+        ('khach', 'Khách chịu'),
+        ('chia', 'Chia'),
+    ]
+    STATUS_CHOICES = [
+        ('cho_duyet', 'Chờ duyệt hồ sơ'),
+        ('cho_giai_ngan', 'Chờ giải ngân'),
+        ('da_ve', 'Đã về két'),
+    ]
+    payment = models.ForeignKey('Payment', on_delete=models.CASCADE, related_name='installments')
+    provider = models.CharField(max_length=100, help_text='Home Credit / FE Credit / VNPAY...')
+    provider_type = models.CharField(max_length=20, choices=PROVIDER_TYPE_CHOICES, default='vay_tieu_dung')
+    principal = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Goc - khau tru no khach')
+    conversion_fee = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phi chuyen doi')
+    fee_bearer = models.CharField(max_length=10, choices=BEARER_CHOICES, default='khach')
+    fee_pk = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    fee_khach = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    interest = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Lai tra gop')
+    interest_bearer = models.CharField(max_length=10, choices=BEARER_CHOICES, default='khach')
+    interest_pk = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Lai PK chiu (hoan khach)')
+    interest_khach = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    pk_net = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='PK thuc nhan')
+    pk_cost = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Chi phi PK = fee_pk + interest_pk')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='cho_giai_ngan')
+    expected_date = models.DateField(null=True, blank=True, help_text='Ngay du kien ve ket (T+1 tru T6/7/CN)')
+    actual_date = models.DateField(null=True, blank=True, help_text='Ngay thuc ve ket')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Khoan tra gop'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.provider} - {self.principal}'
+
+===================== apps/contracts/payment_api.py =====================
+from datetime import timedelta, datetime
+from django.db import transaction
+from django.utils import timezone
+from rest_framework import serializers
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from .models import Contract, Payment, Installment
+
+MANAGEMENT_ROLES = frozenset({'QUAN_LY', 'CHU_DN'})
+PAYMENT_ROLES = {'KE_TOAN'} | MANAGEMENT_ROLES
+
+
+def _num(v):
+    try:
+        return int(round(float(v or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _next_disbursement_date(start):
+    """T+1, bo qua Thu 6 (4) / Thu 7 (5) / CN (6)."""
+    d = start + timedelta(days=1)
+    while d.weekday() in (4, 5, 6):
+        d += timedelta(days=1)
+    return d
+
+
+class InstallmentOutSerializer(serializers.ModelSerializer):
+    provider_type_display = serializers.CharField(source='get_provider_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    fee_bearer_display = serializers.CharField(source='get_fee_bearer_display', read_only=True)
+    interest_bearer_display = serializers.CharField(source='get_interest_bearer_display', read_only=True)
+
+    class Meta:
+        model = Installment
+        fields = [
+            'id', 'provider', 'provider_type', 'provider_type_display',
+            'principal', 'conversion_fee', 'fee_bearer', 'fee_bearer_display', 'fee_pk', 'fee_khach',
+            'interest', 'interest_bearer', 'interest_bearer_display', 'interest_pk', 'interest_khach',
+            'pk_net', 'pk_cost', 'status', 'status_display',
+            'expected_date', 'actual_date', 'created_at',
+        ]
+        read_only_fields = fields
+
+
+class PaymentOutSerializer(serializers.ModelSerializer):
+    received_by_name = serializers.CharField(source='received_by.display_name', read_only=True)
+    installments = InstallmentOutSerializer(many=True, read_only=True)
+    contract_no = serializers.CharField(source='contract.contract_no', read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 'contract', 'contract_no', 'total',
+            'cash_amount', 'transfer_amount', 'installment_amount',
+            'received_at', 'received_by', 'received_by_name',
+            'note', 'created_at', 'installments',
+        ]
+        read_only_fields = fields
+
+
+def _recompute_payment_status(contract):
+    paid = sum(p.total for p in contract.payments.all())
+    if paid <= 0:
+        contract.payment_status = 'pending'
+    elif paid >= contract.final_amount:
+        contract.payment_status = 'received'
+    else:
+        contract.payment_status = 'partial'
+    contract.save(update_fields=['payment_status'])
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def contract_payments(request, pk):
+    """GET: lich su thu cua HD. POST: thu tien (TM + CK + tra gop)."""
+    contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
+    if not contract:
+        return Response({'detail': 'Khong tim thay hop dong.'}, status=404)
+
+    if request.method == 'GET':
+        qs = contract.payments.all().prefetch_related('installments')
+        return Response(PaymentOutSerializer(qs, many=True).data)
+
+    # POST -> thu tien (chi KE_TOAN / QUAN_LY / CHU_DN)
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Ban khong co quyen thu tien.'}, status=403)
+
+    data = request.data or {}
+    cash = _num(data.get('cash_amount'))
+    transfer = _num(data.get('transfer_amount'))
+    inst_amount = _num(data.get('installment_amount'))
+    if cash < 0 or transfer < 0 or inst_amount < 0:
+        return Response({'detail': 'So tien khong hop le.'}, status=400)
+    total = cash + transfer + inst_amount
+    if total <= 0:
+        return Response({'detail': 'Tong tien thu phai lon hon 0.'}, status=400)
+
+    received_at = data.get('received_at') or timezone.localdate().isoformat()
+    try:
+        r_date = datetime.strptime(received_at, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        r_date = timezone.localdate()
+
+    inst_payload = data.get('installment') or None
+    if inst_amount > 0 and not inst_payload:
+        return Response({'detail': 'Thieu thong tin tra gop.'}, status=400)
+
+    with transaction.atomic():
+        payment = Payment.objects.create(
+            contract=contract,
+            total=total,
+            cash_amount=cash,
+            transfer_amount=transfer,
+            installment_amount=inst_amount,
+            received_at=r_date,
+            received_by=request.user,
+            note=data.get('note', ''),
+        )
+
+        if inst_amount > 0:
+            provider_type = inst_payload.get('provider_type', 'vay_tieu_dung')
+            principal = _num(inst_payload.get('principal')) or inst_amount
+            conversion_fee = _num(inst_payload.get('conversion_fee'))
+            interest = _num(inst_payload.get('interest'))
+            fee_bearer = inst_payload.get('fee_bearer', 'khach')
+            interest_bearer = inst_payload.get('interest_bearer', 'khach')
+
+            # Tach phi chuyen doi theo ben chiu
+            if fee_bearer == 'pk':
+                fee_pk, fee_khach = conversion_fee, 0
+            elif fee_bearer == 'khach':
+                fee_pk, fee_khach = 0, conversion_fee
+            else:  # chia
+                fee_pk = _num(inst_payload.get('fee_pk'))
+                fee_khach = _num(inst_payload.get('fee_khach'))
+
+            # Tach lai theo ben chiu (PK chiu lai = hoan lai cho khach)
+            if interest_bearer == 'pk':
+                interest_pk, interest_khach = interest, 0
+            elif interest_bearer == 'khach':
+                interest_pk, interest_khach = 0, interest
+            else:  # chia
+                interest_pk = _num(inst_payload.get('interest_pk'))
+                interest_khach = _num(inst_payload.get('interest_khach'))
+
+            pk_cost = fee_pk + interest_pk
+            pk_net = principal - pk_cost
+
+            if provider_type == 'the_tin_dung':
+                inst_status = 'da_ve'
+                expected_date = r_date
+                actual_date = r_date
+            else:  # vay_tieu_dung -> cho giai ngan
+                inst_status = 'cho_giai_ngan'
+                expected_date = _next_disbursement_date(r_date)
+                actual_date = None
+
+            Installment.objects.create(
+                payment=payment,
+                provider=inst_payload.get('provider', ''),
+                provider_type=provider_type,
+                principal=principal,
+                conversion_fee=conversion_fee,
+                fee_bearer=fee_bearer,
+                fee_pk=fee_pk,
+                fee_khach=fee_khach,
+                interest=interest,
+                interest_bearer=interest_bearer,
+                interest_pk=interest_pk,
+                interest_khach=interest_khach,
+                pk_net=pk_net,
+                pk_cost=pk_cost,
+                status=inst_status,
+                expected_date=expected_date,
+                actual_date=actual_date,
+            )
+
+        _recompute_payment_status(contract)
+
+    return Response(PaymentOutSerializer(payment).data, status=201)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def cong_no_list(request):
+    """Danh sach HD da duyet con du no (final_amount - tong da thu > 0)."""
+    qs = (Contract.objects
+          .filter(is_deleted=False, approval_status='approved')
+          .select_related('customer')
+          .prefetch_related('payments'))
+    data = []
+    for c in qs:
+        paid = sum(p.total for p in c.payments.all())
+        remaining = int(c.final_amount) - int(paid)
+        if remaining <= 0:
+            continue
+        data.append({
+            'contract_id': c.id,
+            'contract_no': c.contract_no,
+            'customer_name': c.customer.full_name,
+            'customer_phone': c.customer.phone,
+            'final_amount': int(c.final_amount),
+            'paid': int(paid),
+            'remaining': remaining,
+            'created_at': c.created_at,
+        })
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def installment_list(request):
+    """Theo doi khoan tra gop. Loc ?status= & ?provider_type="""
+    qs = (Installment.objects
+          .select_related('payment', 'payment__contract', 'payment__contract__customer')
+          .all())
+    status_f = request.query_params.get('status')
+    if status_f:
+        qs = qs.filter(status=status_f)
+    provider_type = request.query_params.get('provider_type')
+    if provider_type:
+        qs = qs.filter(provider_type=provider_type)
+    data = []
+    for inst in qs:
+        row = InstallmentOutSerializer(inst).data
+        c = inst.payment.contract
+        row['contract_id'] = c.id
+        row['contract_no'] = c.contract_no
+        row['customer_name'] = c.customer.full_name
+        data.append(row)
+    return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirm_installment(request, pk):
+    """Xac nhan 1 khoan tra gop da ve ket."""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Ban khong co quyen xac nhan.'}, status=403)
+    inst = Installment.objects.filter(pk=pk).first()
+    if not inst:
+        return Response({'detail': 'Khong tim thay khoan tra gop.'}, status=404)
+    actual = request.data.get('actual_date') or timezone.localdate().isoformat()
+    inst.status = 'da_ve'
+    inst.actual_date = actual
+    inst.save(update_fields=['status', 'actual_date'])
+    return Response(InstallmentOutSerializer(inst).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirm_installments_batch(request):
+    """Xac nhan ve ket theo lo. Body: {"ids": [...], "actual_date": "YYYY-MM-DD"}"""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Ban khong co quyen xac nhan.'}, status=403)
+    ids = request.data.get('ids') or []
+    if not isinstance(ids, list) or not ids:
+        return Response({'detail': 'Thieu danh sach id.'}, status=400)
+    actual = request.data.get('actual_date') or timezone.localdate().isoformat()
+    updated = Installment.objects.filter(pk__in=ids).update(status='da_ve', actual_date=actual)
+    return Response({'updated': updated})
+
+===================== apps/contracts/views.py =====================
+from rest_framework import generics, status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
+from django.db import transaction
+
+from .models import Contract
+from .serializers import (
+    ContractListSerializer, ContractDetailSerializer,
+    ContractCreateSerializer, ContractUpdateSerializer,
+)
+from apps.accounts.models import MANAGEMENT_ROLES
+from apps.accounts.permissions import IsKeToan
+from apps.chat.notifications import send_notification, send_notification_to_roles
+from apps.inventory.models import Product, StockMovement
+
+
+def _contract_queryset(user):
+    """
+    RBAC:
+    - QUAN_LY / CHU_DN      → tất cả
+    - KE_TOAN               → tất cả (cần duyệt)
+    - LEAD_SALE             → tất cả của team Sale
+    - SALE                  → HĐ do mình tạo
+    - CSKH / LEAD_CSKH      → HĐ KH của mình
+    """
+    qs = Contract.objects.filter(is_deleted=False).select_related(
+        'customer', 'created_by', 'approved_by', 'appointment'
+    )
+    if user.role in MANAGEMENT_ROLES or user.role in ('KE_TOAN', 'LEAD_SALE'):
+        return qs
+    if user.role == 'SALE':
+        return qs.filter(created_by=user)
+    if user.role in ('CSKH', 'LEAD_CSKH'):
+        return qs.filter(customer__sale__isnull=False) | qs.filter(customer__tele=user)
+    return qs.none()
+
+
+class ContractListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/contracts/      — Danh sách HĐ (filter theo role)
+    POST /api/contracts/      — Tạo HĐ nháp (SALE / CSKH / Management)
+    Query: approval_status, customer_id, payment_status
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        return ContractCreateSerializer if self.request.method == 'POST' else ContractListSerializer
+
+    def get_queryset(self):
+        qs = _contract_queryset(self.request.user)
+        p = self.request.query_params
+        if p.get('approval_status'): qs = qs.filter(approval_status=p['approval_status'])
+        if p.get('payment_status'):  qs = qs.filter(payment_status=p['payment_status'])
+        if p.get('customer_id'):     qs = qs.filter(customer_id=p['customer_id'])
+        return qs.order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        allowed = {'SALE', 'CSKH', 'LEAD_SALE', 'LEAD_CSKH'} | MANAGEMENT_ROLES
+        if request.user.role not in allowed:
+            return Response({'detail': 'Không có quyền tạo hợp đồng.'}, status=403)
+        return super().create(request, *args, **kwargs)
+
+
+class ContractDetailView(generics.RetrieveUpdateAPIView):
+    """GET / PATCH /api/contracts/{id}/"""
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return _contract_queryset(self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method in ('PUT', 'PATCH'):
+            return ContractUpdateSerializer
+        return ContractDetailSerializer
+
+    def update(self, request, *args, **kwargs):
+        contract = self.get_object()
+        if contract.approval_status != 'draft':
+            return Response({'detail': 'Chỉ cập nhật được HĐ ở trạng thái Nháp.'}, status=400)
+        return super().update(request, *args, **kwargs)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_contract(request, pk):
+    """
+    POST /api/contracts/{id}/submit/
+    Sale/CSKH submit HĐ lên KT duyệt.
+    draft → pending_kt
+    """
+    allowed = {'SALE', 'CSKH', 'LEAD_SALE', 'LEAD_CSKH'} | MANAGEMENT_ROLES
+    if request.user.role not in allowed:
+        return Response({'detail': 'Không có quyền submit.'}, status=403)
+
+    contract = _contract_queryset(request.user).filter(pk=pk).first()
+    if not contract:
+        return Response({'detail': 'Không tìm thấy HĐ.'}, status=404)
+    if contract.approval_status != 'draft':
+        return Response({'detail': f'HĐ đang ở trạng thái {contract.get_approval_status_display()}, không thể submit.'}, status=400)
+
+    contract.approval_status = 'pending_kt'
+    contract.save(update_fields=['approval_status'])
+
+    # Cập nhật customer status
+    contract.customer.status = 'dat_lich'
+    contract.customer.save(update_fields=['status', 'updated_at'])
+
+    send_notification_to_roles(
+        ['KE_TOAN'],
+        'hd_pending_kt',
+        f'HĐ {contract.contract_no} cần duyệt',
+        body=f'KH: {contract.customer.full_name} — {contract.final_amount:,.0f} VNĐ',
+        data={'contract_id': contract.id},
+    )
+    return Response(ContractDetailSerializer(contract).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_contract(request, pk):
+    """
+    POST /api/contracts/{id}/approve/
+    KT duyệt HĐ → pending_kt → approved.
+    Ghi nhận approved_by, approved_at.
+    """
+    if request.user.role not in {'KE_TOAN'} | MANAGEMENT_ROLES:
+        return Response({'detail': 'Chỉ Kế toán mới duyệt HĐ.'}, status=403)
+
+    contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
+    if not contract:
+        return Response({'detail': 'Không tìm thấy HĐ.'}, status=404)
+    if contract.approval_status != 'pending_kt':
+        return Response({'detail': 'HĐ chưa được submit hoặc đã xử lý.'}, status=400)
+
+    with transaction.atomic():
+        contract.approval_status = 'approved'
+        contract.approved_by = request.user
+        contract.approved_at = timezone.now()
+        # Nếu KH đã thanh toán khi tạo HĐ → ghi nhận
+        if contract.final_amount > 0:
+            contract.payment_status = 'received'
+        contract.save()
+
+        # Chuyển KH vào hàng chờ CSKH hoặc đang chăm sóc nếu đã phân CSKH
+        customer = contract.customer
+        customer.is_customer = True
+        if customer.cskh_id:
+            customer.status = 'dang_cham_soc'
+        else:
+            customer.status = 'cho_phan_cskh'
+        customer.save(update_fields=['status', 'is_customer', 'updated_at'])
+
+        # --- Track 2: xu ly dong SAN PHAM trong items (chi commit khi KT duyet) ---
+        items = contract.items or []
+        changed = False
+        for item in items:
+            product_id = item.get('product_id')
+            if not product_id or item.get('service_id'):
+                continue  # dong dich vu -> bo qua
+            if item.get('delivery_status') == 'da_giao':
+                continue  # da xu ly truoc do
+            qty = int(item.get('qty', 1) or 1)
+            is_gift = bool(item.get('is_gift'))
+            delivery = item.get('delivery_status') or 'giao_ngay'
+            product = Product.objects.select_for_update().filter(id=product_id).first()
+            if not product:
+                continue
+            if is_gift:
+                # hang tang: tru ton ngay, doanh thu 0, ghi chi phi khuyen mai
+                product.stock = product.stock - qty
+                product.save(update_fields=['stock'])
+                StockMovement.objects.create(
+                    product=product, change=-qty, reason='tang',
+                    ref_type='contract', ref_id=contract.id,
+                    cost_at_time=product.cost_price, created_by=request.user)
+                item['cost_price'] = int(product.cost_price)
+                item['delivery_status'] = 'da_giao'
+                changed = True
+            elif delivery == 'dat_truoc' or product.stock < qty:
+                # hang chua ve / khong du ton -> dat truoc, cho giao, chua tru ton
+                item['delivery_status'] = 'cho_giao'
+                changed = True
+            else:
+                # co san + giao ngay -> tru ton ngay
+                product.stock = product.stock - qty
+                product.save(update_fields=['stock'])
+                StockMovement.objects.create(
+                    product=product, change=-qty, reason='ban',
+                    ref_type='contract', ref_id=contract.id,
+                    cost_at_time=product.cost_price, created_by=request.user)
+                item['cost_price'] = int(product.cost_price)
+                item['delivery_status'] = 'da_giao'
+                changed = True
+        if changed:
+            contract.items = items
+            contract.save(update_fields=['items'])
+
+    send_notification(
+        contract.created_by,
+        'hd_approved',
+        f'HĐ {contract.contract_no} đã được duyệt',
+        body=f'KH: {contract.customer.full_name}',
+        data={'contract_id': contract.id},
+    )
+    send_notification_to_roles(
+        ['LEAD_CSKH'], 'hd_approved_cskh',
+        f'HĐ {contract.contract_no} đã duyệt — KH {contract.customer.full_name} sẵn sàng chăm sóc',
+        data={'contract_id': contract.id, 'customer_id': contract.customer.id},
+    )
+    return Response(ContractDetailSerializer(contract).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def deliver_contract(request, pk):
+    """
+    POST /api/contracts/{id}/deliver/
+    Giao hang cho dong SAN PHAM dat truoc (delivery_status='cho_giao') -> tru ton, chuyen 'da_giao'.
+    Body tuy chon: {"product_id": N} de giao rieng 1 san pham; khong co -> giao tat ca dong du ton.
+    Quyen: Sale tao HD hoac Management.
+    """
+    contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
+    if not contract:
+        return Response({'detail': 'Không tìm thấy HĐ.'}, status=404)
+    if not (contract.created_by_id == request.user.id or request.user.role in MANAGEMENT_ROLES):
+        return Response({'detail': 'Chỉ Sale của HĐ hoặc Quản lý mới giao hàng.'}, status=403)
+    if contract.approval_status != 'approved':
+        return Response({'detail': 'HĐ chưa duyệt, không thể giao hàng.'}, status=400)
+
+    only_product = request.data.get('product_id')
+    items = contract.items or []
+    delivered, thieu_ton = [], []
+    with transaction.atomic():
+        for item in items:
+            product_id = item.get('product_id')
+            if not product_id or item.get('service_id'):
+                continue
+            if item.get('delivery_status') != 'cho_giao':
+                continue
+            if only_product and str(product_id) != str(only_product):
+                continue
+            qty = int(item.get('qty', 1) or 1)
+            product = Product.objects.select_for_update().filter(id=product_id).first()
+            if not product:
+                continue
+            if product.stock < qty:
+                thieu_ton.append(item.get('name') or str(product_id))
+                continue
+            product.stock = product.stock - qty
+            product.save(update_fields=['stock'])
+            StockMovement.objects.create(
+                product=product, change=-qty, reason='ban',
+                ref_type='contract', ref_id=contract.id,
+                cost_at_time=product.cost_price, created_by=request.user)
+            item['cost_price'] = int(product.cost_price)
+            item['delivery_status'] = 'da_giao'
+            delivered.append(product.name)
+        contract.items = items
+        contract.save(update_fields=['items'])
+
+    msg = ('Đã giao: ' + ', '.join(delivered)) if delivered else 'Không có dòng nào được giao.'
+    if thieu_ton:
+        msg += ' | Thiếu tồn (cần nhập kho): ' + ', '.join(thieu_ton)
+    return Response({'detail': msg, 'delivered': delivered, 'thieu_ton': thieu_ton})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_contract(request, pk):
+    """
+    POST /api/contracts/{id}/reject/
+    KT từ chối HĐ. Body: {"reason": "..."}
+    pending_kt → rejected
+    """
+    if request.user.role not in {'KE_TOAN'} | MANAGEMENT_ROLES:
+        return Response({'detail': 'Chỉ Kế toán mới từ chối HĐ.'}, status=403)
+
+    contract = Contract.objects.filter(pk=pk, is_deleted=False).first()
+    if not contract:
+        return Response({'detail': 'Không tìm thấy HĐ.'}, status=404)
+    if contract.approval_status != 'pending_kt':
+        return Response({'detail': 'HĐ chưa được submit hoặc đã xử lý.'}, status=400)
+
+    reason = request.data.get('reason', '').strip()
+    if not reason:
+        return Response({'detail': 'Vui lòng nhập lý do từ chối.'}, status=400)
+
+    contract.approval_status = 'rejected'
+    contract.approved_by = request.user
+    contract.approved_at = timezone.now()
+    contract.notes = (contract.notes + f'\n[Từ chối: {reason}]').strip()
+    contract.save()
+
+    send_notification(
+        contract.created_by,
+        'hd_rejected',
+        f'HĐ {contract.contract_no} bị từ chối',
+        body=reason,
+        data={'contract_id': contract.id},
+    )
+    return Response(ContractDetailSerializer(contract).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_contract(request, pk):
+    """
+    POST /api/contracts/{id}/delete/
+    Soft delete — chỉ xóa được HĐ draft. CLAUDE.md: không xóa cứng.
+    """
+    contract = _contract_queryset(request.user).filter(pk=pk).first()
+    if not contract:
+        return Response({'detail': 'Không tìm thấy HĐ.'}, status=404)
+    if contract.approval_status != 'draft':
+        return Response({'detail': 'Chỉ xóa được HĐ ở trạng thái Nháp.'}, status=400)
+    contract.is_deleted = True
+    contract.save(update_fields=['is_deleted'])
+    return Response({'detail': 'Đã xóa HĐ nháp.'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pending_contracts(request):
+    """
+    GET /api/contracts/pending/
+    KT xem danh sách HĐ chờ duyệt — realtime dashboard.
+    """
+    if request.user.role not in {'KE_TOAN'} | MANAGEMENT_ROLES:
+        return Response({'detail': 'Không có quyền.'}, status=403)
+
+    qs = Contract.objects.filter(
+        is_deleted=False, approval_status='pending_kt'
+    ).select_related('customer', 'created_by').order_by('created_at')
+
+    return Response({
+        'count': qs.count(),
+        'results': ContractListSerializer(qs, many=True).data,
+    })
+
+from rest_framework.permissions import IsAuthenticated
+from .models import TreatmentCourse, TreatmentSession
+from .serializers import TreatmentCourseSerializer, TreatmentSessionSerializer
+
+
+class TreatmentCourseListCreateView(generics.ListCreateAPIView):
+    serializer_class = TreatmentCourseSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = TreatmentCourse.objects.filter(is_deleted=False).select_related('service', 'customer', 'contract')
+        customer_id = self.request.query_params.get('customer')
+        contract_id = self.request.query_params.get('contract')
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        if contract_id:
+            qs = qs.filter(contract_id=contract_id)
+        return qs
+
+
+class TreatmentCourseDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TreatmentCourseSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = TreatmentCourse.objects.filter(is_deleted=False)
+
+
+class TreatmentSessionListCreateView(generics.ListCreateAPIView):
+    serializer_class = TreatmentSessionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = TreatmentSession.objects.filter(is_deleted=False).select_related('ktv', 'course')
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        return qs
+
+
+class TreatmentSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TreatmentSessionSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = TreatmentSession.objects.filter(is_deleted=False)
+
+===================== apps/contracts/urls.py =====================
+from django.urls import path
+from . import views
+from . import payment_api
+
+urlpatterns = [
+    path('', views.ContractListCreateView.as_view(), name='contract-list-create'),
+    path('pending/', views.pending_contracts, name='contract-pending'),
+    path('cong-no/', payment_api.cong_no_list, name='contract-cong-no'),
+    path('installments/', payment_api.installment_list, name='installment-list'),
+    path('installments/confirm-batch/', payment_api.confirm_installments_batch, name='installment-confirm-batch'),
+    path('installments/<int:pk>/confirm/', payment_api.confirm_installment, name='installment-confirm'),
+    path('<int:pk>/', views.ContractDetailView.as_view(), name='contract-detail'),
+    path('<int:pk>/submit/', views.submit_contract, name='contract-submit'),
+    path('<int:pk>/approve/', views.approve_contract, name='contract-approve'),
+    path('<int:pk>/deliver/', views.deliver_contract, name='contract-deliver'),
+    path('<int:pk>/reject/', views.reject_contract, name='contract-reject'),
+    path('<int:pk>/delete/', views.delete_contract, name='contract-delete'),
+    path('<int:pk>/payments/', payment_api.contract_payments, name='contract-payments'),
+]

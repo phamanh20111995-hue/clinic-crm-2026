@@ -49,6 +49,8 @@ class PaymentOutSerializer(serializers.ModelSerializer):
     received_by_name = serializers.CharField(source='received_by.display_name', read_only=True)
     installments = InstallmentOutSerializer(many=True, read_only=True)
     contract_no = serializers.CharField(source='contract.contract_no', read_only=True)
+    verify_status_display = serializers.CharField(source='get_verify_status_display', read_only=True)
+    verified_by_name = serializers.CharField(source='verified_by.display_name', read_only=True)
 
     class Meta:
         model = Payment
@@ -57,6 +59,7 @@ class PaymentOutSerializer(serializers.ModelSerializer):
             'cash_amount', 'transfer_amount', 'installment_amount',
             'received_at', 'received_by', 'received_by_name',
             'note', 'created_at', 'installments',
+            'verify_status', 'verify_status_display', 'verified_by', 'verified_by_name', 'verified_at', 'verify_note',
         ]
         read_only_fields = fields
 
@@ -84,9 +87,12 @@ def contract_payments(request, pk):
         qs = contract.payments.all().prefetch_related('installments')
         return Response(PaymentOutSerializer(qs, many=True).data)
 
-    # POST -> thu tien (chi KE_TOAN / QUAN_LY / CHU_DN)
-    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+    # POST -> thu tien
+    role = getattr(request.user, 'role', None)
+    if role not in (PAYMENT_ROLES | {'SALE'}):
         return Response({'detail': 'Ban khong co quyen thu tien.'}, status=403)
+    if role == 'SALE' and contract.customer.sale_id != request.user.id:
+        return Response({'detail': 'Sale chi thu tien cho KH do minh phu trach.'}, status=403)
 
     data = request.data or {}
     cash = _num(data.get('cash_amount'))
@@ -118,6 +124,9 @@ def contract_payments(request, pk):
             received_at=r_date,
             received_by=request.user,
             note=data.get('note', ''),
+            verify_status=('da_xac_nhan' if role in PAYMENT_ROLES else 'cho_xac_nhan'),
+            verified_by=(request.user if role in PAYMENT_ROLES else None),
+            verified_at=(timezone.now() if role in PAYMENT_ROLES else None),
         )
 
         if inst_amount > 0:
@@ -262,3 +271,44 @@ def confirm_installments_batch(request):
     actual = request.data.get('actual_date') or timezone.localdate().isoformat()
     updated = Installment.objects.filter(pk__in=ids).update(status='da_ve', actual_date=actual)
     return Response({'updated': updated})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def payments_pending(request):
+    """Hop thu doi soat: cac lan thu dang cho xac nhan (KT/QL)."""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Khong co quyen.'}, status=403)
+    qs = (Payment.objects.filter(verify_status='cho_xac_nhan')
+          .select_related('contract', 'contract__customer', 'received_by')
+          .prefetch_related('installments'))
+    data = []
+    for p in qs:
+        row = PaymentOutSerializer(p).data
+        row['customer_name'] = p.contract.customer.full_name
+        row['final_amount'] = int(p.contract.final_amount)
+        data.append(row)
+    return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_payment(request, pk):
+    """QL/KT xac nhan hoac bao lech mot lan thu. Body: {action:'confirm'|'flag', note}."""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Ban khong co quyen doi soat.'}, status=403)
+    payment = Payment.objects.filter(pk=pk).first()
+    if not payment:
+        return Response({'detail': 'Khong tim thay lan thu.'}, status=404)
+    action = (request.data or {}).get('action')
+    if action == 'confirm':
+        payment.verify_status = 'da_xac_nhan'
+    elif action == 'flag':
+        payment.verify_status = 'lech'
+    else:
+        return Response({'detail': "action phai la 'confirm' hoac 'flag'."}, status=400)
+    payment.verified_by = request.user
+    payment.verified_at = timezone.now()
+    payment.verify_note = (request.data or {}).get('note', '')
+    payment.save(update_fields=['verify_status', 'verified_by', 'verified_at', 'verify_note'])
+    return Response(PaymentOutSerializer(payment).data)

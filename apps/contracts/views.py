@@ -138,9 +138,6 @@ def approve_contract(request, pk):
         contract.approval_status = 'approved'
         contract.approved_by = request.user
         contract.approved_at = timezone.now()
-        # Nếu KH đã thanh toán khi tạo HĐ → ghi nhận
-        if contract.final_amount > 0:
-            contract.payment_status = 'received'
         contract.save()
 
         # Chuyển KH vào hàng chờ CSKH hoặc đang chăm sóc nếu đã phân CSKH
