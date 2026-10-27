@@ -197,7 +197,7 @@ def contract_payments(request, pk):
 def cong_no_list(request):
     """Danh sach HD da duyet con du no (final_amount - tong da thu > 0)."""
     qs = (Contract.objects
-          .filter(is_deleted=False, approval_status='approved')
+          .filter(is_deleted=False, approval_status='approved').filter(**({'customer__sale_id': request.user.id} if getattr(request.user, 'role', None) == 'SALE' else {}))
           .select_related('customer')
           .prefetch_related('payments'))
     data = []
@@ -279,7 +279,7 @@ def payments_pending(request):
     """Hop thu doi soat: cac lan thu dang cho xac nhan (KT/QL)."""
     if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
         return Response({'detail': 'Khong co quyen.'}, status=403)
-    qs = (Payment.objects.filter(verify_status='cho_xac_nhan')
+    qs = (Payment.objects.filter(verify_status__in=['cho_xac_nhan', 'lech'])
           .select_related('contract', 'contract__customer', 'received_by')
           .prefetch_related('installments'))
     data = []
@@ -311,4 +311,74 @@ def verify_payment(request, pk):
     payment.verified_at = timezone.now()
     payment.verify_note = (request.data or {}).get('note', '')
     payment.save(update_fields=['verify_status', 'verified_by', 'verified_at', 'verify_note'])
+    return Response(PaymentOutSerializer(payment).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def payments_mine(request):
+    """Cac lan thu do chinh minh ghi (received_by = user). Loc ?verify_status="""
+    qs = (Payment.objects.filter(received_by=request.user)
+          .select_related('contract', 'contract__customer')
+          .prefetch_related('installments')
+          .order_by('-received_at', '-created_at'))
+    vs = request.query_params.get('verify_status')
+    if vs:
+        qs = qs.filter(verify_status=vs)
+    data = []
+    for p in qs:
+        row = PaymentOutSerializer(p).data
+        row['customer_name'] = p.contract.customer.full_name
+        row['final_amount'] = int(p.contract.final_amount)
+        data.append(row)
+    return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def edit_payment(request, pk):
+    """Nguoi ghi sua lai lan thu (TM/CK) khi bi bao lech -> reset ve 'cho_xac_nhan'.
+    V1: khong sua duoc lan thu co tra gop (de KT xu ly tay)."""
+    payment = Payment.objects.filter(pk=pk).first()
+    if not payment:
+        return Response({'detail': 'Khong tim thay lan thu.'}, status=404)
+    role = getattr(request.user, 'role', None)
+    is_owner = payment.received_by_id == request.user.id
+    if not (is_owner or role in PAYMENT_ROLES):
+        return Response({'detail': 'Chi nguoi ghi (hoac KT/QL) moi sua duoc.'}, status=403)
+    if payment.verify_status not in ('cho_xac_nhan', 'lech'):
+        return Response({'detail': 'Chi sua duoc lan thu dang cho xac nhan hoac bi bao lech.'}, status=400)
+    if payment.installments.exists():
+        return Response({'detail': 'Lan thu co tra gop, can Ke toan xu ly.'}, status=400)
+
+    data = request.data or {}
+    cash = _num(data.get('cash_amount'))
+    transfer = _num(data.get('transfer_amount'))
+    if cash < 0 or transfer < 0:
+        return Response({'detail': 'So tien khong hop le.'}, status=400)
+    total = cash + transfer
+    if total <= 0:
+        return Response({'detail': 'Tong tien thu phai lon hon 0.'}, status=400)
+
+    received_at = data.get('received_at')
+    if received_at:
+        try:
+            payment.received_at = datetime.strptime(received_at, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            pass
+
+    payment.cash_amount = cash
+    payment.transfer_amount = transfer
+    payment.installment_amount = 0
+    payment.total = total
+    if 'note' in data:
+        payment.note = data.get('note', '')
+    # reset ve cho xac nhan (Sale sua xong -> KT xac nhan lai)
+    payment.verify_status = 'cho_xac_nhan'
+    payment.verified_by = None
+    payment.verified_at = None
+    payment.verify_note = ''
+    payment.save()
+
+    _recompute_payment_status(payment.contract)
     return Response(PaymentOutSerializer(payment).data)

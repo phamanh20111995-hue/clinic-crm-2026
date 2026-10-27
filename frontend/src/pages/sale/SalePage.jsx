@@ -1,19 +1,31 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { IconPlus } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 import AppLayout from '../../components/layout/AppLayout'
 import SalePageView from './views/SalePageView'
 import ChotHDModal from './modals/ChotHDModal'
+import CongNoTab from './tabs/CongNoTab'
+import KhoanThuTab from './tabs/KhoanThuTab'
 
 const ACCENT = '#15803d'
 const ALLOWED = ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN']
+const TABS = [
+  { key: 'khach', label: 'Khách của tôi' },
+  { key: 'congno', label: 'Công nợ & Thu nợ' },
+  { key: 'khoanthu', label: 'Khoản thu của tôi' },
+]
 
 export default function SalePage() {
   const user = useAuthStore(s => s.user)
   const role = getUserRole(user)
-  const [showChot,  setShowChot]  = useState(false)
+  const [showChot, setShowChot] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const VALID = TABS.map(t => t.key)
+  const activeTab = VALID.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'khach'
+  const setActiveTab = (k) => setSearchParams({ tab: k }, { replace: true })
 
   if (!ALLOWED.includes(role)) {
     return (
@@ -36,7 +48,28 @@ export default function SalePage() {
 
   return (
     <AppLayout title="Sale" meta={user?.display_name ?? user?.email} actions={actions} bare>
-      <SalePageView reloadKey={reloadKey} />
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Subnav tự dựng (in-flow) — giống màn Kế toán, để bảng bám đáy */}
+        <div style={{ height: 40, background: '#fff', borderBottom: '1px solid #dde3ef', display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, gap: 2, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden' }}>
+          {TABS.map(t => {
+            const active = activeTab === t.key
+            return (
+              <button key={t.key} onClick={() => setActiveTab(t.key)}
+                style={{ padding: '5px 12px', border: 'none', borderBottom: active ? ('2px solid ' + ACCENT) : '2px solid transparent', background: 'transparent', color: active ? ACCENT : '#64748b', fontWeight: active ? 700 : 400, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit', height: 40 }}>
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Tab content */}
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {activeTab === 'khach' && <SalePageView reloadKey={reloadKey} />}
+          {activeTab === 'congno' && <CongNoTab />}
+          {activeTab === 'khoanthu' && <KhoanThuTab />}
+        </div>
+      </div>
+
       {showChot && (
         <ChotHDModal
           onClose={() => setShowChot(false)}

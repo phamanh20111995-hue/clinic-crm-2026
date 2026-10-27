@@ -1,0 +1,198 @@
+@CLAUDE.md @frontend/src/pages/sale/SalePage.jsx @frontend/src/pages/sale/tabs/CongNoTab.jsx
+
+QUAN TRỌNG:
+- CHỈ sửa 2 file trên. KHÔNG đụng file khác.
+- GIỮ NGUYÊN cơ chế tab (AppLayout tabs/activeTab/onTabChange) + modal ThuNoKTModal + getCongNo. Chỉ sửa đúng mô tả.
+- ZIP phẳng đúng path. xuất zip: fe_sale_fix.zip
+
+BỐI CẢNH: (1) Fix mất cuộn/bám đáy ở tab "Khách của tôi" — nguyên nhân: CustomerTable cần chế độ `bare` của AppLayout mới bám đáy. Cho AppLayout dùng CẢ `bare` LẪN `tabs` (AppLayout render thanh tab ngay cả khi bare), + tab Công nợ bọc vùng cuộn riêng. (2) Thêm thẻ thống kê + ô tìm kiếm cho tab Công nợ.
+
+VIỆC CẦN LÀM:
+
+1) SalePage.jsx:
+   - Ở thẻ AppLayout: THÊM prop `bare` (giữ nguyên tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} và các prop khác). Tức: <AppLayout title="Sale" meta={...} actions={actions} tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} bare>
+   - Nội dung theo tab:
+       {activeTab === 'khach' && <SalePageView reloadKey={reloadKey} />}
+       {activeTab === 'congno' && <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><CongNoTab /></div>}
+     (khach giữ nguyên render trực tiếp để CustomerTable tự bám đáy; congno bọc vùng cuộn vì ở bare mode cha là overflow:hidden.)
+   - GIỮ nguyên phần còn lại (ChotHDModal, guard quyền).
+
+2) CongNoTab.jsx — thêm thẻ thống kê + ô tìm kiếm (giữ nguyên bảng + nút Thu + ThuNoKTModal):
+   - Import thêm: import { IconSearch } from '@tabler/icons-react'  và  import StatCard from '../../tele/components/StatCard'  (bỏ IconAlertCircle nếu không dùng nữa, GIỮ IconRefresh).
+   - State thêm: const [q, setQ] = useState('')
+   - const totalPaid = rows.reduce((s, c) => s + Number(c.paid ?? 0), 0)
+   - const filtered = rows.filter(c => { const s = (q || '').trim().toLowerCase(); if (!s) return true; return String(c.customer_name || '').toLowerCase().includes(s) || String(c.customer_phone || '').toLowerCase().includes(s) })
+   - THAY banner đỏ "Tổng công nợ" cũ bằng HÀNG THẺ (grid, dùng StatCard):
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))', gap: 12 }}>
+         <StatCard label="Tổng công nợ" value={fmt(totalDebt) + 'đ'} accent="#dc2626" />
+         <StatCard label="Số HĐ còn nợ" value={String(rows.length)} accent="#d97706" />
+         <StatCard label="Tổng đã thu" value={fmt(totalPaid) + 'đ'} accent="#15803d" />
+       </div>
+   - THÊM hàng filter bar (trên bảng): ô tìm kiếm width 220 có IconSearch bên trái + nút refresh (IconRefresh) bên phải:
+       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+         <div style={{ position: 'relative', width: 220 }}>
+           <IconSearch size={14} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm tên / SĐT..."
+             style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px 7px 28px', border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+         </div>
+         <button onClick={load} style={{ padding: '6px 10px', border: '1px solid #dde3ef', borderRadius: 7, background: '#fff', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+           <IconRefresh size={14} /> Làm mới
+         </button>
+       </div>
+   - BẢNG: đổi chỗ `rows.map` và dòng tổng sang dùng `filtered` thay vì `rows` (map filtered; empty state khi filtered.length===0; dòng tổng "Tổng ({filtered.length} HĐ)" + các Σ tính trên filtered). Các cột + nút Thu GIỮ NGUYÊN.
+
+xuất zip: fe_sale_fix.zip
+
+
+=======================================================================
+=============== FULL 2 FILE HIỆN TẠI (sửa trên đúng bản) ===============
+=======================================================================
+
+===================== frontend/src/pages/sale/SalePage.jsx =====================
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { IconPlus } from '@tabler/icons-react'
+import useAuthStore from '../../store/authStore'
+import { getUserRole } from '../../utils/rolesV2'
+import AppLayout from '../../components/layout/AppLayout'
+import SalePageView from './views/SalePageView'
+import ChotHDModal from './modals/ChotHDModal'
+import CongNoTab from './tabs/CongNoTab'
+
+const ACCENT = '#15803d'
+const ALLOWED = ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN']
+const TABS = [
+  { key: 'khach', label: 'Khách của tôi' },
+  { key: 'congno', label: 'Công nợ & Thu nợ' },
+]
+
+export default function SalePage() {
+  const user = useAuthStore(s => s.user)
+  const role = getUserRole(user)
+  const [showChot,  setShowChot]  = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const VALID = TABS.map(t => t.key)
+  const activeTab = VALID.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'khach'
+  const setActiveTab = (k) => setSearchParams({ tab: k }, { replace: true })
+
+  if (!ALLOWED.includes(role)) {
+    return (
+      <AppLayout title="Sale">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: 8 }}>
+          <div style={{ fontSize: 32 }}>🔒</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2044' }}>Bạn không có quyền truy cập màn Sale</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>Liên hệ quản lý để được cấp quyền</div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  const actions = (
+    <button onClick={() => setShowChot(true)}
+      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 7, border: 'none', background: ACCENT, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+      <IconPlus size={14} stroke={2.5} /> Tạo HĐ
+    </button>
+  )
+
+  return (
+    <AppLayout title="Sale" meta={user?.display_name ?? user?.email} actions={actions} tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
+      {activeTab === 'khach' && <SalePageView reloadKey={reloadKey} />}
+      {activeTab === 'congno' && <CongNoTab />}
+      {showChot && (
+        <ChotHDModal
+          onClose={() => setShowChot(false)}
+          onDone={() => { setReloadKey(k => k + 1); setShowChot(false) }}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+===================== frontend/src/pages/sale/tabs/CongNoTab.jsx =====================
+import { useState, useEffect } from 'react'
+import { IconAlertCircle, IconRefresh } from '@tabler/icons-react'
+import { getCongNo } from '../../../api/payments'
+import ThuNoKTModal from '../../ketoan/modals/ThuNoKTModal'
+
+const fmt = n => Number(n ?? 0).toLocaleString('vi-VN')
+
+export default function CongNoTab() {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [thuNoTarget, setThuNoTarget] = useState(null)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const r = await getCongNo()
+      setRows(r.data ?? [])
+    } catch { } finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const totalDebt = rows.reduce((s, c) => s + Number(c.remaining ?? 0), 0)
+
+  return (
+    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Banner */}
+      <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <IconAlertCircle size={18} color="#dc2626" />
+          <div>
+            <div style={{ fontSize: 11, color: '#991b1b', fontWeight: 700 }}>Tổng công nợ</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#dc2626' }}>{fmt(totalDebt)}đ</div>
+          </div>
+        </div>
+        <button onClick={load} style={{ padding: '6px 8px', border: '1px solid #fecaca', borderRadius: 7, background: '#fff', cursor: 'pointer', color: '#dc2626' }}>
+          <IconRefresh size={14} />
+        </button>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 70px', gap: 8, fontSize: 10, fontWeight: 700, color: '#64748b' }}>
+          <span>Khách hàng / HĐ</span>
+          <span style={{ textAlign: 'right' }}>Tổng HĐ</span>
+          <span style={{ textAlign: 'right' }}>Đã thu</span>
+          <span style={{ textAlign: 'right' }}>Còn nợ</span>
+          <span></span>
+        </div>
+        {loading ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Đang tải...</div>
+        ) : rows.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#15803d', fontSize: 12 }}>Không có công nợ</div>
+        ) : rows.map(c => (
+          <div key={c.contract_id} style={{ padding: '10px 14px', borderTop: '1px solid #f1f5f9', display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 70px', gap: 8, alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#0f2044' }}>{c.customer_name}</div>
+              <div style={{ fontSize: 10, color: '#64748b' }}>{c.contract_no}</div>
+            </div>
+            <div style={{ fontSize: 12, textAlign: 'right', color: '#374151' }}>{fmt(c.final_amount)}</div>
+            <div style={{ fontSize: 12, textAlign: 'right', color: '#15803d' }}>{fmt(c.paid)}</div>
+            <div style={{ fontSize: 12, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{fmt(c.remaining)}</div>
+            <div>
+              <button
+                onClick={() => setThuNoTarget({ id: c.contract_id, customer_name: c.customer_name, final_amount: c.final_amount, paid: c.paid, remaining: c.remaining })}
+                style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: 'none', background: '#15803d', color: '#fff', cursor: 'pointer', fontWeight: 600, width: '100%' }}>
+                Thu
+              </button>
+            </div>
+          </div>
+        ))}
+        {rows.length > 0 && (
+          <div style={{ padding: '10px 14px', borderTop: '2px solid #dde3ef', display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 70px', gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>Tổng ({rows.length} HĐ)</div>
+            <div style={{ fontSize: 11, textAlign: 'right', fontWeight: 700 }}>{fmt(rows.reduce((s, c) => s + Number(c.final_amount ?? 0), 0))}</div>
+            <div style={{ fontSize: 11, textAlign: 'right', fontWeight: 700, color: '#15803d' }}>{fmt(rows.reduce((s, c) => s + Number(c.paid ?? 0), 0))}</div>
+            <div style={{ fontSize: 11, textAlign: 'right', fontWeight: 800, color: '#dc2626' }}>{fmt(totalDebt)}</div>
+            <div></div>
+          </div>
+        )}
+      </div>
+
+      {thuNoTarget && <ThuNoKTModal contract={thuNoTarget} onClose={() => setThuNoTarget(null)} onDone={() => { setThuNoTarget(null); load() }} />}
+    </div>
+  )
+}

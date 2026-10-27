@@ -11,3 +11,11 @@ export const getCongNo = () => api.get('/api/contracts/cong-no/')
 export const getInstallments           = (params) => api.get('/api/contracts/installments/', { params })
 export const confirmInstallment        = (id, data) => api.post(`/api/contracts/installments/${id}/confirm/`, data)
 export const confirmInstallmentsBatch  = (ids, actual_date) => api.post('/api/contracts/installments/confirm-batch/', { ids, actual_date })
+
+// ===== Đối soát (KT/QL) =====
+export const getPendingPayments = () => api.get('/api/contracts/payments/pending/')
+export const verifyPayment      = (id, data) => api.post(`/api/contracts/payments/${id}/verify/`, data)
+
+// ===== Khoản thu của Sale =====
+export const getPaymentsMine = (params) => api.get('/api/contracts/payments/mine/', { params })
+export const editPayment     = (id, data) => api.post(`/api/contracts/payments/${id}/edit/`, data)

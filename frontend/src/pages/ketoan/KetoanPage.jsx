@@ -5,6 +5,7 @@ import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 import AppLayout from '../../components/layout/AppLayout'
 import { getContracts } from '../../api/ketoan'
+import { getPendingPayments } from '../../api/payments'
 import HoaDonTab from '../sale/tabs/HoaDonTab'
 import ChotHDModal from '../sale/modals/ChotHDModal'
 import DuyetHDTab from './tabs/DuyetHDTab'
@@ -20,7 +21,7 @@ const ACCENT = '#b45309'
 const ALLOWED = ['KE_TOAN', 'QUAN_LY', 'CHU_DN']
 
 const TABS = [
-  { k: 'duyet', l: 'Duyệt HĐ', icon: IconChecks },
+  { k: 'duyet', l: 'Duyệt & đối soát', icon: IconChecks },
   { k: 'dt', l: 'Doanh thu', icon: IconTrendingUp },
   { k: 'no', l: 'Công nợ', icon: IconClockDollar },
   { k: 'luong', l: 'Lương & Tua', icon: IconCoin },
@@ -46,12 +47,16 @@ export default function KetoanPage() {
 
   useEffect(() => {
     if (!ALLOWED.includes(role)) return
-    getContracts({ approval_status: 'pending_kt' })
-      .then(r => {
-        const data = r.data?.results ?? r.data ?? []
-        setPendingCount(Array.isArray(data) ? data.length : data.count ?? 0)
-      })
-      .catch(() => {})
+    Promise.all([
+      getContracts({ approval_status: 'pending_kt' }),
+      getPendingPayments(),
+    ]).then(([rc, rp]) => {
+      const cs = rc.data?.results ?? rc.data ?? []
+      const ps = rp.data ?? []
+      const nc = Array.isArray(cs) ? cs.length : (cs.count ?? 0)
+      const np = Array.isArray(ps) ? ps.filter(p => p.verify_status === 'cho_xac_nhan').length : 0
+      setPendingCount(nc + np)
+    }).catch(() => {})
   }, [role])
 
   if (!ALLOWED.includes(role)) {
