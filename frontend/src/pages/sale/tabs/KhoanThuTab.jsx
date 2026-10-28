@@ -167,7 +167,7 @@ export default function KhoanThuTab() {
             <span>Chi tiết</span>
             <span>Ngày</span>
             <span>Trạng thái</span>
-            <span></span>
+            <span style={{ position: 'sticky', right: 0, background: '#f8fafc', zIndex: 2, boxShadow: '-6px 0 6px -4px rgba(15,23,42,0.08)' }}></span>
           </div>
           {loading ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Đang tải...</div>
@@ -190,7 +190,7 @@ export default function KhoanThuTab() {
                     <div style={{ fontSize: 9, color: '#991b1b', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.verify_note}</div>
                   )}
                 </div>
-                <div>
+                <div style={{ position: 'sticky', right: 0, background: '#fff', zIndex: 1, boxShadow: p.verify_status === 'lech' ? '-6px 0 6px -4px rgba(15,23,42,0.08)' : 'none' }}>
                   {p.verify_status === 'lech' && (
                     <button onClick={() => setSuaTarget(p)}
                       style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'center', fontSize: 11, padding: '4px 8px', borderRadius: 6, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 600, width: '100%' }}>

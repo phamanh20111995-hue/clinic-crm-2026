@@ -27,7 +27,7 @@ def _contract_queryset(user):
     """
     qs = Contract.objects.filter(is_deleted=False).select_related(
         'customer', 'created_by', 'approved_by', 'appointment'
-    )
+    ).prefetch_related('payments')
     if user.role in MANAGEMENT_ROLES or user.role in ('KE_TOAN', 'LEAD_SALE'):
         return qs
     if user.role == 'SALE':
@@ -329,7 +329,7 @@ def pending_contracts(request):
 
     qs = Contract.objects.filter(
         is_deleted=False, approval_status='pending_kt'
-    ).select_related('customer', 'created_by').order_by('created_at')
+    ).select_related('customer', 'created_by').prefetch_related('payments').order_by('created_at')
 
     return Response({
         'count': qs.count(),

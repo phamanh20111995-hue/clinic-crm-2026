@@ -25,6 +25,10 @@ class ContractListSerializer(serializers.ModelSerializer):
     approval_status_display = serializers.CharField(source='get_approval_status_display', read_only=True)
     payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
     payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
+    # Tính sẵn từ Payment thật (đối soát) — KHÔNG dùng field cố định payment_status/payment_method
+    thuc_thu = serializers.SerializerMethodField()
+    con_no = serializers.SerializerMethodField()
+    httt_thuc_te = serializers.SerializerMethodField()
 
     class Meta:
         model = Contract
@@ -34,10 +38,36 @@ class ContractListSerializer(serializers.ModelSerializer):
             'payment_method', 'payment_method_display',
             'cash_amount', 'transfer_amount',
             'payment_status', 'payment_status_display',
+            'thuc_thu', 'con_no', 'httt_thuc_te',
             'approval_status', 'approval_status_display',
             'created_by_name', 'approved_by_name', 'approved_at',
             'created_at',
         ]
+
+    def get_thuc_thu(self, obj):
+        return int(sum(p.total for p in obj.payments.all()))
+
+    def get_con_no(self, obj):
+        return int(obj.final_amount) - int(sum(p.total for p in obj.payments.all()))
+
+    def get_httt_thuc_te(self, obj):
+        ps = obj.payments.all()
+        tm = sum(p.cash_amount for p in ps)
+        ck = sum(p.transfer_amount for p in ps)
+        tg = sum(p.installment_amount for p in ps)
+        labels = []
+        if tm:
+            labels.append('Tiền mặt')
+        if ck:
+            labels.append('Chuyển khoản')
+        if tg:
+            labels.append('Trả góp')
+        if not labels:
+            return '—'
+        if len(labels) == 1:
+            return labels[0]
+        short = {'Tiền mặt': 'TM', 'Chuyển khoản': 'CK', 'Trả góp': 'Trả góp'}
+        return ' + '.join(short[l] for l in labels)
 
 
 class ContractDetailSerializer(ContractListSerializer):

@@ -69,6 +69,9 @@ export default function CongNoTab() {
 
   const thStyle = align => ({ padding: '7px 11px', textAlign: align, fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 })
   const tdR = { padding: '7px 11px', textAlign: 'right' }
+  // Ghim cột nút ở mép phải để không bị khuất khi cuộn ngang
+  const thAction = { padding: '7px 11px', textAlign: 'right', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, right: 0, background: '#f8fafc', zIndex: 3, boxShadow: '-6px 0 6px -4px rgba(15,23,42,0.08)' }
+  const tdAction = { padding: '7px 11px', textAlign: 'right', position: 'sticky', right: 0, background: '#fff', zIndex: 2, boxShadow: '-6px 0 6px -4px rgba(15,23,42,0.08)' }
 
   return (
     <>
@@ -83,7 +86,7 @@ export default function CongNoTab() {
               <>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
-                    {NO_COLS.map((h, i) => <th key={i} style={thStyle(['Tổng HĐ', 'Đã thu', 'Còn nợ'].includes(h) ? 'right' : 'left')}>{h}</th>)}
+                    {NO_COLS.map((h, i) => <th key={i} style={i === NO_COLS.length - 1 ? thAction : thStyle(['Tổng HĐ', 'Đã thu', 'Còn nợ'].includes(h) ? 'right' : 'left')}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -97,7 +100,7 @@ export default function CongNoTab() {
                       <td style={tdR}>{fmt(c.final_amount)}đ</td>
                       <td style={{ ...tdR, color: '#15803d' }}>{fmt(c.paid)}đ</td>
                       <td style={{ ...tdR, color: '#dc2626', fontWeight: 700 }}>{fmt(c.remaining)}đ</td>
-                      <td style={{ padding: '7px 11px', textAlign: 'right' }}>
+                      <td style={tdAction}>
                         <button onClick={() => setThuNoTarget({ id: c.contract_id, customer_name: c.customer_name, final_amount: c.final_amount, paid: c.paid, remaining: c.remaining })}
                           style={{ padding: '3px 11px', border: 'none', borderRadius: 6, background: '#15803d', color: '#fff', fontSize: 10, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           Thu nợ
@@ -111,7 +114,7 @@ export default function CongNoTab() {
               <>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
-                    {TG_COLS.map((h, i) => <th key={i} style={thStyle(['Gốc', 'PK thực nhận', 'Chi phí PK'].includes(h) ? 'right' : 'left')}>{h}</th>)}
+                    {TG_COLS.map((h, i) => <th key={i} style={i === TG_COLS.length - 1 ? thAction : thStyle(['Gốc', 'PK thực nhận', 'Chi phí PK'].includes(h) ? 'right' : 'left')}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -127,7 +130,7 @@ export default function CongNoTab() {
                       <td style={{ ...tdR, color: '#15803d', fontWeight: 600 }}>{fmt(i.pk_net)}đ</td>
                       <td style={{ ...tdR, color: '#854d0e' }}>{fmt(i.pk_cost)}đ</td>
                       <td style={{ padding: '7px 11px', color: '#1e40af', fontWeight: 600 }}>{i.expected_date ?? '—'}</td>
-                      <td style={{ padding: '7px 11px', textAlign: 'right' }}>
+                      <td style={tdAction}>
                         <button onClick={() => confirmVe(i)}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 11px', border: 'none', borderRadius: 6, background: '#1e40af', color: '#fff', fontSize: 10, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           <IconCheck size={11} /> Về két

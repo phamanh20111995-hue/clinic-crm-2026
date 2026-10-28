@@ -140,7 +140,7 @@ export default function CongNoTab() {
             <span style={{ textAlign: 'right' }}>Tổng HĐ</span>
             <span style={{ textAlign: 'right' }}>Đã thu</span>
             <span style={{ textAlign: 'right' }}>Còn nợ</span>
-            <span></span>
+            <span style={{ position: 'sticky', right: 0, background: '#f8fafc', zIndex: 2, boxShadow: '-6px 0 6px -4px rgba(15,23,42,0.08)' }}></span>
           </div>
           {loading ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Đang tải...</div>
@@ -155,7 +155,7 @@ export default function CongNoTab() {
               <div style={{ fontSize: 12, textAlign: 'right', color: '#374151' }}>{fmt(c.final_amount)}đ</div>
               <div style={{ fontSize: 12, textAlign: 'right', color: '#15803d' }}>{fmt(c.paid)}đ</div>
               <div style={{ fontSize: 12, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{fmt(c.remaining)}đ</div>
-              <div>
+              <div style={{ position: 'sticky', right: 0, background: '#fff', zIndex: 1, boxShadow: '-6px 0 6px -4px rgba(15,23,42,0.08)' }}>
                 <button
                   onClick={() => setThuNoTarget({ id: c.contract_id, customer_name: c.customer_name, final_amount: c.final_amount, paid: c.paid, remaining: c.remaining })}
                   style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: 'none', background: '#15803d', color: '#fff', cursor: 'pointer', fontWeight: 600, width: '100%' }}>

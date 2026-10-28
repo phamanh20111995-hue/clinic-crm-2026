@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { IconTrendingUp, IconClock, IconReceipt, IconPercentage, IconUpload } from '@tabler/icons-react'
+import { IconTrendingUp, IconReceipt, IconPercentage, IconUpload, IconAlertTriangle } from '@tabler/icons-react'
 import { getContracts, getKpiDashboard } from '../../../api/ketoan'
 import KetoanListShell from '../components/KetoanListShell'
 
@@ -29,6 +29,8 @@ export default function DoanhThuTab() {
 
   const totalSaleNhap = filtered.reduce((s, c) => s + Number(c.total_amount ?? 0), 0)
   const totalKTDuyet = filtered.reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
+  const totalThucThu = filtered.reduce((s, c) => s + Number(c.thuc_thu ?? 0), 0)
+  const totalConNo = filtered.reduce((s, c) => s + Number(c.con_no ?? 0), 0)
   const totalDiff = totalKTDuyet - totalSaleNhap
 
   const pending = [] // derived from pending_kt contracts — just use 0 for now
@@ -36,6 +38,7 @@ export default function DoanhThuTab() {
   const target = kpi?.target ?? 0
   const pct = target ? Math.round((revenue / target) * 100) : 0
 
+  const nConNo = filtered.filter(c => Number(c.con_no ?? 0) > 0).length
   const salesList = [...new Set(contracts.map(c => c.created_by_name).filter(Boolean))]
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize)
   useEffect(() => { setPage(1) }, [filterLoai, filterSale, pageSize])
@@ -43,10 +46,10 @@ export default function DoanhThuTab() {
   const stats = (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {[
-          { icon: <IconTrendingUp size={13} color="#15803d" />, label: 'DT đã duyệt (chính thức)', val: fmt(revenue) + 'đ', sub: target ? `Mục tiêu: ${fmt(target)}đ · ${pct}%` : '—', c: '#15803d', bc: '#15803d' },
-          { icon: <IconClock size={13} color="#854d0e" />, label: 'DT chờ duyệt', val: '—', sub: 'HĐ đang chờ KT', c: '#854d0e', bc: undefined },
-          { icon: <IconReceipt size={13} color="#1e40af" />, label: 'HĐ điện tử đã phát hành', val: String(contracts.filter(c => c.invoice_issued).length || 0), sub: 'Đúng quy định CQT', c: '#1e40af', bc: undefined },
-          { icon: <IconPercentage size={13} color="#5b21b6" />, label: 'Thuế VAT', val: fmt(Math.round(totalKTDuyet * 0.1)) + 'đ', sub: 'Thẩm mỹ 10% · BL miễn VAT', c: '#5b21b6', bc: undefined },
+          { icon: <IconTrendingUp size={13} color="#15803d" />, label: 'DT đã duyệt (chính thức)', val: fmt(totalKTDuyet) + 'đ', sub: `Sale nhập ${fmt(totalSaleNhap)}đ · Chênh KT ${totalDiff === 0 ? '0đ (khớp)' : (totalDiff > 0 ? '+' : '') + fmt(totalDiff) + 'đ'}`, c: '#15803d', bc: '#15803d' },
+          { icon: <IconReceipt size={13} color="#0f766e" />, label: 'Đã thực thu', val: fmt(totalThucThu) + 'đ', sub: `${filtered.length - nConNo}/${filtered.length} HĐ đã thu đủ`, c: '#0f766e', bc: '#0f766e' },
+          { icon: <IconAlertTriangle size={13} color="#dc2626" />, label: 'Còn nợ', val: fmt(totalConNo) + 'đ', sub: nConNo ? `${nConNo} HĐ còn nợ` : 'Đã thu đủ tất cả', c: '#dc2626', bc: totalConNo > 0 ? '#dc2626' : undefined },
+          { icon: <IconPercentage size={13} color="#5b21b6" />, label: 'Thuế VAT (tạm tính)', val: fmt(Math.round(totalKTDuyet * 0.1)) + 'đ', sub: 'Thẩm mỹ 10% · BL miễn VAT', c: '#5b21b6', bc: undefined },
         ].map(s => (
           <div key={s.label} style={{ background: '#fff', border: `1px solid ${s.bc ?? '#dde3ef'}`, borderRadius: 9, padding: '11px 13px' }}>
             <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>{s.icon}{s.label}</div>
@@ -82,36 +85,55 @@ export default function DoanhThuTab() {
   return (
     <KetoanListShell stats={stats} toolbar={toolbar} pagination={{ page, pageSize, count: filtered.length, onPage: setPage, onPageSize: setPageSize }}>
         <div style={{ minWidth: 1900 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+            <colgroup>
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
+            </colgroup>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                {['Số HĐ', 'KH', 'Dịch vụ', 'Loại', 'Sale nhập', 'KT duyệt', 'Hình thức TT', 'Nhận tiền', 'HĐ điện tử'].map(h => (
-                  <th key={h} style={{ padding: '7px 11px', textAlign: h.includes('nhập') || h.includes('duyệt') ? 'right' : 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>{h}</th>
+                {['Số HĐ', 'KH', 'Dịch vụ', 'Loại', 'Sale nhập', 'KT duyệt', 'Thực thu', 'Còn nợ', 'Hình thức TT', 'Nhận tiền', 'HĐ điện tử'].map(h => (
+                  <th key={h} style={{ padding: '7px 11px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {paged.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Không có dữ liệu</td></tr>
+                <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Không có dữ liệu</td></tr>
               ) : paged.map(c => {
                 const isBL = c.loai_dv === 'benh_ly'
-                const isReceived = c.payment_status === 'received'
+                const conNo = Number(c.con_no ?? 0)
+                const thucThu = Number(c.thuc_thu ?? 0)
+                const thu = conNo <= 0 ? { bg: '#dcfce7', c: '#15803d', t: '✓ Đã đủ' }
+                  : thucThu > 0 ? { bg: '#fef9c3', c: '#854d0e', t: '◐ Một phần' }
+                  : { bg: '#f1f5f9', c: '#64748b', t: '⏳ Chưa thu' }
                 return (
                   <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '7px 11px', fontWeight: 700 }}>{c.contract_no}</td>
-                    <td style={{ padding: '7px 11px' }}>{c.customer_name}</td>
-                    <td style={{ padding: '7px 11px', fontSize: 10 }}>{c.items?.[0]?.name ?? '—'}</td>
+                    <td style={{ padding: '7px 11px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.contract_no}</td>
+                    <td style={{ padding: '7px 11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.customer_name}</td>
+                    <td style={{ padding: '7px 11px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.items?.[0]?.name ?? '—'}</td>
                     <td style={{ padding: '7px 11px' }}>
                       <span style={{ background: isBL ? '#dbeafe' : '#fef9c3', color: isBL ? '#1e40af' : '#854d0e', padding: '1px 6px', borderRadius: 10, fontSize: 8, fontWeight: 600 }}>
                         {isBL ? 'Bệnh lý · KCT' : 'Thẩm mỹ'}
                       </span>
                     </td>
-                    <td style={{ padding: '7px 11px', textAlign: 'right' }}>{fmt(c.total_amount)}đ</td>
-                    <td style={{ padding: '7px 11px', textAlign: 'right', color: '#15803d', fontWeight: 600 }}>{fmt(c.final_amount)}đ</td>
-                    <td style={{ padding: '7px 11px', fontSize: 10 }}>{PM_LABEL[c.payment_method] ?? c.payment_method}</td>
+                    <td style={{ padding: '7px 11px' }}>{fmt(c.total_amount)}đ</td>
+                    <td style={{ padding: '7px 11px', color: '#15803d', fontWeight: 600 }}>{fmt(c.final_amount)}đ</td>
+                    <td style={{ padding: '7px 11px', color: '#0f766e', fontWeight: 600 }}>{fmt(thucThu)}đ</td>
+                    <td style={{ padding: '7px 11px', color: conNo > 0 ? '#dc2626' : '#94a3b8', fontWeight: conNo > 0 ? 700 : 400 }}>{fmt(conNo)}đ</td>
+                    <td style={{ padding: '7px 11px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.httt_thuc_te ?? PM_LABEL[c.payment_method] ?? c.payment_method}</td>
                     <td style={{ padding: '7px 11px' }}>
-                      <span style={{ background: isReceived ? '#dcfce7' : '#fef9c3', color: isReceived ? '#15803d' : '#854d0e', padding: '1px 6px', borderRadius: 10, fontSize: 8, fontWeight: 600 }}>
-                        {isReceived ? '✓ Đã nhận' : '⏳ Chưa đủ'}
+                      <span style={{ background: thu.bg, color: thu.c, padding: '1px 6px', borderRadius: 10, fontSize: 8, fontWeight: 600 }}>
+                        {thu.t}
                       </span>
                     </td>
                     <td style={{ padding: '7px 11px' }}>
@@ -124,17 +146,6 @@ export default function DoanhThuTab() {
                 )
               })}
             </tbody>
-            {filtered.length > 0 && (
-              <tfoot>
-                <tr style={{ background: '#f8fafc', borderTop: '2px solid #fde68a' }}>
-                  <td colSpan={4} style={{ padding: '7px 11px', fontWeight: 700, fontSize: 11 }}>Tổng ({filtered.length} HĐ đã duyệt)</td>
-                  <td style={{ padding: '7px 11px', textAlign: 'right', fontWeight: 700 }}>{fmt(totalSaleNhap)}đ</td>
-                  <td style={{ padding: '7px 11px', textAlign: 'right', color: '#15803d', fontWeight: 700 }}>{fmt(totalKTDuyet)}đ</td>
-                  <td style={{ padding: '7px 11px', textAlign: 'right', color: totalDiff >= 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>{totalDiff >= 0 ? '+' : ''}{fmt(totalDiff)}đ</td>
-                  <td colSpan={2}></td>
-                </tr>
-              </tfoot>
-            )}
           </table>
         </div>
     </KetoanListShell>
