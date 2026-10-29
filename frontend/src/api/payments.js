@@ -19,3 +19,6 @@ export const verifyPayment      = (id, data) => api.post(`/api/contracts/payment
 // ===== Khoản thu của Sale =====
 export const getPaymentsMine = (params) => api.get('/api/contracts/payments/mine/', { params })
 export const editPayment     = (id, data) => api.post(`/api/contracts/payments/${id}/edit/`, data)
+
+// ===== Doanh thu chi tiết (quy theo người/vai trò/cơ sở/miền) =====
+export const getDoanhThuChiTiet = (params) => api.get('/api/contracts/doanh-thu-chi-tiet/', { params })

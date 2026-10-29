@@ -9,7 +9,7 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         qs = (Contract.objects
               .filter(is_deleted=False, approval_status='approved')
-              .select_related('customer', 'appointment', 'appointment__room', 'clinic'))
+              .select_related('customer', 'created_by', 'appointment', 'appointment__room', 'clinic'))
         n_hd = 0
         n_credit = 0
         for ct in qs:
@@ -23,9 +23,14 @@ class Command(BaseCommand):
                         ct.save(update_fields=['clinic'])
                 region = ct.clinic.region if ct.clinic_id else ''
                 cus = ct.customer
+                sale_uid = cus.sale_id
+                if not sale_uid and ct.created_by_id and getattr(ct.created_by, 'role', None) in ('SALE', 'LEAD_SALE'):
+                    sale_uid = ct.created_by_id
                 cmap = [
-                    ('SALE', cus.sale_id), ('TELE', cus.tele_id), ('CSKH', cus.cskh_id),
-                    ('ADS', cus.ads_id), ('TRUC_PAGE', getattr(cus, 'truc_page_id', None)),
+                    ('SALE', sale_uid), ('TELE', cus.tele_id), ('CSKH', cus.cskh_id),
+                    ('ADS', cus.ads_id),
+                    # Quy uoc: nguoi TAO data chinh la truc page
+                    ('TRUC_PAGE', getattr(cus, 'truc_page_id', None) or cus.created_by_id),
                 ]
                 for role, uid in cmap:
                     if uid:

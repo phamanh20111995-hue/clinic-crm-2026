@@ -164,7 +164,8 @@ def approve_contract(request, pk):
             ('TELE', customer.tele_id),
             ('CSKH', customer.cskh_id),
             ('ADS', customer.ads_id),
-            ('TRUC_PAGE', getattr(customer, 'truc_page_id', None)),
+            # Quy uoc: nguoi TAO data chinh la truc page (uu tien truc_page neu da gan)
+            ('TRUC_PAGE', getattr(customer, 'truc_page_id', None) or customer.created_by_id),
         ]
         for _role, _uid in _credit_map:
             if _uid:

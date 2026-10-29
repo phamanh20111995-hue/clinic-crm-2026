@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { IconChecks, IconTrendingUp, IconClockDollar, IconPackage, IconFileCertificate, IconCoin, IconFingerprint, IconCalendarTime, IconFileInvoice, IconPlus } from '@tabler/icons-react'
+import { IconChecks, IconTrendingUp, IconClockDollar, IconPackage, IconFileCertificate, IconCoin, IconFingerprint, IconCalendarTime, IconFileInvoice, IconPlus, IconReportAnalytics } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 import AppLayout from '../../components/layout/AppLayout'
@@ -10,6 +10,7 @@ import HoaDonTab from '../sale/tabs/HoaDonTab'
 import ChotHDModal from '../sale/modals/ChotHDModal'
 import DuyetHDTab from './tabs/DuyetHDTab'
 import DoanhThuTab from './tabs/DoanhThuTab'
+import DoanhThuChiTietTab from './tabs/DoanhThuChiTietTab'
 import CongNoTab from './tabs/CongNoTab'
 import KhoTab from './tabs/KhoTab'
 import HoSoThueTab from './tabs/HoSoThueTab'
@@ -23,6 +24,7 @@ const ALLOWED = ['KE_TOAN', 'QUAN_LY', 'CHU_DN']
 const TABS = [
   { k: 'duyet', l: 'Duyệt & đối soát', icon: IconChecks },
   { k: 'dt', l: 'Doanh thu', icon: IconTrendingUp },
+  { k: 'dtct', l: 'Doanh thu chi tiết', icon: IconReportAnalytics },
   { k: 'no', l: 'Công nợ', icon: IconClockDollar },
   { k: 'luong', l: 'Lương & Tua', icon: IconCoin },
   { k: 'kho', l: 'Kho', icon: IconPackage },
@@ -111,6 +113,7 @@ export default function KetoanPage() {
       <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Tab dùng shell (tự cuộn trong + footer bám đáy) */}
         {tab === 'dt'     && <DoanhThuTab />}
+        {tab === 'dtct'   && <DoanhThuChiTietTab />}
         {tab === 'luong'  && <LuongTuaTab />}
         {tab === 'kho'    && <KhoTab />}
         {tab === 'no'     && <CongNoTab />}
