@@ -13,6 +13,7 @@ urlpatterns = [
     path('payments/<int:pk>/verify/', payment_api.verify_payment, name='payment-verify'),
     path('payments/mine/', payment_api.payments_mine, name='payments-mine'),
     path('payments/<int:pk>/edit/', payment_api.edit_payment, name='payment-edit'),
+    path('doanh-thu-chi-tiet/', payment_api.doanh_thu_chi_tiet, name='doanh-thu-chi-tiet'),
     path('<int:pk>/', views.ContractDetailView.as_view(), name='contract-detail'),
     path('<int:pk>/submit/', views.submit_contract, name='contract-submit'),
     path('<int:pk>/approve/', views.approve_contract, name='contract-approve'),

@@ -4,6 +4,7 @@ class Contract(models.Model):
     contract_no = models.CharField(max_length=20, unique=True)
     customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='contracts')
     appointment = models.ForeignKey('appointments.Appointment', null=True, blank=True, on_delete=models.SET_NULL)
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='contracts')
     items = models.JSONField(default=list)
     promotions = models.JSONField(default=list)
     gifts = models.JSONField(default=list)
@@ -144,3 +145,27 @@ class Installment(models.Model):
 
     def __str__(self):
         return f'{self.provider} - {self.principal}'
+
+
+class ContractCredit(models.Model):
+    """Quy doanh thu HD cho tung nguoi theo vai tro (snapshot bat bien luc duyet HD).
+    KHONG chua % chia (them sau o man Luong). BS/KTV khong vao day (da co o TreatmentSession)."""
+    ROLE_CHOICES = [
+        ('SALE', 'Sale'), ('TELE', 'Tele'), ('CSKH', 'CSKH'),
+        ('ADS', 'Marketing/Ads'), ('TRUC_PAGE', 'Truc page'),
+    ]
+    contract = models.ForeignKey('Contract', on_delete=models.CASCADE, related_name='credits')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='revenue_credits')
+    role = models.CharField(max_length=15, choices=ROLE_CHOICES)
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL)
+    region = models.CharField(max_length=20, blank=True, help_text='Snapshot mien luc duyet HD')
+    share_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text='Dien sau o man Luong')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['contract', 'user', 'role']
+        verbose_name = 'Quy doanh thu HD'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.contract.contract_no} - {self.get_role_display()} - {self.user}'

@@ -36,6 +36,8 @@ class Clinic(models.Model):
     name = models.CharField(max_length=200)
     address = models.TextField()
     phone = models.CharField(max_length=15)
+    REGION_CHOICES = [('mien_bac','Miền Bắc'),('mien_trung','Miền Trung'),('mien_nam','Miền Nam')]
+    region = models.CharField(max_length=20, blank=True, choices=REGION_CHOICES)
     is_active = models.BooleanField(default=True)
     class Meta: verbose_name='Phòng khám'
     def __str__(self): return self.name

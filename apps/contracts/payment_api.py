@@ -1,12 +1,13 @@
 from datetime import timedelta, datetime
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Contract, Payment, Installment
+from .models import Contract, Payment, Installment, ContractCredit
 
 MANAGEMENT_ROLES = frozenset({'QUAN_LY', 'CHU_DN'})
 PAYMENT_ROLES = {'KE_TOAN'} | MANAGEMENT_ROLES
@@ -382,3 +383,78 @@ def edit_payment(request, pk):
 
     _recompute_payment_status(payment.contract)
     return Response(PaymentOutSerializer(payment).data)
+
+
+REGION_LABELS = {'mien_bac': 'Miền Bắc', 'mien_trung': 'Miền Trung', 'mien_nam': 'Miền Nam'}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def doanh_thu_chi_tiet(request):
+    """Thong ke doanh thu chi tiet theo nguoi/vai tro/co so/mien (neo theo thuc thu).
+    Query: from, to (loc Payment.received_at), role, user_id, clinic_id, region, group_by (user|role|clinic|region)."""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Khong co quyen.'}, status=403)
+
+    p = request.query_params
+    d_from, d_to = p.get('from'), p.get('to')
+    group_by = p.get('group_by') or 'user'
+    if group_by not in ('user', 'role', 'clinic', 'region'):
+        group_by = 'user'
+
+    credits = (ContractCredit.objects
+               .select_related('contract', 'contract__customer', 'user', 'clinic')
+               .filter(contract__is_deleted=False, contract__approval_status='approved'))
+    if p.get('role'):
+        credits = credits.filter(role=p['role'])
+    if p.get('user_id'):
+        credits = credits.filter(user_id=p['user_id'])
+    if p.get('clinic_id'):
+        credits = credits.filter(clinic_id=p['clinic_id'])
+    if p.get('region'):
+        credits = credits.filter(region=p['region'])
+    credits = list(credits)
+
+    contract_ids = {c.contract_id for c in credits}
+    pay_qs = Payment.objects.filter(contract_id__in=contract_ids)
+    if d_from:
+        pay_qs = pay_qs.filter(received_at__gte=d_from)
+    if d_to:
+        pay_qs = pay_qs.filter(received_at__lte=d_to)
+    thuthu_map = {r['contract_id']: int(r['s'] or 0)
+                  for r in pay_qs.values('contract_id').annotate(s=Sum('total'))}
+
+    rows, summary = [], {}
+    for c in credits:
+        tt = thuthu_map.get(c.contract_id, 0)
+        if (d_from or d_to) and tt == 0:
+            continue  # loc theo ky: bo HD khong co tien ve trong ky
+        ct = c.contract
+        region_lbl = REGION_LABELS.get(c.region, c.region) if c.region else ''
+        rows.append({
+            'contract_id': c.contract_id,
+            'contract_no': ct.contract_no,
+            'customer_name': ct.customer.full_name,
+            'user_id': c.user_id,
+            'user_name': c.user.display_name if c.user else '',
+            'role': c.role,
+            'role_display': c.get_role_display(),
+            'clinic_name': c.clinic.name if c.clinic_id else '',
+            'region': region_lbl,
+            'final_amount': int(ct.final_amount),
+            'thuc_thu': tt,
+        })
+        if group_by == 'user':
+            key, label = c.user_id, (c.user.display_name if c.user else '—')
+        elif group_by == 'role':
+            key, label = c.role, c.get_role_display()
+        elif group_by == 'clinic':
+            key, label = (c.clinic_id or 0), (c.clinic.name if c.clinic_id else '(Chưa gán cơ sở)')
+        else:
+            key, label = (c.region or ''), (region_lbl or '(Chưa gán miền)')
+        g = summary.setdefault(key, {'key': key, 'label': label, 'so_hd': 0, 'thuc_thu': 0})
+        g['so_hd'] += 1
+        g['thuc_thu'] += tt
+
+    summary_list = sorted(summary.values(), key=lambda x: x['thuc_thu'], reverse=True)
+    return Response({'rows': rows, 'summary': summary_list, 'group_by': group_by})

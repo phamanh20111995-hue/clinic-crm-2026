@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 
-from .models import Contract
+from .models import Contract, ContractCredit
 from .serializers import (
     ContractListSerializer, ContractDetailSerializer,
     ContractCreateSerializer, ContractUpdateSerializer,
@@ -27,7 +27,7 @@ def _contract_queryset(user):
     """
     qs = Contract.objects.filter(is_deleted=False).select_related(
         'customer', 'created_by', 'approved_by', 'appointment'
-    ).prefetch_related('payments')
+    )
     if user.role in MANAGEMENT_ROLES or user.role in ('KE_TOAN', 'LEAD_SALE'):
         return qs
     if user.role == 'SALE':
@@ -148,6 +148,30 @@ def approve_contract(request, pk):
         else:
             customer.status = 'cho_phan_cskh'
         customer.save(update_fields=['status', 'is_customer', 'updated_at'])
+
+        # --- Quy doanh thu: snapshot doi ngu an doanh thu (bat bien) ---
+        if contract.clinic_id is None and contract.appointment_id:
+            _room = getattr(contract.appointment, 'room', None)
+            if _room and _room.clinic_id:
+                contract.clinic_id = _room.clinic_id
+                contract.save(update_fields=['clinic'])
+        _region = contract.clinic.region if contract.clinic_id else ''
+        _sale_uid = customer.sale_id
+        if not _sale_uid and contract.created_by_id and getattr(contract.created_by, 'role', None) in ('SALE', 'LEAD_SALE'):
+            _sale_uid = contract.created_by_id
+        _credit_map = [
+            ('SALE', _sale_uid),
+            ('TELE', customer.tele_id),
+            ('CSKH', customer.cskh_id),
+            ('ADS', customer.ads_id),
+            ('TRUC_PAGE', getattr(customer, 'truc_page_id', None)),
+        ]
+        for _role, _uid in _credit_map:
+            if _uid:
+                ContractCredit.objects.get_or_create(
+                    contract=contract, user_id=_uid, role=_role,
+                    defaults={'clinic_id': contract.clinic_id, 'region': _region},
+                )
 
         # --- Track 2: xu ly dong SAN PHAM trong items (chi commit khi KT duyet) ---
         items = contract.items or []
@@ -329,7 +353,7 @@ def pending_contracts(request):
 
     qs = Contract.objects.filter(
         is_deleted=False, approval_status='pending_kt'
-    ).select_related('customer', 'created_by').prefetch_related('payments').order_by('created_at')
+    ).select_related('customer', 'created_by').order_by('created_at')
 
     return Response({
         'count': qs.count(),
