@@ -28,6 +28,57 @@ def _next_disbursement_date(start):
     return d
 
 
+def build_installment(payment, inst_payload, r_date):
+    """Tao 1 Installment tu payload: tach phi/lai theo ben chiu, tinh pk_net, trang thai giai ngan.
+    Dung chung cho luong THU TIEN (thu no) va luong DUYET HD (tra gop luc tao)."""
+    provider_type = inst_payload.get('provider_type', 'vay_tieu_dung')
+    principal = _num(inst_payload.get('principal')) or int(payment.installment_amount)
+    conversion_fee = _num(inst_payload.get('conversion_fee'))
+    interest = _num(inst_payload.get('interest'))
+    fee_bearer = inst_payload.get('fee_bearer', 'khach')
+    interest_bearer = inst_payload.get('interest_bearer', 'khach')
+
+    # Tach phi chuyen doi theo ben chiu
+    if fee_bearer == 'pk':
+        fee_pk, fee_khach = conversion_fee, 0
+    elif fee_bearer == 'khach':
+        fee_pk, fee_khach = 0, conversion_fee
+    else:  # chia
+        fee_pk = _num(inst_payload.get('fee_pk'))
+        fee_khach = _num(inst_payload.get('fee_khach'))
+
+    # Tach lai theo ben chiu (PK chiu lai = hoan lai cho khach)
+    if interest_bearer == 'pk':
+        interest_pk, interest_khach = interest, 0
+    elif interest_bearer == 'khach':
+        interest_pk, interest_khach = 0, interest
+    else:  # chia
+        interest_pk = _num(inst_payload.get('interest_pk'))
+        interest_khach = _num(inst_payload.get('interest_khach'))
+
+    pk_cost = fee_pk + interest_pk
+    pk_net = principal - pk_cost
+
+    if provider_type == 'the_tin_dung':
+        inst_status, expected_date, actual_date = 'da_ve', r_date, r_date
+    else:  # vay_tieu_dung -> cho giai ngan
+        inst_status, expected_date, actual_date = 'cho_giai_ngan', _next_disbursement_date(r_date), None
+
+    return Installment.objects.create(
+        payment=payment,
+        provider=inst_payload.get('provider', ''),
+        ref_no=inst_payload.get('ref_no', ''),
+        provider_type=provider_type,
+        principal=principal,
+        conversion_fee=conversion_fee,
+        fee_bearer=fee_bearer, fee_pk=fee_pk, fee_khach=fee_khach,
+        interest=interest, interest_bearer=interest_bearer,
+        interest_pk=interest_pk, interest_khach=interest_khach,
+        pk_net=pk_net, pk_cost=pk_cost,
+        status=inst_status, expected_date=expected_date, actual_date=actual_date,
+    )
+
+
 class InstallmentOutSerializer(serializers.ModelSerializer):
     provider_type_display = serializers.CharField(source='get_provider_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -37,7 +88,7 @@ class InstallmentOutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Installment
         fields = [
-            'id', 'provider', 'provider_type', 'provider_type_display',
+            'id', 'provider', 'ref_no', 'provider_type', 'provider_type_display',
             'principal', 'conversion_fee', 'fee_bearer', 'fee_bearer_display', 'fee_pk', 'fee_khach',
             'interest', 'interest_bearer', 'interest_bearer_display', 'interest_pk', 'interest_khach',
             'pk_net', 'pk_cost', 'status', 'status_display',
@@ -63,6 +114,17 @@ class PaymentOutSerializer(serializers.ModelSerializer):
             'verify_status', 'verify_status_display', 'verified_by', 'verified_by_name', 'verified_at', 'verify_note',
         ]
         read_only_fields = fields
+
+
+def _mark_payment_received(pay, actual):
+    """Tra gop ve ket -> neu payment thuan tra gop (chua co received_at), ghi ngay ve lam received_at
+    de thong ke doanh thu neo dung ky tien ve."""
+    if pay.received_at is None and int(pay.cash_amount) == 0 and int(pay.transfer_amount) == 0:
+        try:
+            pay.received_at = datetime.strptime(actual, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            pay.received_at = timezone.localdate()
+        pay.save(update_fields=['received_at'])
 
 
 def _recompute_payment_status(contract):
@@ -131,62 +193,7 @@ def contract_payments(request, pk):
         )
 
         if inst_amount > 0:
-            provider_type = inst_payload.get('provider_type', 'vay_tieu_dung')
-            principal = _num(inst_payload.get('principal')) or inst_amount
-            conversion_fee = _num(inst_payload.get('conversion_fee'))
-            interest = _num(inst_payload.get('interest'))
-            fee_bearer = inst_payload.get('fee_bearer', 'khach')
-            interest_bearer = inst_payload.get('interest_bearer', 'khach')
-
-            # Tach phi chuyen doi theo ben chiu
-            if fee_bearer == 'pk':
-                fee_pk, fee_khach = conversion_fee, 0
-            elif fee_bearer == 'khach':
-                fee_pk, fee_khach = 0, conversion_fee
-            else:  # chia
-                fee_pk = _num(inst_payload.get('fee_pk'))
-                fee_khach = _num(inst_payload.get('fee_khach'))
-
-            # Tach lai theo ben chiu (PK chiu lai = hoan lai cho khach)
-            if interest_bearer == 'pk':
-                interest_pk, interest_khach = interest, 0
-            elif interest_bearer == 'khach':
-                interest_pk, interest_khach = 0, interest
-            else:  # chia
-                interest_pk = _num(inst_payload.get('interest_pk'))
-                interest_khach = _num(inst_payload.get('interest_khach'))
-
-            pk_cost = fee_pk + interest_pk
-            pk_net = principal - pk_cost
-
-            if provider_type == 'the_tin_dung':
-                inst_status = 'da_ve'
-                expected_date = r_date
-                actual_date = r_date
-            else:  # vay_tieu_dung -> cho giai ngan
-                inst_status = 'cho_giai_ngan'
-                expected_date = _next_disbursement_date(r_date)
-                actual_date = None
-
-            Installment.objects.create(
-                payment=payment,
-                provider=inst_payload.get('provider', ''),
-                provider_type=provider_type,
-                principal=principal,
-                conversion_fee=conversion_fee,
-                fee_bearer=fee_bearer,
-                fee_pk=fee_pk,
-                fee_khach=fee_khach,
-                interest=interest,
-                interest_bearer=interest_bearer,
-                interest_pk=interest_pk,
-                interest_khach=interest_khach,
-                pk_net=pk_net,
-                pk_cost=pk_cost,
-                status=inst_status,
-                expected_date=expected_date,
-                actual_date=actual_date,
-            )
+            build_installment(payment, inst_payload, r_date)
 
         _recompute_payment_status(contract)
 
@@ -257,6 +264,7 @@ def confirm_installment(request, pk):
     inst.status = 'da_ve'
     inst.actual_date = actual
     inst.save(update_fields=['status', 'actual_date'])
+    _mark_payment_received(inst.payment, actual)
     return Response(InstallmentOutSerializer(inst).data)
 
 
@@ -270,7 +278,13 @@ def confirm_installments_batch(request):
     if not isinstance(ids, list) or not ids:
         return Response({'detail': 'Thieu danh sach id.'}, status=400)
     actual = request.data.get('actual_date') or timezone.localdate().isoformat()
-    updated = Installment.objects.filter(pk__in=ids).update(status='da_ve', actual_date=actual)
+    updated = 0
+    for inst in Installment.objects.filter(pk__in=ids).select_related('payment'):
+        inst.status = 'da_ve'
+        inst.actual_date = actual
+        inst.save(update_fields=['status', 'actual_date'])
+        _mark_payment_received(inst.payment, actual)
+        updated += 1
     return Response({'updated': updated})
 
 
@@ -416,13 +430,15 @@ def doanh_thu_chi_tiet(request):
     credits = list(credits)
 
     contract_ids = {c.contract_id for c in credits}
-    pay_qs = Payment.objects.filter(contract_id__in=contract_ids)
+    pay_qs = Payment.objects.filter(contract_id__in=contract_ids).prefetch_related('installments')
     if d_from:
         pay_qs = pay_qs.filter(received_at__gte=d_from)
     if d_to:
         pay_qs = pay_qs.filter(received_at__lte=d_to)
-    thuthu_map = {r['contract_id']: int(r['s'] or 0)
-                  for r in pay_qs.values('contract_id').annotate(s=Sum('total'))}
+    # Neo theo tien DA VE ket: tra gop chua giai ngan khong tinh vao thuc thu
+    thuthu_map = {}
+    for _p in pay_qs:
+        thuthu_map[_p.contract_id] = thuthu_map.get(_p.contract_id, 0) + _p.settled_total
 
     rows, summary = [], {}
     for c in credits:

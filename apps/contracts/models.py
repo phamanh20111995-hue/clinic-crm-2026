@@ -5,16 +5,21 @@ class Contract(models.Model):
     customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='contracts')
     appointment = models.ForeignKey('appointments.Appointment', null=True, blank=True, on_delete=models.SET_NULL)
     clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='contracts')
+    # Nguoi ban (duoc tinh doanh thu) - mac dinh = nguoi tao, chon tay khi le tan/KT nhap ho
+    nguoi_ban = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='sold_contracts')
     items = models.JSONField(default=list)
     promotions = models.JSONField(default=list)
     gifts = models.JSONField(default=list)
     total_amount = models.DecimalField(max_digits=15, decimal_places=0)
     discount_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     final_amount = models.DecimalField(max_digits=15, decimal_places=0)
-    PAYMENT_METHOD_CHOICES = [('cash','Tiền mặt'),('transfer','Chuyển khoản'),('combined','Kết hợp')]
+    PAYMENT_METHOD_CHOICES = [('cash','Tiền mặt'),('transfer','Chuyển khoản'),('combined','Kết hợp'),('installment','Trả góp')]
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     cash_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     transfer_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    # Tra gop luc tao HD: phan nha tai tro ganh (principal) + thong tin de vat chat hoa luc duyet
+    installment_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan tra gop (goc nha tai tro ganh) khi tao HD')
+    installment_info = models.JSONField(default=dict, blank=True, help_text='provider, ref_no, phi, ben chiu... de tao Installment luc duyet')
     PAYMENT_STATUS_CHOICES = [('pending','Chưa nhận'),('received','Đã nhận'),('partial','Nhận một phần')]
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='pending')
     APPROVAL_STATUS_CHOICES = [('draft','Nháp'),('pending_kt','Chờ KT duyệt'),('approved','Đã duyệt'),('rejected','Từ chối')]
@@ -103,6 +108,25 @@ class Payment(models.Model):
     def __str__(self):
         return f'{self.contract.contract_no} - {self.total}'
 
+    @property
+    def is_installment_settled(self):
+        """True neu khong co tra gop, hoac tat ca khoan tra gop da ve ket."""
+        insts = list(self.installments.all())
+        return all(i.status == 'da_ve' for i in insts) if insts else True
+
+    @property
+    def settled_total(self):
+        """Tien DA VE ket: TM + CK luon tinh; phan tra gop chi tinh khi da giai ngan."""
+        base = int(self.cash_amount) + int(self.transfer_amount)
+        if self.is_installment_settled:
+            base += int(self.installment_amount)
+        return base
+
+    @property
+    def pending_total(self):
+        """Tien tra gop DANG CHO giai ngan (chua ve ket)."""
+        return 0 if self.is_installment_settled else int(self.installment_amount)
+
 
 class Installment(models.Model):
     """Chi tiet phan tra gop cua mot Payment: nha tai tro, phi chuyen doi, lai, giai ngan."""
@@ -122,6 +146,7 @@ class Installment(models.Model):
     ]
     payment = models.ForeignKey('Payment', on_delete=models.CASCADE, related_name='installments')
     provider = models.CharField(max_length=100, help_text='Home Credit / FE Credit / VNPAY...')
+    ref_no = models.CharField(max_length=50, blank=True, help_text='So HD tra gop / ma GD de doi soat')
     provider_type = models.CharField(max_length=20, choices=PROVIDER_TYPE_CHOICES, default='vay_tieu_dung')
     principal = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Goc - khau tru no khach')
     conversion_fee = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phi chuyen doi')
@@ -153,6 +178,7 @@ class ContractCredit(models.Model):
     ROLE_CHOICES = [
         ('SALE', 'Sale'), ('TELE', 'Tele'), ('CSKH', 'CSKH'),
         ('ADS', 'Marketing/Ads'), ('TRUC_PAGE', 'Truc page'),
+        ('BS', 'Bac si'), ('KTV', 'KTV'),
     ]
     contract = models.ForeignKey('Contract', on_delete=models.CASCADE, related_name='credits')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='revenue_credits')

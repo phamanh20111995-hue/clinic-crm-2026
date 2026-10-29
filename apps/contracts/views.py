@@ -5,11 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 
-from .models import Contract, ContractCredit
+from .models import Contract, ContractCredit, Payment
 from .serializers import (
     ContractListSerializer, ContractDetailSerializer,
     ContractCreateSerializer, ContractUpdateSerializer,
 )
+from .payment_api import build_installment
 from apps.accounts.models import MANAGEMENT_ROLES
 from apps.accounts.permissions import IsKeToan
 from apps.chat.notifications import send_notification, send_notification_to_roles
@@ -156,23 +157,52 @@ def approve_contract(request, pk):
                 contract.clinic_id = _room.clinic_id
                 contract.save(update_fields=['clinic'])
         _region = contract.clinic.region if contract.clinic_id else ''
-        _sale_uid = customer.sale_id
-        if not _sale_uid and contract.created_by_id and getattr(contract.created_by, 'role', None) in ('SALE', 'LEAD_SALE'):
-            _sale_uid = contract.created_by_id
+        # Vai tro "tro luc" an ke tren HD cua khach
         _credit_map = [
-            ('SALE', _sale_uid),
             ('TELE', customer.tele_id),
-            ('CSKH', customer.cskh_id),
             ('ADS', customer.ads_id),
             # Quy uoc: nguoi TAO data chinh la truc page (uu tien truc_page neu da gan)
             ('TRUC_PAGE', getattr(customer, 'truc_page_id', None) or customer.created_by_id),
         ]
+        # Nguoi BAN (duoc tinh doanh thu) -> credit theo VAI TRO cua ho
+        _role_map = {'SALE': 'SALE', 'LEAD_SALE': 'SALE', 'CSKH': 'CSKH', 'LEAD_CSKH': 'CSKH', 'BS': 'BS', 'KTV': 'KTV'}
+        _seller = contract.nguoi_ban or contract.created_by
+        if _seller and _role_map.get(getattr(_seller, 'role', '')):
+            _credit_map.append((_role_map[_seller.role], _seller.id))
         for _role, _uid in _credit_map:
             if _uid:
                 ContractCredit.objects.get_or_create(
                     contract=contract, user_id=_uid, role=_role,
                     defaults={'clinic_id': contract.clinic_id, 'region': _region},
                 )
+
+        # --- HD != Thu tien: vat chat hoa "lan thu dau" (TM/CK ghi luc tao HD) thanh 1 Payment ---
+        _fc = int(contract.cash_amount or 0)
+        _ft = int(contract.transfer_amount or 0)
+        if (_fc + _ft) > 0 and not contract.payments.exists():
+            Payment.objects.create(
+                contract=contract, total=_fc + _ft,
+                cash_amount=_fc, transfer_amount=_ft, installment_amount=0,
+                received_at=timezone.localdate(), received_by=contract.created_by,
+                verify_status='da_xac_nhan', verified_by=request.user, verified_at=timezone.now(),
+                note='Lan thu dau khi tao HD (KT duyet xac nhan)',
+            )
+
+        # --- Tra gop: vat chat hoa phan nha tai tro ganh thanh Payment (cho giai ngan) + Installment ---
+        _ia = int(contract.installment_amount or 0)
+        if _ia > 0 and not contract.payments.filter(installment_amount__gt=0).exists():
+            _info = dict(contract.installment_info or {})
+            _ip = Payment.objects.create(
+                contract=contract, total=_ia,
+                cash_amount=0, transfer_amount=0, installment_amount=_ia,
+                received_at=None,  # tien chua ve ket -> set khi xac nhan giai ngan
+                received_by=contract.created_by,
+                verify_status='da_xac_nhan', verified_by=request.user, verified_at=timezone.now(),
+                note='Tra gop khi tao HD (KT duyet)',
+            )
+            if not _info.get('principal'):
+                _info['principal'] = _ia
+            build_installment(_ip, _info, timezone.localdate())
 
         # --- Track 2: xu ly dong SAN PHAM trong items (chi commit khi KT duyet) ---
         items = contract.items or []
