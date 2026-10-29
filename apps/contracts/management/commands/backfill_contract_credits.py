@@ -9,12 +9,13 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         qs = (Contract.objects
               .filter(is_deleted=False, approval_status='approved')
-              .select_related('customer', 'created_by', 'appointment', 'appointment__room', 'clinic'))
+              .select_related('customer', 'created_by', 'nguoi_ban', 'appointment', 'appointment__room', 'clinic'))
         n_hd = 0
         n_credit = 0
         for ct in qs:
             n_hd += 1
             with transaction.atomic():
+                ct.credits.all().delete()  # dung lai sach theo logic moi
                 # suy co so tu lich hen -> phong -> clinic
                 if ct.clinic_id is None and ct.appointment_id:
                     room = getattr(ct.appointment, 'room', None)
@@ -23,15 +24,16 @@ class Command(BaseCommand):
                         ct.save(update_fields=['clinic'])
                 region = ct.clinic.region if ct.clinic_id else ''
                 cus = ct.customer
-                sale_uid = cus.sale_id
-                if not sale_uid and ct.created_by_id and getattr(ct.created_by, 'role', None) in ('SALE', 'LEAD_SALE'):
-                    sale_uid = ct.created_by_id
                 cmap = [
-                    ('SALE', sale_uid), ('TELE', cus.tele_id), ('CSKH', cus.cskh_id),
-                    ('ADS', cus.ads_id),
+                    ('TELE', cus.tele_id), ('ADS', cus.ads_id),
                     # Quy uoc: nguoi TAO data chinh la truc page
                     ('TRUC_PAGE', getattr(cus, 'truc_page_id', None) or cus.created_by_id),
                 ]
+                # Nguoi ban -> credit theo vai tro (HD cu nguoi_ban=null -> fallback created_by)
+                role_map = {'SALE': 'SALE', 'LEAD_SALE': 'SALE', 'CSKH': 'CSKH', 'LEAD_CSKH': 'CSKH', 'BS': 'BS', 'KTV': 'KTV'}
+                seller = ct.nguoi_ban or ct.created_by
+                if seller and role_map.get(getattr(seller, 'role', '')):
+                    cmap.append((role_map[seller.role], seller.id))
                 for role, uid in cmap:
                     if uid:
                         _, created = ContractCredit.objects.get_or_create(
