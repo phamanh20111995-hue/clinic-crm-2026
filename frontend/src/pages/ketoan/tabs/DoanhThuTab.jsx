@@ -30,7 +30,10 @@ export default function DoanhThuTab() {
   const totalSaleNhap = filtered.reduce((s, c) => s + Number(c.total_amount ?? 0), 0)
   const totalKTDuyet = filtered.reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
   const totalThucThu = filtered.reduce((s, c) => s + Number(c.thuc_thu ?? 0), 0)
+  const totalChoGN = filtered.reduce((s, c) => s + Number(c.cho_giai_ngan ?? 0), 0)
   const totalConNo = filtered.reduce((s, c) => s + Number(c.con_no ?? 0), 0)
+  const totalPhi = filtered.reduce((s, c) => s + Number(c.phi ?? 0), 0)
+  const totalNet = filtered.reduce((s, c) => s + Number(c.thuc_ve_bank ?? 0), 0)
   const totalDiff = totalKTDuyet - totalSaleNhap
 
   const pending = [] // derived from pending_kt contracts — just use 0 for now
@@ -47,7 +50,7 @@ export default function DoanhThuTab() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {[
           { icon: <IconTrendingUp size={13} color="#15803d" />, label: 'DT đã duyệt (chính thức)', val: fmt(totalKTDuyet) + 'đ', sub: `Sale nhập ${fmt(totalSaleNhap)}đ · Chênh KT ${totalDiff === 0 ? '0đ (khớp)' : (totalDiff > 0 ? '+' : '') + fmt(totalDiff) + 'đ'}`, c: '#15803d', bc: '#15803d' },
-          { icon: <IconReceipt size={13} color="#0f766e" />, label: 'Đã thực thu', val: fmt(totalThucThu) + 'đ', sub: `${filtered.length - nConNo}/${filtered.length} HĐ đã thu đủ`, c: '#0f766e', bc: '#0f766e' },
+          { icon: <IconReceipt size={13} color="#0f766e" />, label: 'Khách đã trả', val: fmt(totalThucThu) + 'đ', sub: totalPhi > 0 ? `Phí ${fmt(totalPhi)}đ · Net về bank ${fmt(totalNet)}đ` : (totalChoGN > 0 ? `Chờ giải ngân ${fmt(totalChoGN)}đ` : `${filtered.length - nConNo}/${filtered.length} HĐ đã thu đủ`), c: '#0f766e', bc: '#0f766e' },
           { icon: <IconAlertTriangle size={13} color="#dc2626" />, label: 'Còn nợ', val: fmt(totalConNo) + 'đ', sub: nConNo ? `${nConNo} HĐ còn nợ` : 'Đã thu đủ tất cả', c: '#dc2626', bc: totalConNo > 0 ? '#dc2626' : undefined },
           { icon: <IconPercentage size={13} color="#5b21b6" />, label: 'Thuế VAT (tạm tính)', val: fmt(Math.round(totalKTDuyet * 0.1)) + 'đ', sub: 'Thẩm mỹ 10% · BL miễn VAT', c: '#5b21b6', bc: undefined },
         ].map(s => (
@@ -87,32 +90,34 @@ export default function DoanhThuTab() {
         <div style={{ minWidth: 1900 }}>
           <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
             <colgroup>
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '10%' }} />
               <col style={{ width: '7%' }} />
               <col style={{ width: '9%' }} />
               <col style={{ width: '9%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
               <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '12%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
               <col style={{ width: '9%' }} />
               <col style={{ width: '9%' }} />
             </colgroup>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                {['Số HĐ', 'KH', 'Dịch vụ', 'Loại', 'Sale nhập', 'KT duyệt', 'Thực thu', 'Còn nợ', 'Hình thức TT', 'Nhận tiền', 'HĐ điện tử'].map(h => (
+                {['Số HĐ', 'KH', 'Dịch vụ', 'Loại', 'Sale nhập', 'KT duyệt', 'Khách đã trả', 'Chờ giải ngân', 'Còn nợ', 'Hình thức TT', 'Nhận tiền', 'HĐ điện tử'].map(h => (
                   <th key={h} style={{ padding: '7px 11px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {paged.length === 0 ? (
-                <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Không có dữ liệu</td></tr>
+                <tr><td colSpan={12} style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>Không có dữ liệu</td></tr>
               ) : paged.map(c => {
                 const isBL = c.loai_dv === 'benh_ly'
                 const conNo = Number(c.con_no ?? 0)
                 const thucThu = Number(c.thuc_thu ?? 0)
+                const choGN = Number(c.cho_giai_ngan ?? 0)
                 const thu = conNo <= 0 ? { bg: '#dcfce7', c: '#15803d', t: '✓ Đã đủ' }
                   : thucThu > 0 ? { bg: '#fef9c3', c: '#854d0e', t: '◐ Một phần' }
                   : { bg: '#f1f5f9', c: '#64748b', t: '⏳ Chưa thu' }
@@ -129,6 +134,7 @@ export default function DoanhThuTab() {
                     <td style={{ padding: '7px 11px' }}>{fmt(c.total_amount)}đ</td>
                     <td style={{ padding: '7px 11px', color: '#15803d', fontWeight: 600 }}>{fmt(c.final_amount)}đ</td>
                     <td style={{ padding: '7px 11px', color: '#0f766e', fontWeight: 600 }}>{fmt(thucThu)}đ</td>
+                    <td style={{ padding: '7px 11px', color: choGN > 0 ? '#1e40af' : '#94a3b8', fontWeight: choGN > 0 ? 700 : 400 }}>{choGN > 0 ? fmt(choGN) + 'đ' : '—'}</td>
                     <td style={{ padding: '7px 11px', color: conNo > 0 ? '#dc2626' : '#94a3b8', fontWeight: conNo > 0 ? 700 : 400 }}>{fmt(conNo)}đ</td>
                     <td style={{ padding: '7px 11px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.httt_thuc_te ?? PM_LABEL[c.payment_method] ?? c.payment_method}</td>
                     <td style={{ padding: '7px 11px' }}>

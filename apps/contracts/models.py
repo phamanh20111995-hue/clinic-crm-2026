@@ -13,13 +13,16 @@ class Contract(models.Model):
     total_amount = models.DecimalField(max_digits=15, decimal_places=0)
     discount_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     final_amount = models.DecimalField(max_digits=15, decimal_places=0)
-    PAYMENT_METHOD_CHOICES = [('cash','Tiền mặt'),('transfer','Chuyển khoản'),('combined','Kết hợp'),('installment','Trả góp')]
+    PAYMENT_METHOD_CHOICES = [('cash','Tiền mặt'),('transfer','Chuyển khoản'),('combined','Kết hợp'),('card','Thẻ'),('installment','Trả góp')]
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     cash_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     transfer_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     # Tra gop luc tao HD: phan nha tai tro ganh (principal) + thong tin de vat chat hoa luc duyet
     installment_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan tra gop (goc nha tai tro ganh) khi tao HD')
     installment_info = models.JSONField(default=dict, blank=True, help_text='provider, ref_no, phi, ben chiu... de tao Installment luc duyet')
+    # The/QR (VNPAY): tinh thuc thu NGAY luc quet, PK chiu phi, net ve bank T+1 (quet so du)
+    card_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tien khach quet the (gross) khi tao HD')
+    card_info = models.JSONField(default=dict, blank=True, help_text='provider (VNPAY), fee (phi PK chiu), ref (ma GD)')
     PAYMENT_STATUS_CHOICES = [('pending','Chưa nhận'),('received','Đã nhận'),('partial','Nhận một phần')]
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='pending')
     APPROVAL_STATUS_CHOICES = [('draft','Nháp'),('pending_kt','Chờ KT duyệt'),('approved','Đã duyệt'),('rejected','Từ chối')]
@@ -83,9 +86,12 @@ class TreatmentSession(models.Model):
 class Payment(models.Model):
     """Mot lan thu tien cho hop dong. 1 HD co the co nhieu Payment (tra gop)."""
     contract = models.ForeignKey('Contract', on_delete=models.CASCADE, related_name='payments')
-    total = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tong lan thu = tien mat + chuyen khoan + tra gop')
+    total = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tong lan thu = tien mat + chuyen khoan + the + tra gop')
     cash_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     transfer_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    card_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Quet the/QR (VNPAY) - tinh thuc thu ngay')
+    card_fee = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phi VNPAY PK chiu (gross - net)')
+    card_ref = models.CharField(max_length=50, blank=True, help_text='Ma GD VNPAY de doi soat')
     installment_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan tra gop qua don vi tai chinh')
     received_at = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments_received')
@@ -116,11 +122,31 @@ class Payment(models.Model):
 
     @property
     def settled_total(self):
-        """Tien DA VE ket: TM + CK luon tinh; phan tra gop chi tinh khi da giai ngan."""
-        base = int(self.cash_amount) + int(self.transfer_amount)
+        """KHACH DA TRA (gross): TM + CK + The luon tinh (the quet la thu ngay); tra gop chi tinh khi da giai ngan.
+        Day la so cho CONG NO (con no = doanh thu - khach da tra). Phi KHONG tru o day."""
+        base = int(self.cash_amount) + int(self.transfer_amount) + int(self.card_amount)
         if self.is_installment_settled:
             base += int(self.installment_amount)
         return base
+
+    @property
+    def fee_total(self):
+        """Phi PK chiu da phat sinh (phi the VNPAY + phi tra gop da giai ngan). = chi phi PK, khong dung doanh thu."""
+        fee = int(self.card_fee)
+        for i in self.installments.all():
+            if i.status == 'da_ve':
+                fee += int(i.fee_pk)
+        return fee
+
+    @property
+    def net_settled(self):
+        """TIEN THUC VE KET/BANK = khach da tra (gross) - phi."""
+        return self.settled_total - self.fee_total
+
+    @property
+    def card_net(self):
+        """Tien the thuc ve bank sau phi VNPAY (gross - phi)."""
+        return int(self.card_amount) - int(self.card_fee)
 
     @property
     def pending_total(self):

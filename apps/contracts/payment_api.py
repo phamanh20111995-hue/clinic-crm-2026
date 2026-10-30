@@ -108,7 +108,7 @@ class PaymentOutSerializer(serializers.ModelSerializer):
         model = Payment
         fields = [
             'id', 'contract', 'contract_no', 'total',
-            'cash_amount', 'transfer_amount', 'installment_amount',
+            'cash_amount', 'transfer_amount', 'card_amount', 'card_fee', 'card_ref', 'installment_amount',
             'received_at', 'received_by', 'received_by_name',
             'note', 'created_at', 'installments',
             'verify_status', 'verify_status_display', 'verified_by', 'verified_by_name', 'verified_at', 'verify_note',
@@ -160,10 +160,12 @@ def contract_payments(request, pk):
     data = request.data or {}
     cash = _num(data.get('cash_amount'))
     transfer = _num(data.get('transfer_amount'))
+    card = _num(data.get('card_amount'))
+    card_info = data.get('card_info') or {}
     inst_amount = _num(data.get('installment_amount'))
-    if cash < 0 or transfer < 0 or inst_amount < 0:
+    if cash < 0 or transfer < 0 or card < 0 or inst_amount < 0:
         return Response({'detail': 'So tien khong hop le.'}, status=400)
-    total = cash + transfer + inst_amount
+    total = cash + transfer + card + inst_amount
     if total <= 0:
         return Response({'detail': 'Tong tien thu phai lon hon 0.'}, status=400)
 
@@ -183,6 +185,9 @@ def contract_payments(request, pk):
             total=total,
             cash_amount=cash,
             transfer_amount=transfer,
+            card_amount=card,
+            card_fee=_num(card_info.get('fee')),
+            card_ref=card_info.get('ref', ''),
             installment_amount=inst_amount,
             received_at=r_date,
             received_by=request.user,

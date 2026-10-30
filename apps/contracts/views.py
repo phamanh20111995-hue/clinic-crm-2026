@@ -179,10 +179,14 @@ def approve_contract(request, pk):
         # --- HD != Thu tien: vat chat hoa "lan thu dau" (TM/CK ghi luc tao HD) thanh 1 Payment ---
         _fc = int(contract.cash_amount or 0)
         _ft = int(contract.transfer_amount or 0)
-        if (_fc + _ft) > 0 and not contract.payments.exists():
+        _fcard = int(contract.card_amount or 0)
+        _cinfo = dict(contract.card_info or {})
+        if (_fc + _ft + _fcard) > 0 and not contract.payments.exists():
             Payment.objects.create(
-                contract=contract, total=_fc + _ft,
-                cash_amount=_fc, transfer_amount=_ft, installment_amount=0,
+                contract=contract, total=_fc + _ft + _fcard,
+                cash_amount=_fc, transfer_amount=_ft,
+                card_amount=_fcard, card_fee=int(_cinfo.get('fee') or 0), card_ref=_cinfo.get('ref', ''),
+                installment_amount=0,
                 received_at=timezone.localdate(), received_by=contract.created_by,
                 verify_status='da_xac_nhan', verified_by=request.user, verified_at=timezone.now(),
                 note='Lan thu dau khi tao HD (KT duyet xac nhan)',

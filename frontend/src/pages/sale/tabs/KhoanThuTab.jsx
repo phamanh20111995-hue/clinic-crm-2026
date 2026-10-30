@@ -76,6 +76,7 @@ export default function KhoanThuTab() {
   const breakdown = p => [
     Number(p.cash_amount) > 0 && `TM ${fmt(p.cash_amount)}`,
     Number(p.transfer_amount) > 0 && `CK ${fmt(p.transfer_amount)}`,
+    Number(p.card_amount) > 0 && `Thẻ ${fmt(p.card_amount)}${Number(p.card_fee) > 0 ? ` (phí ${fmt(p.card_fee)})` : ''}`,
     Number(p.installment_amount) > 0 && `Trả góp ${fmt(p.installment_amount)}`,
   ].filter(Boolean).join(' · ')
 
@@ -87,6 +88,7 @@ export default function KhoanThuTab() {
       if (status === 'da' && p.verify_status !== 'da_xac_nhan') return false
       if (method === 'tm' && !(Number(p.cash_amount) > 0)) return false
       if (method === 'ck' && !(Number(p.transfer_amount) > 0)) return false
+      if (method === 'the' && !(Number(p.card_amount) > 0)) return false
       if (method === 'tg' && !(Number(p.installment_amount) > 0)) return false
       if (!inPreset(p.received_at, timePreset, customFrom, customTo)) return false
       if (s && !(String(p.customer_name || '').toLowerCase().includes(s) || String(p.contract_no || '').toLowerCase().includes(s))) return false
@@ -141,6 +143,7 @@ export default function KhoanThuTab() {
             <option value="">Mọi hình thức</option>
             <option value="tm">Tiền mặt</option>
             <option value="ck">Chuyển khoản</option>
+            <option value="the">Thẻ</option>
             <option value="tg">Trả góp</option>
           </select>
           <button onClick={load} style={{ marginLeft: 'auto', padding: '7px 11px', border: '1px solid #dde3ef', borderRadius: 7, background: '#fff', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>

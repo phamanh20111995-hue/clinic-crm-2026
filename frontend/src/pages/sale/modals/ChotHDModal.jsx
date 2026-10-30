@@ -15,9 +15,10 @@ const HTTT_CFG = {
   ck: { color: '#16a34a', bg: '#f0fdf4', label: 'Chuyển khoản' },
   tm: { color: '#d97706', bg: '#fffbeb', label: 'Tiền mặt' },
   kh: { color: '#1d4ed8', bg: '#eff6ff', label: 'Kết hợp CK + TM' },
+  the: { color: '#0891b2', bg: '#ecfeff', label: 'Thẻ / QR (VNPAY)' },
   tg: { color: '#7c3aed', bg: '#f5f3ff', label: 'Trả góp' },
 }
-const HTTT_SHORT = { ck: 'CK', tm: 'TM', kh: 'CK+TM', tg: 'Trả góp' }
+const HTTT_SHORT = { ck: 'CK', tm: 'TM', kh: 'CK+TM', the: 'Thẻ', tg: 'Trả góp' }
 
 function fmtMoney(n) {
   const v = Number(n)
@@ -42,6 +43,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
   const [httt,       setHttt]       = useState(() => {
     if (initialData?.payment_method === 'cash') return 'tm'
     if (initialData?.payment_method === 'combined') return 'kh'
+    if (initialData?.payment_method === 'card') return 'the'
     if (initialData?.payment_method === 'installment') return 'tg'
     return 'ck'
   })
@@ -63,8 +65,10 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
     tragop_ref:       initialData?.installment_info?.ref_no ?? '',
     tragop_principal: initialData?.installment_amount ? String(initialData.installment_amount) : '',
     tragop_fee:       initialData?.installment_info?.conversion_fee ? String(initialData.installment_info.conversion_fee) : '',
-    tragop_truoc:     'ck',
     tragop_ptype:     initialData?.installment_info?.provider_type ?? 'vay_tieu_dung',
+    // Thẻ / QR (VNPAY)
+    card_phi:         initialData?.card_info?.fee ? String(initialData.card_info.fee) : '',
+    card_ref:         initialData?.card_info?.ref ?? '',
   })
   const [serviceLines, setServiceLines] = useState(() => {
     const paid = (initialData?.items ?? []).filter(it => !it.is_gift)
@@ -99,9 +103,13 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
     ? (form.tragop_principal !== '' ? Number(form.tragop_principal) : Math.max(0, totalAmount - traTruoc))
     : 0
   const khachNoTg = httt === 'tg' ? Math.max(0, totalAmount - traTruoc - tgPrincipal) : conNo
+  // Thẻ: khách trả gross = traTruoc; phí PK chịu; net về bank = gross − phí
+  const cardPhi = httt === 'the' ? Number(form.card_phi || 0) : 0
+  const cardNet = httt === 'the' ? Math.max(0, traTruoc - cardPhi) : 0
   const htttLabel = (() => {
     if (httt === 'ck') return ttCK === 'roi' ? 'Chuyển khoản · Đã nhận ✓' : 'Chuyển khoản · Chưa nhận'
     if (httt === 'tm') return 'Tiền mặt · Chờ KT xác nhận'
+    if (httt === 'the') return 'Thẻ / QR · VNPAY'
     if (httt === 'tg') return `Trả góp · ${form.provider_name || 'nhà tài trợ'}`
     return 'Kết hợp CK + TM'
   })()
@@ -150,9 +158,15 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
     const finalAmount = totalAmount
     let cashAmt = 0, transferAmt = 0, paymentMethod = 'transfer'
     let installmentAmt = 0, installmentInfo = {}
+    let cardAmt = 0, cardInfo = {}
     if (httt === 'ck')   { transferAmt = Number(form.dot1) || 0; paymentMethod = 'transfer' }
     if (httt === 'tm')   { cashAmt     = Number(form.dot1) || 0; paymentMethod = 'cash' }
     if (httt === 'kh')   { transferAmt = Number(form.ck_amount) || 0; cashAmt = Number(form.tm_amount) || 0; paymentMethod = 'combined' }
+    if (httt === 'the')  {
+      cardAmt = Number(form.dot1) || 0
+      paymentMethod = 'card'
+      cardInfo = { provider: 'VNPAY', fee: Number(form.card_phi) || 0, ref: form.card_ref || '' }
+    }
     if (httt === 'tg') {
       transferAmt = Number(form.ck_amount) || 0
       cashAmt     = Number(form.tm_amount) || 0
@@ -196,6 +210,8 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
       transfer_amount: transferAmt,
       installment_amount: installmentAmt,
       installment_info:   installmentInfo,
+      card_amount:     cardAmt,
+      card_info:       cardInfo,
       payment_status:  paymentStatus,
       sale_round:      form.sale_round,
       notes:           form.notes,
@@ -400,7 +416,7 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>{httt === 'tg' ? 'Trả trước (₫)' : 'Thanh toán đợt 1 (₫) *'}</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>{httt === 'tg' ? 'Trả trước (₫)' : httt === 'the' ? 'Số tiền quẹt thẻ (₫) *' : 'Thanh toán đợt 1 (₫) *'}</label>
               {httt === 'tg' ? (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '7px 10px', fontSize: 13, background: '#f9fafb', color: '#7c3aed', fontWeight: 700 }}>
                   {fmtMoney(traTruoc)} <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400 }}>(nhập TM/CK bên dưới)</span>
@@ -466,6 +482,30 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
                     <input type="number" value={form.tm_amount} onChange={e => set('tm_amount', e.target.value)} placeholder="0"
                       style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: 6, padding: '6px 10px', fontSize: 13, boxSizing: 'border-box' }} />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Thẻ / QR (VNPAY) fields */}
+            {httt === 'the' && (
+              <div style={{ padding: 10, background: cfg.bg, borderRadius: 8, border: `1px solid ${cfg.color}30`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <p style={{ fontSize: 11, color: cfg.color, margin: 0, lineHeight: 1.5 }}>
+                  Khách quẹt thẻ/QR qua VNPAY — tính <strong>thực thu ngay</strong>. VNPAY trừ phí → tiền về bank là <strong>net = quẹt − phí</strong>. Phí là <strong>chi phí PK</strong>, KHÔNG trừ doanh thu.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#374151', display: 'block', marginBottom: 4 }}>Phí VNPAY (PK chịu, ₫)</label>
+                    <input type="number" value={form.card_phi} onChange={e => set('card_phi', e.target.value)} placeholder="0"
+                      style={{ width: '100%', border: '1px solid #a5f3fc', borderRadius: 6, padding: '6px 10px', fontSize: 13, boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#374151', display: 'block', marginBottom: 4 }}>Mã GD VNPAY</label>
+                    <input value={form.card_ref} onChange={e => set('card_ref', e.target.value)} placeholder="VD 68199009"
+                      style={{ width: '100%', border: '1px solid #a5f3fc', borderRadius: 6, padding: '6px 10px', fontSize: 13, boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: '#0e7490' }}>
+                  Thực về bank (net): <strong>{fmtMoney(cardNet)}</strong>{cardPhi > 0 ? ` (quẹt ${fmtMoney(traTruoc)} − phí ${fmtMoney(cardPhi)})` : ''}
                 </div>
               </div>
             )}
@@ -552,6 +592,17 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
                   <span style={{ fontWeight: 700, textAlign: 'right', color: '#7c3aed' }}>{fmtMoney(tgPrincipal)}</span>
                   <span style={{ color: '#6b7280' }}>Khách còn nợ</span>
                   <span style={{ fontWeight: 700, textAlign: 'right', color: khachNoTg > 0 ? '#dc2626' : '#6b7280' }}>{fmtMoney(khachNoTg)}</span>
+                </>
+              ) : httt === 'the' ? (
+                <>
+                  <span style={{ color: '#6b7280' }}>Khách trả (thẻ)</span>
+                  <span style={{ fontWeight: 700, textAlign: 'right', color: ACCENT }}>{fmtMoney(traTruoc)}</span>
+                  <span style={{ color: '#6b7280' }}>Phí VNPAY (chi phí PK)</span>
+                  <span style={{ fontWeight: 700, textAlign: 'right', color: '#dc2626' }}>− {fmtMoney(cardPhi)}</span>
+                  <span style={{ color: '#6b7280' }}>Thực về bank (net)</span>
+                  <span style={{ fontWeight: 700, textAlign: 'right', color: '#0891b2' }}>{fmtMoney(cardNet)}</span>
+                  <span style={{ color: '#6b7280' }}>Khách còn nợ</span>
+                  <span style={{ fontWeight: 700, textAlign: 'right', color: conNo > 0 ? '#dc2626' : '#6b7280' }}>{fmtMoney(conNo)}</span>
                 </>
               ) : (
                 <>

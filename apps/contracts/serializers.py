@@ -27,9 +27,11 @@ class ContractListSerializer(serializers.ModelSerializer):
     payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
     nguoi_ban_name = serializers.CharField(source='nguoi_ban.display_name', read_only=True)
     # Tính sẵn từ Payment thật (đối soát) — KHÔNG dùng field cố định payment_status/payment_method
-    thuc_thu = serializers.SerializerMethodField()          # Đã về két
+    thuc_thu = serializers.SerializerMethodField()          # Khách đã trả (gross) — cho công nợ
     cho_giai_ngan = serializers.SerializerMethodField()     # Trả góp đang chờ giải ngân
     con_no = serializers.SerializerMethodField()            # Khách còn nợ PK
+    phi = serializers.SerializerMethodField()               # Phí (VNPAY/trả góp) — chi phí PK
+    thuc_ve_bank = serializers.SerializerMethodField()      # Tiền thực về két/bank (net = khách trả − phí)
     httt_thuc_te = serializers.SerializerMethodField()
 
     class Meta:
@@ -40,7 +42,7 @@ class ContractListSerializer(serializers.ModelSerializer):
             'payment_method', 'payment_method_display',
             'cash_amount', 'transfer_amount',
             'payment_status', 'payment_status_display',
-            'thuc_thu', 'cho_giai_ngan', 'con_no', 'httt_thuc_te',
+            'thuc_thu', 'cho_giai_ngan', 'con_no', 'phi', 'thuc_ve_bank', 'httt_thuc_te',
             'nguoi_ban', 'nguoi_ban_name',
             'approval_status', 'approval_status_display',
             'created_by_name', 'approved_by_name', 'approved_at',
@@ -48,7 +50,7 @@ class ContractListSerializer(serializers.ModelSerializer):
         ]
 
     def get_thuc_thu(self, obj):
-        # Tiền ĐÃ VỀ KÉT: TM+CK + phần trả góp đã giải ngân (chưa giải ngân KHÔNG tính)
+        # KHÁCH ĐÃ TRẢ (gross): TM+CK+Thẻ + trả góp đã giải ngân. Phí KHÔNG trừ ở đây (dùng cho công nợ).
         return int(sum(p.settled_total for p in obj.payments.all()))
 
     def get_cho_giai_ngan(self, obj):
@@ -56,26 +58,37 @@ class ContractListSerializer(serializers.ModelSerializer):
         return int(sum(p.pending_total for p in obj.payments.all()))
 
     def get_con_no(self, obj):
-        # Khách CÒN NỢ PK = final − tất cả đã chốt thu (TM+CK+trả góp). Trả góp đã chốt ⇒ khách hết nợ.
+        # Khách CÒN NỢ PK = final − tất cả đã chốt thu (TM+CK+Thẻ+trả góp). Trả góp đã chốt ⇒ khách hết nợ.
         return int(obj.final_amount) - int(sum(p.total for p in obj.payments.all()))
+
+    def get_phi(self, obj):
+        # Phí VNPAY/trả góp PK chịu — CHI PHÍ PK, không đụng doanh thu/lương
+        return int(sum(p.fee_total for p in obj.payments.all()))
+
+    def get_thuc_ve_bank(self, obj):
+        # Tiền thực về két/bank = khách đã trả (gross) − phí
+        return int(sum(p.net_settled for p in obj.payments.all()))
 
     def get_httt_thuc_te(self, obj):
         ps = obj.payments.all()
         tm = sum(p.cash_amount for p in ps)
         ck = sum(p.transfer_amount for p in ps)
+        card = sum(p.card_amount for p in ps)
         tg = sum(p.installment_amount for p in ps)
         labels = []
         if tm:
             labels.append('Tiền mặt')
         if ck:
             labels.append('Chuyển khoản')
+        if card:
+            labels.append('Thẻ')
         if tg:
             labels.append('Trả góp')
         if not labels:
             return '—'
         if len(labels) == 1:
             return labels[0]
-        short = {'Tiền mặt': 'TM', 'Chuyển khoản': 'CK', 'Trả góp': 'Trả góp'}
+        short = {'Tiền mặt': 'TM', 'Chuyển khoản': 'CK', 'Thẻ': 'Thẻ', 'Trả góp': 'Trả góp'}
         return ' + '.join(short[l] for l in labels)
 
 
@@ -103,7 +116,8 @@ class ContractCreateSerializer(serializers.ModelSerializer):
             'customer', 'appointment', 'items', 'promotions', 'gifts',
             'total_amount', 'discount_amount', 'final_amount', 'sale_round', 'so_buoi',
             'payment_method', 'cash_amount', 'transfer_amount',
-            'installment_amount', 'installment_info', 'notes', 'nguoi_ban',
+            'installment_amount', 'installment_info',
+            'card_amount', 'card_info', 'notes', 'nguoi_ban',
         ]
         read_only_fields = ['id', 'contract_no']
 
@@ -168,7 +182,8 @@ class ContractUpdateSerializer(serializers.ModelSerializer):
             'items', 'promotions', 'gifts',
             'total_amount', 'discount_amount', 'final_amount', 'sale_round', 'so_buoi',
             'payment_method', 'cash_amount', 'transfer_amount',
-            'installment_amount', 'installment_info', 'notes', 'nguoi_ban',
+            'installment_amount', 'installment_info',
+            'card_amount', 'card_info', 'notes', 'nguoi_ban',
         ]
         read_only_fields = ['id', 'contract_no']
 
