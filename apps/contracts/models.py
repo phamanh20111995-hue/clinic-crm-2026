@@ -243,3 +243,167 @@ class CashReconciliation(models.Model):
 
     def __str__(self):
         return f'Ket {self.date} - lech {self.lech}'
+
+
+# ===== DE XUAT CHI + DUYET NHIEU TANG + SO QUY (cum "tien ra") =====
+
+EXPENSE_OWNER_THRESHOLD = 1_000_000  # >= muc nay phai them Chu DN duyet
+
+# Loai chi -> (role nguoi duyet dau tien, nhan hien thi)
+EXPENSE_FIRST_APPROVER = {
+    'tele':  ('LEAD_TELE', 'Lead Tele'),
+    'mkt':   ('LEAD_MKT',  'Lead MKT'),
+    'cskh':  ('LEAD_CSKH', 'Lead CSKH'),
+    'sale':  ('LEAD_SALE', 'Lead Sale'),
+    # con lai (co_so / vat_tu / van_phong_pham / hoa_don_vat / luong_ung / khac) -> QL chi nhanh
+}
+
+
+def build_expense_chain(category, amount, requester_role=None):
+    """Tra ve chuoi duyet [{step_order, role, label}] theo loai chi + so tien.
+    Tang 1 = truong bo phan theo loai; Tang 2 = Ke toan; Tang 3 = Chu DN (khi >= 1 trieu).
+    BO buoc ma chinh nguoi de xuat phai ky (khong tu duyet cho minh): vd Lead tu de xuat ->
+    bo buoc truong bo phan, chi con Ke toan (+ Chu DN neu >= 1 trieu)."""
+    first_role, first_name = EXPENSE_FIRST_APPROVER.get(category, ('QUAN_LY', 'QL chi nhánh'))
+    raw = [
+        {'role': first_role, 'label': f'Trưởng bộ phận ({first_name})'},
+        {'role': 'KE_TOAN', 'label': 'Kế toán'},
+    ]
+    try:
+        amt = int(amount or 0)
+    except (TypeError, ValueError):
+        amt = 0
+    if amt >= EXPENSE_OWNER_THRESHOLD:
+        raw.append({'role': 'CHU_DN', 'label': 'Chủ DN'})
+    if requester_role:
+        raw = [s for s in raw if s['role'] != requester_role]
+    return [{'step_order': i + 1, 'role': s['role'], 'label': s['label']} for i, s in enumerate(raw)]
+
+
+class ExpenseRequest(models.Model):
+    """De xuat chi cua cac bo phan: tao -> duyet nhieu tang theo han muc -> chi -> ghi so quy chi."""
+    CATEGORY_CHOICES = [
+        ('co_so', 'Chi phí cơ sở / chi nhánh'),
+        ('vat_tu', 'Vật tư / thuốc'),
+        ('van_phong_pham', 'Văn phòng phẩm'),
+        ('tele', 'Tele / Data'),
+        ('mkt', 'Marketing'),
+        ('cskh', 'CSKH'),
+        ('sale', 'Sale'),
+        ('hoa_don_vat', 'Lấy hóa đơn VAT về công ty'),
+        ('luong_ung', 'Tạm ứng / lương'),
+        ('khac', 'Khác'),
+    ]
+    PAYMENT_METHOD_CHOICES = [('cash', 'Tiền mặt'), ('transfer', 'Chuyển khoản'), ('installment', 'Trả góp')]
+    STATUS_CHOICES = [
+        ('cho_duyet', 'Chờ duyệt'),
+        ('da_duyet', 'Đã duyệt - chờ chi'),
+        ('da_chi', 'Đã chi'),
+        ('tu_choi', 'Từ chối'),
+    ]
+    code = models.CharField(max_length=20, unique=True, help_text='Ma phieu de xuat chi, vd DXC-0001')
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='expense_requests')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='khac')
+    title = models.CharField(max_length=200, help_text='Noi dung chi')
+    reason = models.TextField(blank=True, help_text='Ly do / dien giai chi tiet')
+    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    payment_method = models.CharField(max_length=15, choices=PAYMENT_METHOD_CHOICES, default='cash', help_text='De xuat chi bang TM / CK / Tra gop')
+    co_hoa_don_vat = models.BooleanField(default=False, help_text='Co hoa don VAT dau vao (de doi soat MISA)')
+    # Mua tra gop (PK tra dan hang thang): so ky + ngay ky dau -> sinh lich ExpensePayout khi duyet xong
+    so_ky = models.PositiveIntegerField(default=0, help_text='So ky tra gop (chi khi payment_method=installment)')
+    ky_dau = models.DateField(null=True, blank=True, help_text='Ngay ky tra dau tien')
+    chung_tu = models.JSONField(default=list, blank=True, help_text='Danh sach anh/URL chung tu dinh kem')
+    chung_tu_note = models.CharField(max_length=255, blank=True, help_text='Mo ta chung tu neu chua upload anh')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='cho_duyet')
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='expense_requests')
+    # Chi (payout) khi da duyet xong
+    paid_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='expenses_paid')
+    paid_at = models.DateField(null=True, blank=True)
+    paid_method = models.CharField(max_length=15, choices=PAYMENT_METHOD_CHOICES, blank=True, help_text='Thuc te chi TM/CK')
+    paid_note = models.TextField(blank=True)
+    # Tu choi
+    reject_reason = models.TextField(blank=True)
+    rejected_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='expenses_rejected')
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'De xuat chi'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.code} - {self.title} ({self.amount})'
+
+    @property
+    def current_step(self):
+        """Buoc dang cho ky dau tien (status='cho'), hoac None neu xong/tu choi."""
+        return self.approvals.filter(status='cho').order_by('step_order').first()
+
+    @property
+    def is_fully_approved(self):
+        steps = list(self.approvals.all())
+        return bool(steps) and all(s.status == 'duyet' for s in steps)
+
+    @property
+    def is_installment(self):
+        return self.payment_method == 'installment'
+
+    @property
+    def paid_amount(self):
+        """So tien da chi thuc te. Tra gop = tong cac ky da chi; chi 1 lan = amount khi da_chi."""
+        if self.is_installment:
+            return int(sum(p.amount for p in self.payouts.filter(status='da_chi')))
+        return int(self.amount) if self.status == 'da_chi' else 0
+
+    @property
+    def remaining(self):
+        """Con phai tra (dung cho tra gop)."""
+        return int(self.amount) - self.paid_amount
+
+
+class ExpensePayout(models.Model):
+    """Mot ky chi cua de xuat mua TRA GOP (PK tra dan). Chi 1 lan -> khong dung bang nay."""
+    STATUS_CHOICES = [('cho_chi', 'Chờ chi'), ('da_chi', 'Đã chi')]
+    METHOD_CHOICES = [('cash', 'Tiền mặt'), ('transfer', 'Chuyển khoản')]
+    request = models.ForeignKey('ExpenseRequest', on_delete=models.CASCADE, related_name='payouts')
+    ky_no = models.PositiveIntegerField(default=1, help_text='Ky thu may')
+    due_date = models.DateField(null=True, blank=True, help_text='Ngay den han ky nay')
+    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES, default='transfer')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='cho_chi')
+    paid_at = models.DateField(null=True, blank=True)
+    paid_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='expense_payouts_paid')
+    note = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ['request', 'ky_no']
+        verbose_name = 'Ky tra gop chi'
+        ordering = ['ky_no']
+
+    def __str__(self):
+        return f'{self.request.code} - ky {self.ky_no}/{self.request.so_ky} ({self.amount})'
+
+
+class ExpenseApproval(models.Model):
+    """Mot buoc ky trong chuoi duyet cua mot de xuat chi. Ky TUAN TU theo step_order."""
+    STATUS_CHOICES = [
+        ('cho', 'Chờ'),
+        ('duyet', 'Đã duyệt'),
+        ('tu_choi', 'Từ chối'),
+    ]
+    request = models.ForeignKey('ExpenseRequest', on_delete=models.CASCADE, related_name='approvals')
+    step_order = models.PositiveIntegerField(default=1)
+    role = models.CharField(max_length=20, help_text='Role code nguoi phai ky buoc nay')
+    label = models.CharField(max_length=80, help_text='Nhan hien thi, vd Truong bo phan / Ke toan / Chu DN')
+    approver = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='expense_approvals')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='cho')
+    acted_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ['request', 'step_order']
+        verbose_name = 'Buoc duyet chi'
+        ordering = ['step_order']
+
+    def __str__(self):
+        return f'{self.request.code} - B{self.step_order} {self.label} [{self.status}]'

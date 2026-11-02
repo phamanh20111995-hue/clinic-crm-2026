@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import payment_api
+from . import expense_api
 
 urlpatterns = [
     path('', views.ContractListCreateView.as_view(), name='contract-list-create'),
@@ -17,6 +18,15 @@ urlpatterns = [
     path('doanh-thu-chi-tiet/', payment_api.doanh_thu_chi_tiet, name='doanh-thu-chi-tiet'),
     path('bank-settlement/', payment_api.bank_settlement_list, name='bank-settlement'),
     path('cash-recon/', payment_api.cash_recon, name='cash-recon'),
+    # De xuat chi + duyet nhieu tang + so quy chi
+    path('expenses/', expense_api.expense_list_create, name='expense-list-create'),
+    path('expenses/<int:pk>/approve/', expense_api.expense_approve, name='expense-approve'),
+    path('expenses/<int:pk>/reject/', expense_api.expense_reject, name='expense-reject'),
+    path('expenses/<int:pk>/pay/', expense_api.expense_pay, name='expense-pay'),
+    path('expenses/<int:pk>/edit/', expense_api.expense_edit, name='expense-edit'),
+    path('expenses/<int:pk>/delete/', expense_api.expense_delete, name='expense-delete'),
+    path('expense-payouts/<int:pk>/pay/', expense_api.expense_payout_pay, name='expense-payout-pay'),
+    path('cash-book/', expense_api.cash_book, name='cash-book'),
     path('<int:pk>/', views.ContractDetailView.as_view(), name='contract-detail'),
     path('<int:pk>/submit/', views.submit_contract, name='contract-submit'),
     path('<int:pk>/approve/', views.approve_contract, name='contract-approve'),

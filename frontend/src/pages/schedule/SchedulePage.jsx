@@ -1,14 +1,16 @@
 import { useSearchParams } from 'react-router-dom'
-import { IconCalendarOff, IconClock, IconUsers } from '@tabler/icons-react'
+import { IconCalendarOff, IconClock, IconUsers, IconReceipt2 } from '@tabler/icons-react'
 import AppLayout from '../../components/layout/AppLayout'
 import NghiPhepTab from './tabs/NghiPhepTab'
 import CaLamViecTab from './tabs/CaLamViecTab'
 import LichBoPhanTab from './tabs/LichBoPhanTab'
+import DeXuatChiTab from './tabs/DeXuatChiTab'
 
 const TABS = [
   { key: 'nghiphep', label: 'Nghỉ phép', icon: IconCalendarOff },
   { key: 'calam', label: 'Ca làm việc', icon: IconClock },
   { key: 'lichbophan', label: 'Lịch bộ phận', icon: IconUsers },
+  { key: 'dexuat', label: 'Đề xuất chi', icon: IconReceipt2 },
 ]
 
 const VALID_TABS = TABS.map(t => t.key)
@@ -20,7 +22,7 @@ export default function SchedulePage() {
   const setTab = (k) => setSearchParams({ tab: k }, { replace: true })
 
   return (
-    <AppLayout title="Lịch làm việc" bare>
+    <AppLayout title="Lịch & Đề xuất" bare>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {/* Subnav */}
         <div style={{ height: 40, background: '#fff', borderBottom: '1px solid #dde3ef', display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, gap: 2, flexShrink: 0, overflowX: 'auto' }}>
@@ -42,6 +44,7 @@ export default function SchedulePage() {
           {tab === 'nghiphep' && <NghiPhepTab />}
           {tab === 'calam' && <CaLamViecTab />}
           {tab === 'lichbophan' && <LichBoPhanTab />}
+          {tab === 'dexuat' && <DeXuatChiTab />}
         </div>
       </div>
     </AppLayout>

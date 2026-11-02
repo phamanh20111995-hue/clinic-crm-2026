@@ -148,7 +148,7 @@ const ALL_NAV = [
   {
     key: 'lich-lam-viec',
     path: '/lich-lam-viec',
-    label: 'Lịch làm việc',
+    label: 'Lịch & Đề xuất',
     Icon: IconCalendarEvent,
     roles: null,
   },

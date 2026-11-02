@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { IconChecks, IconTrendingUp, IconClockDollar, IconPackage, IconFileCertificate, IconCoin, IconFingerprint, IconCalendarTime, IconFileInvoice, IconPlus, IconReportAnalytics, IconBuildingBank } from '@tabler/icons-react'
+import { IconChecks, IconTrendingUp, IconClockDollar, IconPackage, IconFileCertificate, IconCoin, IconFingerprint, IconCalendarTime, IconFileInvoice, IconPlus, IconReportAnalytics, IconBuildingBank, IconReceipt2 } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 import AppLayout from '../../components/layout/AppLayout'
@@ -13,6 +13,7 @@ import DoanhThuTab from './tabs/DoanhThuTab'
 import DoanhThuChiTietTab from './tabs/DoanhThuChiTietTab'
 import CongNoTab from './tabs/CongNoTab'
 import DoiSoatTab from './tabs/DoiSoatTab'
+import ChiTab from './tabs/ChiTab'
 import KhoTab from './tabs/KhoTab'
 import HoSoThueTab from './tabs/HoSoThueTab'
 import LuongTuaTab from './tabs/LuongTuaTab'
@@ -28,6 +29,7 @@ const TABS = [
   { k: 'dtct', l: 'Doanh thu chi tiết', icon: IconReportAnalytics },
   { k: 'no', l: 'Công nợ', icon: IconClockDollar },
   { k: 'doisoat', l: 'Đối soát', icon: IconBuildingBank },
+  { k: 'chi', l: 'Chi & Sổ quỹ', icon: IconReceipt2 },
   { k: 'luong', l: 'Lương & Tua', icon: IconCoin },
   { k: 'kho', l: 'Kho', icon: IconPackage },
   { k: 'thue', l: 'Hồ sơ thuế', icon: IconFileCertificate },
@@ -117,6 +119,7 @@ export default function KetoanPage() {
         {tab === 'kho'    && <KhoTab />}
         {tab === 'no'     && <CongNoTab />}
         {tab === 'doisoat' && <DoiSoatTab />}
+        {tab === 'chi'     && <ChiTab />}
         {/* Tab chưa shell: bọc vùng cuổn full-height riêng */}
         {tab === 'duyet'  && <div style={scrollWrap}><DuyetHDTab /></div>}
         {tab === 'thue'   && <div style={scrollWrap}><HoSoThueTab /></div>}
