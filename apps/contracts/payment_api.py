@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Contract, Payment, Installment, ContractCredit
+from .models import Contract, Payment, Installment, ContractCredit, CashReconciliation
 
 MANAGEMENT_ROLES = frozenset({'QUAN_LY', 'CHU_DN'})
 PAYMENT_ROLES = {'KE_TOAN'} | MANAGEMENT_ROLES
@@ -479,3 +479,134 @@ def doanh_thu_chi_tiet(request):
 
     summary_list = sorted(summary.values(), key=lambda x: x['thuc_thu'], reverse=True)
     return Response({'rows': rows, 'summary': summary_list, 'group_by': group_by})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def bank_settlement_list(request):
+    """Doi soat tien ve bank: khoan THE (card) chua/da ve bank + TRA GOP chua/da giai ngan.
+    Loc ?status=cho|da ; ?kind=the|tragop."""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Khong co quyen.'}, status=403)
+    status_f = request.query_params.get('status')
+    kind_f = request.query_params.get('kind')
+    rows = []
+
+    if kind_f in (None, '', 'the'):
+        card_qs = (Payment.objects.filter(card_amount__gt=0)
+                   .select_related('contract', 'contract__customer', 'received_by'))
+        if status_f == 'cho':
+            card_qs = card_qs.filter(card_settled=False)
+        elif status_f == 'da':
+            card_qs = card_qs.filter(card_settled=True)
+        for p in card_qs:
+            c = p.contract
+            rows.append({
+                'kind': 'the', 'payment_id': p.id, 'installment_id': None,
+                'contract_id': c.id, 'contract_no': c.contract_no, 'customer_name': c.customer.full_name,
+                'provider': 'VNPAY', 'ref': p.card_ref,
+                'gross': int(p.card_amount), 'phi': int(p.card_fee), 'net': p.card_net,
+                'settled': p.card_settled, 'settled_at': p.card_settled_at, 'date': p.received_at,
+            })
+
+    if kind_f in (None, '', 'tragop'):
+        inst_qs = (Installment.objects
+                   .select_related('payment', 'payment__contract', 'payment__contract__customer'))
+        if status_f == 'cho':
+            inst_qs = inst_qs.exclude(status='da_ve')
+        elif status_f == 'da':
+            inst_qs = inst_qs.filter(status='da_ve')
+        for i in inst_qs:
+            c = i.payment.contract
+            rows.append({
+                'kind': 'tragop', 'payment_id': i.payment_id, 'installment_id': i.id,
+                'contract_id': c.id, 'contract_no': c.contract_no, 'customer_name': c.customer.full_name,
+                'provider': i.provider, 'ref': i.ref_no,
+                'gross': int(i.principal), 'phi': int(i.fee_pk), 'net': int(i.pk_net),
+                'settled': i.status == 'da_ve', 'settled_at': i.actual_date, 'date': i.expected_date,
+            })
+
+    cho = [r for r in rows if not r['settled']]
+    da = [r for r in rows if r['settled']]
+    summary = {
+        'cho_ve_count': len(cho), 'cho_ve_net': sum(r['net'] for r in cho),
+        'da_ve_count': len(da), 'da_ve_net': sum(r['net'] for r in da),
+    }
+    rows.sort(key=lambda r: (r['settled'], str(r['date'] or '')))
+    return Response({'rows': rows, 'summary': summary})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirm_card_settled(request, pk):
+    """Xac nhan khoan THE da ve bank (quet so du). Body tuy chon: {actual_date}."""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Khong co quyen xac nhan.'}, status=403)
+    p = Payment.objects.filter(pk=pk, card_amount__gt=0).first()
+    if not p:
+        return Response({'detail': 'Khong tim thay khoan the.'}, status=404)
+    actual = request.data.get('actual_date') or timezone.localdate().isoformat()
+    p.card_settled = True
+    try:
+        p.card_settled_at = datetime.strptime(actual, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        p.card_settled_at = timezone.localdate()
+    p.save(update_fields=['card_settled', 'card_settled_at'])
+    return Response({'ok': True, 'id': p.id, 'settled_at': p.card_settled_at})
+
+
+def _cash_so_sach(date, clinic_id):
+    """Tong tien mat (TM) ghi trong CRM theo ngay (va co so neu co) = so sach cua ket."""
+    pay = Payment.objects.filter(received_at=date, cash_amount__gt=0)
+    if clinic_id:
+        pay = pay.filter(contract__clinic_id=clinic_id)
+    return int(sum(p.cash_amount for p in pay))
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def cash_recon(request):
+    """Doi soat ket TM cuoi ngay.
+    GET ?date=&clinic_id= -> tra so_sach (TM ghi) + ban doi soat da luu (neu co).
+    GET (khong date) -> danh sach cac lan doi soat gan day.
+    POST {date, clinic_id, tien_dem, note} -> luu, tinh lech = tien_dem - so_sach."""
+    if getattr(request.user, 'role', None) not in PAYMENT_ROLES:
+        return Response({'detail': 'Khong co quyen.'}, status=403)
+
+    if request.method == 'GET':
+        date = request.query_params.get('date')
+        clinic_id = request.query_params.get('clinic_id') or None
+        if date:
+            so_sach = _cash_so_sach(date, clinic_id)
+            ex = CashReconciliation.objects.filter(date=date, clinic_id=clinic_id).first()
+            return Response({
+                'date': date, 'clinic_id': clinic_id, 'so_sach': so_sach,
+                'existing': ({
+                    'id': ex.id, 'tien_dem': int(ex.tien_dem), 'lech': int(ex.lech),
+                    'counted_by_name': ex.counted_by.display_name if ex.counted_by else '', 'note': ex.note,
+                } if ex else None),
+            })
+        qs = CashReconciliation.objects.select_related('clinic', 'counted_by').all()[:60]
+        return Response([{
+            'id': r.id, 'date': r.date, 'clinic_id': r.clinic_id,
+            'clinic_name': r.clinic.name if r.clinic_id else '(Chung)',
+            'so_sach': int(r.so_sach), 'tien_dem': int(r.tien_dem), 'lech': int(r.lech),
+            'counted_by_name': r.counted_by.display_name if r.counted_by else '', 'note': r.note,
+        } for r in qs])
+
+    # POST
+    data = request.data or {}
+    date = data.get('date')
+    if not date:
+        return Response({'detail': 'Thieu ngay doi soat.'}, status=400)
+    clinic_id = data.get('clinic_id') or None
+    tien_dem = _num(data.get('tien_dem'))
+    so_sach = _cash_so_sach(date, clinic_id)
+    lech = tien_dem - so_sach
+    obj, _created = CashReconciliation.objects.update_or_create(
+        clinic_id=clinic_id, date=date,
+        defaults={'so_sach': so_sach, 'tien_dem': tien_dem, 'lech': lech,
+                  'counted_by': request.user, 'note': data.get('note', '')},
+    )
+    return Response({'id': obj.id, 'date': date, 'clinic_id': clinic_id,
+                     'so_sach': so_sach, 'tien_dem': tien_dem, 'lech': lech}, status=201)

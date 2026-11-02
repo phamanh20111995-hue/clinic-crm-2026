@@ -92,6 +92,8 @@ class Payment(models.Model):
     card_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Quet the/QR (VNPAY) - tinh thuc thu ngay')
     card_fee = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phi VNPAY PK chiu (gross - net)')
     card_ref = models.CharField(max_length=50, blank=True, help_text='Ma GD VNPAY de doi soat')
+    card_settled = models.BooleanField(default=False, help_text='The: net da ve bank chua (quet so du) - cho doi soat')
+    card_settled_at = models.DateField(null=True, blank=True, help_text='Ngay tien the thuc ve bank')
     installment_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan tra gop qua don vi tai chinh')
     received_at = models.DateField(null=True, blank=True)
     received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments_received')
@@ -221,3 +223,23 @@ class ContractCredit(models.Model):
 
     def __str__(self):
         return f'{self.contract.contract_no} - {self.get_role_display()} - {self.user}'
+
+
+class CashReconciliation(models.Model):
+    """Doi soat ket tien mat cuoi ngay theo co so: so sach (tong TM ghi CRM) vs tien dem thuc."""
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='cash_recons')
+    date = models.DateField(help_text='Ngay doi soat')
+    so_sach = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tong TM ghi trong CRM (snapshot luc chot)')
+    tien_dem = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tien mat thuc dem trong ket')
+    lech = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='tien_dem - so_sach (am = thieu ket)')
+    counted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='cash_recons')
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['clinic', 'date']
+        verbose_name = 'Doi soat ket TM'
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'Ket {self.date} - lech {self.lech}'

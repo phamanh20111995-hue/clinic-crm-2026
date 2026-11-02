@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { IconCheck, IconX, IconEdit, IconRefresh, IconInfoCircle, IconGitBranch } from '@tabler/icons-react'
+import { IconCheck, IconX, IconEdit, IconRefresh, IconInfoCircle, IconGitBranch, IconFileInvoice, IconCoin, IconAlertTriangle } from '@tabler/icons-react'
 import { getContracts } from '../../../api/ketoan'
 import { getPendingPayments, verifyPayment } from '../../../api/payments'
 import toast from 'react-hot-toast'
@@ -47,20 +47,22 @@ export default function DuyetHDTab() {
   const hdItems = contracts.map(c => ({ kind: 'hd', time: c.created_at, c }))
   const thuWaiting = payments.filter(p => p.verify_status === 'cho_xac_nhan')
   const thuLech = payments.filter(p => p.verify_status === 'lech')
-  const thuItems = payments.map(p => ({ kind: 'thu', time: p.received_at || p.created_at, p }))
 
   const sortDesc = arr => arr.slice().sort((a, b) => new Date(b.time) - new Date(a.time))
 
+  const _thu = p => ({ kind: 'thu', time: p.received_at || p.created_at, p })
   const filtered =
     filter === 'hd'   ? sortDesc(hdItems)
-    : filter === 'thu'  ? sortDesc(thuWaiting.map(p => ({ kind: 'thu', time: p.received_at || p.created_at, p })))
-    : filter === 'lech' ? sortDesc(thuLech.map(p => ({ kind: 'thu', time: p.received_at || p.created_at, p })))
-    : sortDesc([...hdItems, ...thuItems])
+    : filter === 'thu'  ? sortDesc(thuWaiting.map(_thu))
+    : filter === 'lech' ? sortDesc(thuLech.map(_thu))
+    : sortDesc([...hdItems, ...payments.map(_thu)])                                  // "Tất cả" (mặc định) = mọi mục
 
   const hdCount = contracts.length
   const thuWaitingCount = thuWaiting.length
   const lechCount = thuLech.length
-  const totalCount = hdCount + payments.length
+  const allCount = hdCount + payments.length
+  const hdSum = contracts.reduce((s, c) => s + Number(c.final_amount || 0), 0)
+  const thuSum = thuWaiting.reduce((s, p) => s + Number(p.total || 0), 0)
 
   const segBtn = (key, label) => (
     <button
@@ -83,20 +85,19 @@ export default function DuyetHDTab() {
 
   return (
     <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Info banners */}
-      <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: 11, color: '#92400e', display: 'flex', gap: 8 }}>
-        <IconInfoCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-        <div><b>Luồng tự động:</b> Sale / CSKH nhập HĐ → bấm "Gửi duyệt" → HĐ tự chảy vào đây · KT nhận thông báo in-app ngay. Duyệt → DT ghi chính thức → phát HĐ điện tử.</div>
-      </div>
-
-      <div style={{ padding: '8px 14px', background: '#fff', border: '1px solid #fde68a', borderRadius: 8, fontSize: 11, color: '#854d0e', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <IconGitBranch size={14} />
-        <div>
-          <b>Ai tạo HĐ:</b>{' '}
-          <span style={{ background: '#dcfce7', color: '#15803d', padding: '1px 7px', borderRadius: 5, fontWeight: 600, margin: '0 4px' }}>Sale</span> khi tư vấn chốt ·
-          <span style={{ background: '#fce7f3', color: '#be185d', padding: '1px 7px', borderRadius: 5, fontWeight: 600, margin: '0 4px' }}>CSKH</span> khi chăm sóc tái khám mua thêm ·
-          cả 2 đều tạo <b>bản nháp</b> → Kế toán duyệt tại đây
-        </div>
+      {/* Thẻ tổng quan */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+        {[
+          { icon: <IconFileInvoice size={13} color="#15803d" />, label: 'HĐ chờ duyệt', val: String(hdCount), sub: hdCount > 0 ? fmt(hdSum) + 'đ chờ ghi DT' : 'Hết HĐ chờ', c: '#15803d', bc: hdCount > 0 ? '#15803d' : undefined },
+          { icon: <IconCoin size={13} color="#b45309" />, label: 'Thu chờ xác nhận', val: String(thuWaitingCount), sub: thuWaitingCount > 0 ? fmt(thuSum) + 'đ' : 'Đã xác nhận hết', c: '#b45309', bc: thuWaitingCount > 0 ? '#b45309' : undefined },
+          { icon: <IconAlertTriangle size={13} color="#dc2626" />, label: 'Lệch cần sửa', val: String(lechCount), sub: lechCount > 0 ? 'Chờ người ghi sửa' : 'Không có lệch', c: lechCount > 0 ? '#dc2626' : '#15803d', bc: lechCount > 0 ? '#dc2626' : undefined },
+        ].map(s => (
+          <div key={s.label} style={{ background: '#fff', border: `1px solid ${s.bc ?? '#dde3ef'}`, borderRadius: 9, padding: '11px 13px' }}>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>{s.icon}{s.label}</div>
+            <div style={{ fontSize: 19, fontWeight: 700, color: s.c }}>{s.val}</div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{s.sub}</div>
+          </div>
+        ))}
       </div>
 
       <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, overflow: 'hidden' }}>
@@ -107,7 +108,7 @@ export default function DuyetHDTab() {
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 4 }}>
-              {segBtn('all',  `Tất cả (${totalCount})`)}
+              {segBtn('all',  `Tất cả (${allCount})`)}
               {segBtn('hd',   `Hóa đơn mới (${hdCount})`)}
               {segBtn('thu',  `Thu nợ (${thuWaitingCount})`)}
               {segBtn('lech', `Lệch (${lechCount})`)}
@@ -224,7 +225,7 @@ export default function DuyetHDTab() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0, alignItems: 'flex-end' }}>
                   {isLech ? (
-                    <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', whiteSpace: 'nowrap' }}>⏳ Chờ Sale sửa lại</span>
+                    <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', whiteSpace: 'nowrap' }}>⏳ Chờ người ghi sửa</span>
                   ) : (
                     <>
                       <button onClick={() => doVerify(p, 'confirm')}
@@ -248,10 +249,6 @@ export default function DuyetHDTab() {
             </div>
           )
         })}
-
-        <div style={{ padding: '8px 14px', background: '#f0fdf4', borderTop: '1px solid #bbf7d0', fontSize: 11, color: '#15803d', display: 'flex', alignItems: 'center', gap: 5 }}>
-          🔒 DT chỉ ghi chính thức sau khi KT bấm Duyệt. HĐ nháp và chờ duyệt không tính vào báo cáo.
-        </div>
       </div>
 
       {duyetTarget && <DuyetModal contract={duyetTarget} onClose={() => setDuyetTarget(null)} onDone={() => { setDuyetTarget(null); load() }} />}

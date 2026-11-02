@@ -22,3 +22,9 @@ export const editPayment     = (id, data) => api.post(`/api/contracts/payments/$
 
 // ===== Doanh thu chi tiết (quy theo người/vai trò/cơ sở/miền) =====
 export const getDoanhThuChiTiet = (params) => api.get('/api/contracts/doanh-thu-chi-tiet/', { params })
+
+// ===== Đối soát tiền về bank (thẻ VNPAY + trả góp) + két TM cuối ngày =====
+export const getBankSettlement   = (params)   => api.get('/api/contracts/bank-settlement/', { params })
+export const confirmCardSettled  = (id, data) => api.post(`/api/contracts/payments/${id}/card-settled/`, data)
+export const getCashRecon        = (params)   => api.get('/api/contracts/cash-recon/', { params })
+export const saveCashRecon       = (data)     => api.post('/api/contracts/cash-recon/', data)

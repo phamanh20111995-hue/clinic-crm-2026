@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { IconChecks, IconTrendingUp, IconClockDollar, IconPackage, IconFileCertificate, IconCoin, IconFingerprint, IconCalendarTime, IconFileInvoice, IconPlus, IconReportAnalytics } from '@tabler/icons-react'
+import { IconChecks, IconTrendingUp, IconClockDollar, IconPackage, IconFileCertificate, IconCoin, IconFingerprint, IconCalendarTime, IconFileInvoice, IconPlus, IconReportAnalytics, IconBuildingBank } from '@tabler/icons-react'
 import useAuthStore from '../../store/authStore'
 import { getUserRole } from '../../utils/rolesV2'
 import AppLayout from '../../components/layout/AppLayout'
@@ -12,6 +12,7 @@ import DuyetHDTab from './tabs/DuyetHDTab'
 import DoanhThuTab from './tabs/DoanhThuTab'
 import DoanhThuChiTietTab from './tabs/DoanhThuChiTietTab'
 import CongNoTab from './tabs/CongNoTab'
+import DoiSoatTab from './tabs/DoiSoatTab'
 import KhoTab from './tabs/KhoTab'
 import HoSoThueTab from './tabs/HoSoThueTab'
 import LuongTuaTab from './tabs/LuongTuaTab'
@@ -22,10 +23,11 @@ const ACCENT = '#b45309'
 const ALLOWED = ['KE_TOAN', 'QUAN_LY', 'CHU_DN']
 
 const TABS = [
-  { k: 'duyet', l: 'Duyệt & đối soát', icon: IconChecks },
+  { k: 'duyet', l: 'Duyệt & xác nhận thu', icon: IconChecks },
   { k: 'dt', l: 'Doanh thu', icon: IconTrendingUp },
   { k: 'dtct', l: 'Doanh thu chi tiết', icon: IconReportAnalytics },
   { k: 'no', l: 'Công nợ', icon: IconClockDollar },
+  { k: 'doisoat', l: 'Đối soát', icon: IconBuildingBank },
   { k: 'luong', l: 'Lương & Tua', icon: IconCoin },
   { k: 'kho', l: 'Kho', icon: IconPackage },
   { k: 'thue', l: 'Hồ sơ thuế', icon: IconFileCertificate },
@@ -103,9 +105,6 @@ export default function KetoanPage() {
               <IconPlus size={13} /> Tạo HĐ
             </button>
           )}
-          <span style={{ fontSize: 10, color: '#b45309', background: '#fef9f0', border: '1px solid #fde68a', borderRadius: 6, padding: '3px 9px', fontWeight: 600 }}>
-            {user?.display_name ?? user?.email}
-          </span>
         </div>
       </div>
 
@@ -117,6 +116,7 @@ export default function KetoanPage() {
         {tab === 'luong'  && <LuongTuaTab />}
         {tab === 'kho'    && <KhoTab />}
         {tab === 'no'     && <CongNoTab />}
+        {tab === 'doisoat' && <DoiSoatTab />}
         {/* Tab chưa shell: bọc vùng cuổn full-height riêng */}
         {tab === 'duyet'  && <div style={scrollWrap}><DuyetHDTab /></div>}
         {tab === 'thue'   && <div style={scrollWrap}><HoSoThueTab /></div>}
