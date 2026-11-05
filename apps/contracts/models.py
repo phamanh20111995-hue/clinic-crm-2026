@@ -407,3 +407,21 @@ class ExpenseApproval(models.Model):
 
     def __str__(self):
         return f'{self.request.code} - B{self.step_order} {self.label} [{self.status}]'
+
+
+class CashDeposit(models.Model):
+    """Phieu nop quy ngan hang: tien mat tu ket -> tai khoan ngan hang (giam ton quy TM)."""
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='cash_deposits')
+    date = models.DateField(help_text='Ngay nop quy')
+    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    bank_note = models.CharField(max_length=255, blank=True, help_text='TK/ngan hang/so GD nop')
+    deposited_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='cash_deposits')
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Phieu nop quy ngan hang'
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'Nop quy {self.date} - {self.amount}'

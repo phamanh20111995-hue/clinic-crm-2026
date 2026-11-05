@@ -7,6 +7,7 @@ from rest_framework.response import Response
 import calendar
 from .models import (
     ExpenseRequest, ExpenseApproval, ExpensePayout, Payment,
+    CashReconciliation, CashDeposit,
     build_expense_chain, EXPENSE_OWNER_THRESHOLD,
 )
 
@@ -362,71 +363,114 @@ def expense_payout_pay(request, pk):
     return Response(_expense_row(e, request.user))
 
 
+def _cash_net(clinic_id, after=None, before=None):
+    """Thu TM - chi TM - nop quy, cho cac ngay THUC SU trong (after, before). after/before la date-string YYYY-MM-DD hoac None."""
+    pays = Payment.objects.filter(cash_amount__gt=0, received_at__isnull=False)
+    exps = ExpenseRequest.objects.filter(status='da_chi', paid_method='cash', paid_at__isnull=False, is_deleted=False).exclude(payment_method='installment')
+    pos = ExpensePayout.objects.filter(status='da_chi', method='cash', paid_at__isnull=False, request__is_deleted=False)
+    nops = CashDeposit.objects.all()
+    if after:
+        pays = pays.filter(received_at__gt=after); exps = exps.filter(paid_at__gt=after); pos = pos.filter(paid_at__gt=after); nops = nops.filter(date__gt=after)
+    if before:
+        pays = pays.filter(received_at__lt=before); exps = exps.filter(paid_at__lt=before); pos = pos.filter(paid_at__lt=before); nops = nops.filter(date__lt=before)
+    if clinic_id:
+        pays = pays.filter(contract__clinic_id=clinic_id); exps = exps.filter(clinic_id=clinic_id); pos = pos.filter(request__clinic_id=clinic_id); nops = nops.filter(clinic_id=clinic_id)
+    thu = sum(int(p.cash_amount) for p in pays)
+    chi = sum(int(e.amount) for e in exps) + sum(int(x.amount) for x in pos)
+    nop = sum(int(n.amount) for n in nops)
+    return thu - chi - nop
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def cash_book(request):
-    """So quy tien mat: thu TM (Payment) - chi TM (ExpenseRequest da_chi) theo khoang ngay/co so.
-    Query: from, to (YYYY-MM-DD), clinic_id. Tra ve list phat sinh + tong thu/chi/ton (chenh trong ky)."""
+    """So quy tien mat: so du dau ky + thu TM - chi TM - nop quy = ton cuoi ky.
+    So du dau ky lay tu lan DOI SOAT KET gan nhat truoc 'from' (tien_dem) + phat sinh toi dau ky.
+    Query: from, to (YYYY-MM-DD), clinic_id."""
     if getattr(request.user, 'role', None) not in PAY_ROLES:
         return Response({'detail': 'Khong co quyen.'}, status=403)
     frm = request.query_params.get('from')
     to = request.query_params.get('to')
     clinic_id = request.query_params.get('clinic_id') or None
 
-    pays = Payment.objects.select_related('contract', 'received_by').filter(cash_amount__gt=0, received_at__isnull=False)
-    # Chi 1 lan (TM) - tru cac de xuat tra gop (tra gop chi theo tung ky ben duoi)
-    exps = ExpenseRequest.objects.select_related('clinic', 'paid_by').filter(status='da_chi', paid_method='cash', paid_at__isnull=False, is_deleted=False).exclude(payment_method='installment')
-    # Chi tra gop (TM) - tung ky da chi
-    pos = ExpensePayout.objects.select_related('request', 'paid_by').filter(status='da_chi', method='cash', paid_at__isnull=False, request__is_deleted=False)
+    so_du_dau = 0
+    anchor = None
     if frm:
-        pays = pays.filter(received_at__gte=frm)
-        exps = exps.filter(paid_at__gte=frm)
-        pos = pos.filter(paid_at__gte=frm)
+        aq = CashReconciliation.objects.filter(date__lt=frm)
+        if clinic_id:
+            aq = aq.filter(clinic_id=clinic_id)
+        anchor = aq.order_by('-date').first()
+        if anchor:
+            so_du_dau = int(anchor.tien_dem) + _cash_net(clinic_id, after=anchor.date.isoformat(), before=frm)
+        else:
+            so_du_dau = _cash_net(clinic_id, after=None, before=frm)
+
+    pays = Payment.objects.select_related('contract', 'received_by').filter(cash_amount__gt=0, received_at__isnull=False)
+    exps = ExpenseRequest.objects.select_related('clinic', 'paid_by').filter(status='da_chi', paid_method='cash', paid_at__isnull=False, is_deleted=False).exclude(payment_method='installment')
+    pos = ExpensePayout.objects.select_related('request', 'paid_by').filter(status='da_chi', method='cash', paid_at__isnull=False, request__is_deleted=False)
+    nops = CashDeposit.objects.select_related('deposited_by').all()
+    if frm:
+        pays = pays.filter(received_at__gte=frm); exps = exps.filter(paid_at__gte=frm); pos = pos.filter(paid_at__gte=frm); nops = nops.filter(date__gte=frm)
     if to:
-        pays = pays.filter(received_at__lte=to)
-        exps = exps.filter(paid_at__lte=to)
-        pos = pos.filter(paid_at__lte=to)
+        pays = pays.filter(received_at__lte=to); exps = exps.filter(paid_at__lte=to); pos = pos.filter(paid_at__lte=to); nops = nops.filter(date__lte=to)
     if clinic_id:
-        pays = pays.filter(contract__clinic_id=clinic_id)
-        exps = exps.filter(clinic_id=clinic_id)
-        pos = pos.filter(request__clinic_id=clinic_id)
+        pays = pays.filter(contract__clinic_id=clinic_id); exps = exps.filter(clinic_id=clinic_id); pos = pos.filter(request__clinic_id=clinic_id); nops = nops.filter(clinic_id=clinic_id)
 
     rows = []
-    tong_thu = 0
-    tong_chi = 0
+    tong_thu = tong_chi = tong_nop = 0
     for p in pays:
-        amt = int(p.cash_amount)
-        tong_thu += amt
-        rows.append({
-            'kind': 'thu', 'date': p.received_at.isoformat(), 'amount': amt,
-            'label': f'Thu TM HĐ {p.contract.contract_no}',
-            'ref': p.contract.contract_no,
-            'by_name': p.received_by.display_name if p.received_by_id else '',
-        })
+        amt = int(p.cash_amount); tong_thu += amt
+        rows.append({'kind': 'thu', 'date': p.received_at.isoformat(), 'amount': amt, 'label': f'Thu TM HĐ {p.contract.contract_no}', 'ref': p.contract.contract_no, 'by_name': p.received_by.display_name if p.received_by_id else ''})
     for e in exps:
-        amt = int(e.amount)
-        tong_chi += amt
-        rows.append({
-            'kind': 'chi', 'date': e.paid_at.isoformat(), 'amount': amt,
-            'label': f'{e.get_category_display()}: {e.title}',
-            'ref': e.code,
-            'by_name': e.paid_by.display_name if e.paid_by_id else '',
-        })
+        amt = int(e.amount); tong_chi += amt
+        rows.append({'kind': 'chi', 'date': e.paid_at.isoformat(), 'amount': amt, 'label': f'{e.get_category_display()}: {e.title}', 'ref': e.code, 'by_name': e.paid_by.display_name if e.paid_by_id else ''})
     for po in pos:
-        amt = int(po.amount)
-        tong_chi += amt
-        rows.append({
-            'kind': 'chi', 'date': po.paid_at.isoformat(), 'amount': amt,
-            'label': f'Trả góp kỳ {po.ky_no}/{po.request.so_ky}: {po.request.title}',
-            'ref': po.request.code,
-            'by_name': po.paid_by.display_name if po.paid_by_id else '',
-        })
-    rows.sort(key=lambda r: (r['date'], r['kind']), reverse=True)
+        amt = int(po.amount); tong_chi += amt
+        rows.append({'kind': 'chi', 'date': po.paid_at.isoformat(), 'amount': amt, 'label': f'Trả góp kỳ {po.ky_no}/{po.request.so_ky}: {po.request.title}', 'ref': po.request.code, 'by_name': po.paid_by.display_name if po.paid_by_id else ''})
+    for n in nops:
+        amt = int(n.amount); tong_nop += amt
+        rows.append({'kind': 'nop', 'date': n.date.isoformat(), 'amount': amt, 'label': 'Nộp quỹ ngân hàng' + ((' - ' + n.bank_note) if n.bank_note else ''), 'ref': '', 'by_name': n.deposited_by.display_name if n.deposited_by_id else ''})
+    order = {'thu': 0, 'chi': 1, 'nop': 2}
+    rows.sort(key=lambda r: (r['date'], order.get(r['kind'], 9)), reverse=True)
+    ton_cuoi = so_du_dau + tong_thu - tong_chi - tong_nop
     return Response({
         'rows': rows,
         'summary': {
+            'so_du_dau': so_du_dau,
             'tong_thu': tong_thu,
             'tong_chi': tong_chi,
+            'tong_nop': tong_nop,
+            'ton_cuoi': ton_cuoi,
             'chenh': tong_thu - tong_chi,
+            'anchor_date': anchor.date.isoformat() if anchor else None,
         },
     })
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def cash_deposit(request):
+    """Phieu nop quy ngan hang. GET: danh sach gan day. POST {date, amount, bank_note, note, clinic_id}."""
+    if getattr(request.user, 'role', None) not in PAY_ROLES:
+        return Response({'detail': 'Khong co quyen.'}, status=403)
+    if request.method == 'GET':
+        qs = CashDeposit.objects.select_related('clinic', 'deposited_by').all()[:100]
+        return Response([{
+            'id': d.id, 'date': d.date.isoformat(), 'amount': int(d.amount),
+            'bank_note': d.bank_note, 'note': d.note,
+            'clinic_name': d.clinic.name if d.clinic_id else '(Chung)',
+            'by_name': d.deposited_by.display_name if d.deposited_by_id else '',
+        } for d in qs])
+    data = request.data or {}
+    amount = _num(data.get('amount'))
+    if amount <= 0:
+        return Response({'detail': 'So tien nop phai lon hon 0.'}, status=400)
+    d = CashDeposit.objects.create(
+        clinic_id=data.get('clinic_id') or None,
+        date=_parse_date(data.get('date')) or timezone.localdate(),
+        amount=amount,
+        bank_note=data.get('bank_note', ''),
+        note=data.get('note', ''),
+        deposited_by=request.user,
+    )
+    return Response({'id': d.id, 'date': d.date.isoformat(), 'amount': int(d.amount)}, status=201)

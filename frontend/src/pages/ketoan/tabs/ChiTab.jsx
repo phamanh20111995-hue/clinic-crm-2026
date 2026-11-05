@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { IconFileInvoice, IconCoin, IconPlus, IconCheck, IconX, IconCash, IconEdit, IconTrash, IconRefresh, IconClockDollar, IconReceipt } from '@tabler/icons-react'
-import { getExpenses, approveExpense, rejectExpense, payExpense, payPayout, deleteExpense, getCashBook } from '../../../api/expenses'
+import { IconFileInvoice, IconCoin, IconPlus, IconCheck, IconX, IconCash, IconEdit, IconTrash, IconRefresh, IconClockDollar, IconReceipt, IconBuildingBank, IconWallet } from '@tabler/icons-react'
+import { getExpenses, approveExpense, rejectExpense, payExpense, payPayout, deleteExpense, getCashBook, createCashDeposit } from '../../../api/expenses'
 import useAuthStore from '../../../store/authStore'
 import { getUserRole } from '../../../utils/rolesV2'
 import KetoanListShell from '../components/KetoanListShell'
@@ -93,6 +93,23 @@ export default function ChiTab() {
   const loadCashBook = () => getCashBook({ from: cbFrom, to: cbTo }).then(r => { setCbRows(r.data?.rows ?? []); setCbSum(r.data?.summary ?? {}) }).catch(() => {})
   useEffect(() => { if (view === 'soquy') loadCashBook() }, [view, cbFrom, cbTo])
 
+  // Nộp quỹ ngân hàng
+  const [showNop, setShowNop] = useState(false)
+  const [nopAmount, setNopAmount] = useState('')
+  const [nopDate, setNopDate] = useState(todayStr())
+  const [nopBank, setNopBank] = useState('')
+  const [nopSaving, setNopSaving] = useState(false)
+  const saveNop = async () => {
+    if (Number(nopAmount || 0) <= 0) return toast.error('Nhập số tiền nộp')
+    setNopSaving(true)
+    try {
+      await createCashDeposit({ amount: Number(nopAmount), date: nopDate, bank_note: nopBank })
+      toast.success('Đã ghi phiếu nộp quỹ')
+      setShowNop(false); setNopAmount(''); setNopBank(''); loadCashBook()
+    } catch (err) { toast.error(err.response?.data?.detail ?? 'Lỗi nộp quỹ') }
+    finally { setNopSaving(false) }
+  }
+
   // ----- shared UI -----
   const card = (icon, label, value, sub, color, border) => (
     <div style={{ background: '#fff', border: `1px solid ${border ?? '#dde3ef'}`, borderRadius: 9, padding: '11px 13px' }}>
@@ -126,10 +143,12 @@ export default function ChiTab() {
       {card(<IconReceipt size={13} color="#15803d" />, 'Đã chi', String(counts.da_chi), fmt(rows.filter(r => r.status === 'da_chi').reduce((s, r) => s + r.amount, 0)) + 'đ', '#15803d')}
     </div>
   ) : (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-      {card(<IconCoin size={13} color="#15803d" />, 'Tổng thu TM', fmt(cbSum.tong_thu) + 'đ', `${cbFrom} → ${cbTo}`, '#15803d')}
-      {card(<IconReceipt size={13} color="#dc2626" />, 'Tổng chi TM', fmt(cbSum.tong_chi) + 'đ', 'Đề xuất chi đã chi (TM)', '#dc2626')}
-      {card(<IconCoin size={13} color="#1e40af" />, 'Chênh trong kỳ', (Number(cbSum.chenh || 0) >= 0 ? '+' : '') + fmt(cbSum.chenh) + 'đ', 'Thu − Chi', Number(cbSum.chenh || 0) >= 0 ? '#1e40af' : '#dc2626')}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
+      {card(<IconWallet size={13} color="#64748b" />, 'Số dư đầu kỳ', fmt(cbSum.so_du_dau) + 'đ', cbSum.anchor_date ? `theo đối soát két ${cbSum.anchor_date}` : 'chưa có mốc đối soát', '#334155')}
+      {card(<IconCoin size={13} color="#15803d" />, 'Thu TM', fmt(cbSum.tong_thu) + 'đ', `${cbFrom} → ${cbTo}`, '#15803d')}
+      {card(<IconReceipt size={13} color="#dc2626" />, 'Chi TM', fmt(cbSum.tong_chi) + 'đ', 'Đề xuất đã chi (TM)', '#dc2626')}
+      {card(<IconBuildingBank size={13} color="#b45309" />, 'Nộp bank', fmt(cbSum.tong_nop) + 'đ', 'Nộp quỹ ngân hàng', '#b45309')}
+      {card(<IconWallet size={13} color="#1e40af" />, 'Tồn cuối kỳ', fmt(cbSum.ton_cuoi) + 'đ', 'Đầu + Thu − Chi − Nộp', Number(cbSum.ton_cuoi || 0) >= 0 ? '#1e40af' : '#dc2626', Number(cbSum.ton_cuoi || 0) < 0 ? '#dc2626' : undefined)}
     </div>
   )
 
@@ -161,6 +180,11 @@ export default function ChiTab() {
           <label style={{ fontSize: 11, color: '#64748b' }}>đến</label>
           <input type="date" value={cbTo} onChange={e => setCbTo(e.target.value)} style={{ border: '1px solid #dde3ef', borderRadius: 7, padding: '5px 9px', fontSize: 12 }} />
           <button onClick={loadCashBook} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 9px', border: '1px solid #dde3ef', borderRadius: 7, background: '#fff', cursor: 'pointer', color: '#64748b', fontSize: 11 }}><IconRefresh size={12} /> Tải lại</button>
+          {canPay && (
+            <button onClick={() => setShowNop(true)} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 7, border: 'none', background: '#b45309', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              <IconBuildingBank size={13} /> Nộp quỹ ngân hàng
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -242,16 +266,19 @@ export default function ChiTab() {
               <tbody>
                 {cbRows.length === 0 ? (
                   <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Không có phát sinh TM trong kỳ</td></tr>
-                ) : cbRows.map((r, i) => (
+                ) : cbRows.map((r, i) => {
+                  const km = r.kind === 'thu' ? { t: 'Thu', bg: '#dcfce7', c: '#15803d' } : r.kind === 'nop' ? { t: 'Nộp bank', bg: '#fff7ed', c: '#b45309' } : { t: 'Chi', bg: '#fee2e2', c: '#b91c1c' }
+                  return (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '7px 11px', fontWeight: 600 }}>{r.date}</td>
-                    <td style={{ padding: '7px 11px' }}><span style={{ background: r.kind === 'thu' ? '#dcfce7' : '#fee2e2', color: r.kind === 'thu' ? '#15803d' : '#b91c1c', padding: '1px 8px', borderRadius: 10, fontSize: 9, fontWeight: 700 }}>{r.kind === 'thu' ? 'Thu' : 'Chi'}</span></td>
+                    <td style={{ padding: '7px 11px' }}><span style={{ background: km.bg, color: km.c, padding: '1px 8px', borderRadius: 10, fontSize: 9, fontWeight: 700 }}>{km.t}</span></td>
                     <td style={{ padding: '7px 11px' }}>{r.label}</td>
                     <td style={{ padding: '7px 11px', fontSize: 10, color: '#64748b' }}>{r.ref}</td>
-                    <td style={{ ...tdR, color: r.kind === 'thu' ? '#15803d' : '#dc2626', fontWeight: 700 }}>{r.kind === 'thu' ? '+' : '−'} {fmt(r.amount)}đ</td>
+                    <td style={{ ...tdR, color: km.c, fontWeight: 700 }}>{r.kind === 'thu' ? '+' : '−'} {fmt(r.amount)}đ</td>
                     <td style={{ padding: '7px 11px', fontSize: 10, color: '#64748b' }}>{r.by_name}</td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -259,6 +286,39 @@ export default function ChiTab() {
       </KetoanListShell>
 
       {showModal && <ChiModal editing={editing} userRole={role} onClose={() => setShowModal(false)} onDone={() => { setShowModal(false); loadExpenses() }} />}
+
+      {showNop && (
+        <div onClick={() => setShowNop(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: 420, maxWidth: '100%', boxShadow: '0 20px 50px rgba(15,23,42,0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px', borderBottom: '1px solid #eef1f6' }}>
+              <IconBuildingBank size={18} color="#b45309" />
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#0f2044' }}>Nộp quỹ ngân hàng</span>
+              <button onClick={() => setShowNop(false)} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8' }}><IconX size={18} /></button>
+            </div>
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Tiền mặt từ két → tài khoản ngân hàng. Khoản này <b>giảm tồn quỹ TM</b>.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Ngày nộp</label>
+                  <input type="date" value={nopDate} onChange={e => setNopDate(e.target.value)} style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Số tiền (₫) *</label>
+                  <input type="number" value={nopAmount} onChange={e => setNopAmount(e.target.value)} placeholder="0" style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Tài khoản / ngân hàng / mã GD</label>
+                <input value={nopBank} onChange={e => setNopBank(e.target.value)} placeholder="VD: Vietcombank ***123, số GD..." style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #eef1f6', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setShowNop(false)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #dde3ef', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Hủy</button>
+              <button onClick={saveNop} disabled={nopSaving} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#b45309', color: '#fff', fontSize: 13, fontWeight: 700, cursor: nopSaving ? 'default' : 'pointer', opacity: nopSaving ? 0.6 : 1 }}>{nopSaving ? 'Đang lưu...' : 'Ghi phiếu nộp'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

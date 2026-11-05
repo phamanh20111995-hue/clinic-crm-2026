@@ -27,6 +27,7 @@ urlpatterns = [
     path('expenses/<int:pk>/delete/', expense_api.expense_delete, name='expense-delete'),
     path('expense-payouts/<int:pk>/pay/', expense_api.expense_payout_pay, name='expense-payout-pay'),
     path('cash-book/', expense_api.cash_book, name='cash-book'),
+    path('cash-deposit/', expense_api.cash_deposit, name='cash-deposit'),
     path('<int:pk>/', views.ContractDetailView.as_view(), name='contract-detail'),
     path('<int:pk>/submit/', views.submit_contract, name='contract-submit'),
     path('<int:pk>/approve/', views.approve_contract, name='contract-approve'),

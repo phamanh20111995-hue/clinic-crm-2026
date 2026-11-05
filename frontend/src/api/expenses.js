@@ -10,8 +10,10 @@ export const payPayout      = (payoutId, data) => api.post(`/api/contracts/expen
 export const editExpense    = (id, data) => api.post(`/api/contracts/expenses/${id}/edit/`, data)
 export const deleteExpense  = (id)       => api.post(`/api/contracts/expenses/${id}/delete/`, {})
 
-// ===== Sổ quỹ tiền mặt (thu TM − chi TM) =====
-export const getCashBook    = (params)   => api.get('/api/contracts/cash-book/', { params })
+// ===== Sổ quỹ tiền mặt (số dư đầu + thu − chi − nộp bank = tồn cuối) =====
+export const getCashBook      = (params) => api.get('/api/contracts/cash-book/', { params })
+export const getCashDeposits  = ()       => api.get('/api/contracts/cash-deposit/')
+export const createCashDeposit = (data)  => api.post('/api/contracts/cash-deposit/', data)
 
 // Danh mục loại chi (khớp CATEGORY_CHOICES ở backend)
 export const EXPENSE_CATEGORIES = [
