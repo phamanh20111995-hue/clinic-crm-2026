@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import payment_api
 from . import expense_api
+from . import deposit_api
 
 urlpatterns = [
     path('', views.ContractListCreateView.as_view(), name='contract-list-create'),
@@ -28,6 +29,14 @@ urlpatterns = [
     path('expense-payouts/<int:pk>/pay/', expense_api.expense_payout_pay, name='expense-payout-pay'),
     path('cash-book/', expense_api.cash_book, name='cash-book'),
     path('cash-deposit/', expense_api.cash_deposit, name='cash-deposit'),
+    # Dat coc (giu cho cap khach)
+    path('deposits/', deposit_api.deposit_list_create, name='deposit-list-create'),
+    path('deposits/customer-contracts/', deposit_api.deposit_customer_contracts, name='deposit-customer-contracts'),
+    path('deposits/<int:pk>/apply/', deposit_api.deposit_apply, name='deposit-apply'),
+    path('deposits/<int:pk>/settle/', deposit_api.deposit_settle, name='deposit-settle'),
+    path('deposits/<int:pk>/verify/', deposit_api.deposit_verify, name='deposit-verify'),
+    path('deposits/<int:pk>/edit/', deposit_api.deposit_edit, name='deposit-edit'),
+    path('deposits/<int:pk>/delete/', deposit_api.deposit_delete, name='deposit-delete'),
     path('<int:pk>/', views.ContractDetailView.as_view(), name='contract-detail'),
     path('<int:pk>/submit/', views.submit_contract, name='contract-submit'),
     path('<int:pk>/approve/', views.approve_contract, name='contract-approve'),

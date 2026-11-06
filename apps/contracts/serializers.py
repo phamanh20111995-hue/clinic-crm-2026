@@ -49,17 +49,21 @@ class ContractListSerializer(serializers.ModelSerializer):
             'created_at',
         ]
 
+    def _applied_deposit(self, obj):
+        # Coc da tru vao HD nay (da_dung) — tinh nhu khach da tra, KHONG doi doanh thu
+        return int(sum(d.amount for d in obj.applied_deposits.filter(status='da_dung')))
+
     def get_thuc_thu(self, obj):
-        # KHÁCH ĐÃ TRẢ (gross): TM+CK+Thẻ + trả góp đã giải ngân. Phí KHÔNG trừ ở đây (dùng cho công nợ).
-        return int(sum(p.settled_total for p in obj.payments.all()))
+        # KHÁCH ĐÃ TRẢ (gross): TM+CK+Thẻ + trả góp đã giải ngân + CỌC đã trừ. Phí KHÔNG trừ ở đây (dùng cho công nợ).
+        return int(sum(p.settled_total for p in obj.payments.all())) + self._applied_deposit(obj)
 
     def get_cho_giai_ngan(self, obj):
         # Trả góp đã chốt nhưng tiền chưa về két
         return int(sum(p.pending_total for p in obj.payments.all()))
 
     def get_con_no(self, obj):
-        # Khách CÒN NỢ PK = final − tất cả đã chốt thu (TM+CK+Thẻ+trả góp). Trả góp đã chốt ⇒ khách hết nợ.
-        return int(obj.final_amount) - int(sum(p.total for p in obj.payments.all()))
+        # Khách CÒN NỢ PK = final − (đã chốt thu TM+CK+Thẻ+trả góp + CỌC đã trừ).
+        return int(obj.final_amount) - int(sum(p.total for p in obj.payments.all())) - self._applied_deposit(obj)
 
     def get_phi(self, obj):
         # Phí VNPAY/trả góp PK chịu — CHI PHÍ PK, không đụng doanh thu/lương

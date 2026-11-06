@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { IconCheck, IconX, IconEdit, IconRefresh, IconInfoCircle, IconGitBranch, IconFileInvoice, IconCoin, IconAlertTriangle } from '@tabler/icons-react'
+import { IconCheck, IconX, IconEdit, IconRefresh, IconInfoCircle, IconGitBranch, IconFileInvoice, IconCoin, IconAlertTriangle, IconPigMoney } from '@tabler/icons-react'
 import { getContracts } from '../../../api/ketoan'
 import { getPendingPayments, verifyPayment } from '../../../api/payments'
+import { getDeposits, verifyDeposit } from '../../../api/deposits'
 import toast from 'react-hot-toast'
 import DuyetModal from '../modals/DuyetModal'
 import TuChoiModal from '../modals/TuChoiModal'
@@ -13,6 +14,7 @@ const ACCENT = '#b45309'
 export default function DuyetHDTab() {
   const [contracts, setContracts] = useState([])
   const [payments, setPayments] = useState([])
+  const [deposits, setDeposits] = useState([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('all')
   const [duyetTarget, setDuyetTarget] = useState(null)
@@ -22,12 +24,19 @@ export default function DuyetHDTab() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [rc, rp] = await Promise.all([
+      const [rc, rp, rd] = await Promise.all([
         getContracts({ approval_status: 'pending_kt' }),
         getPendingPayments(),
+        getDeposits({ verify_status: 'cho_xac_nhan' }).catch(() => ({ data: [] })),
       ])
       setContracts(rc.data?.results ?? rc.data ?? [])
       setPayments(rp.data ?? [])
+      // lấy cả cọc chờ xác nhận + cọc lệch (2 lần gọi gộp: load thêm lệch)
+      const [waiting, lech] = await Promise.all([
+        Promise.resolve(rd.data ?? []),
+        getDeposits({ verify_status: 'lech' }).then(r => r.data ?? []).catch(() => []),
+      ])
+      setDeposits([...(Array.isArray(waiting) ? waiting : []), ...(Array.isArray(lech) ? lech : [])])
     } catch { } finally { setLoading(false) }
   }, [])
 
@@ -40,6 +49,13 @@ export default function DuyetHDTab() {
       load()
     } catch (e) { toast.error(e.response?.data?.detail ?? 'Lỗi xử lý') }
   }
+  const doVerifyCoc = async (d, action, note = '') => {
+    try {
+      await verifyDeposit(d.id, { action, note })
+      toast.success(action === 'xac_nhan' ? 'Đã xác nhận cọc' : 'Đã báo lệch cọc')
+      load()
+    } catch (e) { toast.error(e.response?.data?.detail ?? 'Lỗi xử lý') }
+  }
 
   const isCskh = c => c.created_by_role === 'CSKH' || c.created_by_role === 'LEAD_CSKH'
   const isLan2 = c => c.reject_count > 0
@@ -47,22 +63,28 @@ export default function DuyetHDTab() {
   const hdItems = contracts.map(c => ({ kind: 'hd', time: c.created_at, c }))
   const thuWaiting = payments.filter(p => p.verify_status === 'cho_xac_nhan')
   const thuLech = payments.filter(p => p.verify_status === 'lech')
+  const cocWaiting = deposits.filter(d => d.verify_status === 'cho_xac_nhan')
+  const cocLech = deposits.filter(d => d.verify_status === 'lech')
 
   const sortDesc = arr => arr.slice().sort((a, b) => new Date(b.time) - new Date(a.time))
 
   const _thu = p => ({ kind: 'thu', time: p.received_at || p.created_at, p })
+  const _coc = d => ({ kind: 'coc', time: d.received_at || d.created_at, d })
   const filtered =
     filter === 'hd'   ? sortDesc(hdItems)
     : filter === 'thu'  ? sortDesc(thuWaiting.map(_thu))
-    : filter === 'lech' ? sortDesc(thuLech.map(_thu))
-    : sortDesc([...hdItems, ...payments.map(_thu)])                                  // "Tất cả" (mặc định) = mọi mục
+    : filter === 'coc'  ? sortDesc([...cocWaiting, ...cocLech].map(_coc))
+    : filter === 'lech' ? sortDesc([...thuLech.map(_thu), ...cocLech.map(_coc)])
+    : sortDesc([...hdItems, ...payments.map(_thu), ...deposits.map(_coc)])            // "Tất cả" (mặc định) = mọi mục
 
   const hdCount = contracts.length
   const thuWaitingCount = thuWaiting.length
-  const lechCount = thuLech.length
-  const allCount = hdCount + payments.length
+  const cocWaitingCount = cocWaiting.length
+  const lechCount = thuLech.length + cocLech.length
+  const allCount = hdCount + payments.length + deposits.length
   const hdSum = contracts.reduce((s, c) => s + Number(c.final_amount || 0), 0)
   const thuSum = thuWaiting.reduce((s, p) => s + Number(p.total || 0), 0)
+  const cocSum = cocWaiting.reduce((s, d) => s + Number(d.amount || 0), 0)
 
   const segBtn = (key, label) => (
     <button
@@ -86,10 +108,11 @@ export default function DuyetHDTab() {
   return (
     <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Thẻ tổng quan */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {[
           { icon: <IconFileInvoice size={13} color="#15803d" />, label: 'HĐ chờ duyệt', val: String(hdCount), sub: hdCount > 0 ? fmt(hdSum) + 'đ chờ ghi DT' : 'Hết HĐ chờ', c: '#15803d', bc: hdCount > 0 ? '#15803d' : undefined },
           { icon: <IconCoin size={13} color="#b45309" />, label: 'Thu chờ xác nhận', val: String(thuWaitingCount), sub: thuWaitingCount > 0 ? fmt(thuSum) + 'đ' : 'Đã xác nhận hết', c: '#b45309', bc: thuWaitingCount > 0 ? '#b45309' : undefined },
+          { icon: <IconPigMoney size={13} color="#0891b2" />, label: 'Cọc chờ xác nhận', val: String(cocWaitingCount), sub: cocWaitingCount > 0 ? fmt(cocSum) + 'đ' : 'Đã xác nhận hết', c: '#0891b2', bc: cocWaitingCount > 0 ? '#0891b2' : undefined },
           { icon: <IconAlertTriangle size={13} color="#dc2626" />, label: 'Lệch cần sửa', val: String(lechCount), sub: lechCount > 0 ? 'Chờ người ghi sửa' : 'Không có lệch', c: lechCount > 0 ? '#dc2626' : '#15803d', bc: lechCount > 0 ? '#dc2626' : undefined },
         ].map(s => (
           <div key={s.label} style={{ background: '#fff', border: `1px solid ${s.bc ?? '#dde3ef'}`, borderRadius: 9, padding: '11px 13px' }}>
@@ -111,6 +134,7 @@ export default function DuyetHDTab() {
               {segBtn('all',  `Tất cả (${allCount})`)}
               {segBtn('hd',   `Hóa đơn mới (${hdCount})`)}
               {segBtn('thu',  `Thu nợ (${thuWaitingCount})`)}
+              {segBtn('coc',  `Cọc mới (${cocWaitingCount})`)}
               {segBtn('lech', `Lệch (${lechCount})`)}
             </div>
             <button onClick={load} style={{ border: '1px solid #dde3ef', borderRadius: 6, background: '#fff', padding: '4px 8px', cursor: 'pointer', color: '#64748b' }}>
@@ -179,6 +203,64 @@ export default function DuyetHDTab() {
                       style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: '1px solid #dde3ef', borderRadius: 6, background: '#fff', fontSize: 11, cursor: 'pointer' }}>
                       <IconEdit size={12} /> Sửa nhỏ
                     </button>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          if (item.kind === 'coc') {
+            const d = item.d
+            const dLech = d.verify_status === 'lech'
+            return (
+              <div key={`coc-${d.id}`} style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9', background: dLech ? '#fff8f8' : '#f0fdff' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: 6 }}>
+                      <span style={{ background: '#cffafe', color: '#0e7490', padding: '1px 7px', borderRadius: 5, fontSize: 9, fontWeight: 600 }}>Đặt cọc</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f2044' }}>{d.code}</span>
+                      {dLech ? (
+                        <span style={{ background: '#fee2e2', color: '#991b1b', padding: '1px 7px', borderRadius: 10, fontSize: 9, fontWeight: 700 }}>Lệch - cần sửa</span>
+                      ) : (
+                        <span style={{ background: '#fef9c3', color: '#854d0e', padding: '1px 7px', borderRadius: 10, fontSize: 9, fontWeight: 700 }}>Chờ xác nhận</span>
+                      )}
+                      <span style={{ fontSize: 10, color: '#94a3b8' }}>{(d.received_at || '').slice(0, 10)}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11 }}>
+                      <div><span style={{ color: '#94a3b8' }}>KH:</span> <b>{d.customer_name}</b></div>
+                      <div><span style={{ color: '#94a3b8' }}>Người nhận:</span> {d.nguoi_nhan_name || d.received_by_name}</div>
+                      <div><span style={{ color: '#94a3b8' }}>Số cọc:</span> <b style={{ color: '#0f2044' }}>{fmt(d.amount)}đ</b></div>
+                      <div><span style={{ color: '#94a3b8' }}>HTTT:</span> {d.method === 'cash' ? 'Tiền mặt' : d.method === 'transfer' ? 'Chuyển khoản' : `TM ${fmt(d.cash_amount)} + CK ${fmt(d.transfer_amount)}`}</div>
+                      {d.so_phieu && <div><span style={{ color: '#94a3b8' }}>Số phiếu:</span> {d.so_phieu}</div>}
+                      {d.reason && <div><span style={{ color: '#94a3b8' }}>Giữ chỗ:</span> {d.reason}</div>}
+                    </div>
+                    {dLech && d.verify_note && (
+                      <div style={{ marginTop: 4, fontSize: 10, color: '#991b1b', fontWeight: 600 }}>Lý do lệch: {d.verify_note}</div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0, alignItems: 'flex-end' }}>
+                    {dLech ? (
+                      <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', whiteSpace: 'nowrap' }}>⏳ Chờ người ghi sửa</span>
+                    ) : !d.can_i_verify ? (
+                      <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', whiteSpace: 'nowrap', textAlign: 'right' }}>⏳ Chờ người khác xác nhận<br />(không tự duyệt phiếu mình nhập)</span>
+                    ) : (
+                      <>
+                        <button onClick={() => doVerifyCoc(d, 'xac_nhan')}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: 'none', borderRadius: 6, background: '#15803d', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          <IconCheck size={12} /> Xác nhận
+                        </button>
+                        <button
+                          onClick={() => {
+                            const r = window.prompt('Nhập lý do lệch (vd: số tiền/phiếu không khớp):')
+                            if (r === null) return
+                            if (r.trim() === '') { toast.error('Cần nhập lý do lệch'); return }
+                            doVerifyCoc(d, 'lech', r.trim())
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: 'none', borderRadius: 6, background: '#dc2626', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          <IconX size={12} /> Báo lệch
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

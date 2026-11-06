@@ -1,4 +1,15 @@
+import { useState, useEffect, useCallback } from 'react'
+import { IconPlus } from '@tabler/icons-react'
+import { getDeposits } from '../../../api/deposits'
+import ChotHDModal from '../../sale/modals/ChotHDModal'
+
 const ACCENT = '#1e40af'
+
+const DEP_VM = {
+  cho_xac_nhan: { label: 'Chờ KT xác nhận', bg: '#fef9c3', color: '#854d0e' },
+  da_xac_nhan: { label: 'Đã xác nhận', bg: '#dcfce7', color: '#15803d' },
+  lech: { label: 'Lệch - chờ sửa', bg: '#fee2e2', color: '#b91c1c' },
+}
 
 function fmtMoney(n) {
   if (n == null) return '—'
@@ -21,8 +32,16 @@ const PAYMENT_CFG = {
   paid:    { bg: '#dcfce7', color: '#15803d', label: 'Đã TT đủ' },
 }
 
-export default function TaiChinhTab({ contracts }) {
+export default function TaiChinhTab({ contracts, customer, onChanged }) {
   const approved = contracts.filter(c => c.approval_status === 'approved')
+  const [showChot, setShowChot] = useState(false)
+  const [deposits, setDeposits] = useState([])
+  const loadDeposits = useCallback(() => {
+    if (!customer?.id) return
+    getDeposits({ customer_id: customer.id }).then(r => setDeposits(Array.isArray(r.data) ? r.data : [])).catch(() => {})
+  }, [customer?.id])
+  useEffect(() => { loadDeposits() }, [loadDeposits])
+  const cocActive = deposits.filter(d => d.status === 'giu')   // đang giữ (gồm chờ xác nhận)
 
   const totalValue = approved.reduce((s, c) => s + Number(c.final_amount ?? 0), 0)
   const totalPaid  = approved.reduce((s, c) => s + Number(c.cash_amount ?? 0) + Number(c.transfer_amount ?? 0), 0)
@@ -32,6 +51,35 @@ export default function TaiChinhTab({ contracts }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Thanh thao tác */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={() => setShowChot(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          <IconPlus size={14} stroke={2.5} /> Tạo HĐ / Cọc
+        </button>
+      </div>
+
+      {/* Cọc đang giữ của khách */}
+      {cocActive.length > 0 && (
+        <div style={{ background: '#f0fdff', border: '1px solid #a5f3fc', borderRadius: 10, padding: '12px 16px' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#0e7490', margin: '0 0 8px' }}>💠 Cọc đang giữ của khách</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {cocActive.map(d => {
+              const vm = DEP_VM[d.verify_status] ?? DEP_VM.cho_xac_nhan
+              return (
+                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #cffafe', borderRadius: 8, padding: '8px 12px' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0891b2' }}>{d.code}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f2044' }}>{fmtMoney(d.amount)}</span>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>{d.method === 'cash' ? 'TM' : 'CK'}{d.reason ? ` · ${d.reason}` : ''}</span>
+                  <span style={{ marginLeft: 'auto', background: vm.bg, color: vm.color, padding: '2px 9px', borderRadius: 10, fontSize: 10, fontWeight: 700 }}>{vm.label}</span>
+                </div>
+              )
+            })}
+          </div>
+          <p style={{ fontSize: 10, color: '#0e7490', margin: '8px 0 0' }}>Cọc đã xác nhận có thể trừ vào HĐ ở màn Kế toán → Đặt cọc. Cọc chưa là doanh thu.</p>
+        </div>
+      )}
+
       {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
         {[
@@ -125,6 +173,14 @@ export default function TaiChinhTab({ contracts }) {
             })}
           </div>
         </div>
+      )}
+
+      {showChot && customer && (
+        <ChotHDModal
+          defaultCustomer={{ id: customer.id, full_name: customer.full_name, phone: customer.phone }}
+          onClose={() => setShowChot(false)}
+          onDone={() => { setShowChot(false); loadDeposits(); onChanged?.() }}
+        />
       )}
     </div>
   )

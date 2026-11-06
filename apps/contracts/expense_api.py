@@ -7,7 +7,7 @@ from rest_framework.response import Response
 import calendar
 from .models import (
     ExpenseRequest, ExpenseApproval, ExpensePayout, Payment,
-    CashReconciliation, CashDeposit,
+    CashReconciliation, CashDeposit, Deposit,
     build_expense_chain, EXPENSE_OWNER_THRESHOLD,
 )
 
@@ -369,15 +369,17 @@ def _cash_net(clinic_id, after=None, before=None):
     exps = ExpenseRequest.objects.filter(status='da_chi', paid_method='cash', paid_at__isnull=False, is_deleted=False).exclude(payment_method='installment')
     pos = ExpensePayout.objects.filter(status='da_chi', method='cash', paid_at__isnull=False, request__is_deleted=False)
     nops = CashDeposit.objects.all()
+    cocs = Deposit.objects.filter(cash_amount__gt=0, received_at__isnull=False, is_deleted=False, verify_status='da_xac_nhan')  # phan TM cua coc (vao) - da xac nhan
+    hoans = Deposit.objects.filter(status='hoan', settle_method='cash', settled_at__isnull=False, is_deleted=False)  # hoan coc (ra)
     if after:
-        pays = pays.filter(received_at__gt=after); exps = exps.filter(paid_at__gt=after); pos = pos.filter(paid_at__gt=after); nops = nops.filter(date__gt=after)
+        pays = pays.filter(received_at__gt=after); exps = exps.filter(paid_at__gt=after); pos = pos.filter(paid_at__gt=after); nops = nops.filter(date__gt=after); cocs = cocs.filter(received_at__gt=after); hoans = hoans.filter(settled_at__gt=after)
     if before:
-        pays = pays.filter(received_at__lt=before); exps = exps.filter(paid_at__lt=before); pos = pos.filter(paid_at__lt=before); nops = nops.filter(date__lt=before)
+        pays = pays.filter(received_at__lt=before); exps = exps.filter(paid_at__lt=before); pos = pos.filter(paid_at__lt=before); nops = nops.filter(date__lt=before); cocs = cocs.filter(received_at__lt=before); hoans = hoans.filter(settled_at__lt=before)
     if clinic_id:
-        pays = pays.filter(contract__clinic_id=clinic_id); exps = exps.filter(clinic_id=clinic_id); pos = pos.filter(request__clinic_id=clinic_id); nops = nops.filter(clinic_id=clinic_id)
-    thu = sum(int(p.cash_amount) for p in pays)
+        pays = pays.filter(contract__clinic_id=clinic_id); exps = exps.filter(clinic_id=clinic_id); pos = pos.filter(request__clinic_id=clinic_id); nops = nops.filter(clinic_id=clinic_id); cocs = cocs.filter(clinic_id=clinic_id); hoans = hoans.filter(clinic_id=clinic_id)
+    thu = sum(int(p.cash_amount) for p in pays) + sum(int(c.cash_amount) for c in cocs)
     chi = sum(int(e.amount) for e in exps) + sum(int(x.amount) for x in pos)
-    nop = sum(int(n.amount) for n in nops)
+    nop = sum(int(n.amount) for n in nops) + sum(int(h.amount) for h in hoans)
     return thu - chi - nop
 
 
@@ -409,39 +411,49 @@ def cash_book(request):
     exps = ExpenseRequest.objects.select_related('clinic', 'paid_by').filter(status='da_chi', paid_method='cash', paid_at__isnull=False, is_deleted=False).exclude(payment_method='installment')
     pos = ExpensePayout.objects.select_related('request', 'paid_by').filter(status='da_chi', method='cash', paid_at__isnull=False, request__is_deleted=False)
     nops = CashDeposit.objects.select_related('deposited_by').all()
+    cocs = Deposit.objects.select_related('customer', 'received_by').filter(cash_amount__gt=0, received_at__isnull=False, is_deleted=False, verify_status='da_xac_nhan')
+    hoans = Deposit.objects.select_related('customer', 'settled_by').filter(status='hoan', settle_method='cash', settled_at__isnull=False, is_deleted=False)
     if frm:
-        pays = pays.filter(received_at__gte=frm); exps = exps.filter(paid_at__gte=frm); pos = pos.filter(paid_at__gte=frm); nops = nops.filter(date__gte=frm)
+        pays = pays.filter(received_at__gte=frm); exps = exps.filter(paid_at__gte=frm); pos = pos.filter(paid_at__gte=frm); nops = nops.filter(date__gte=frm); cocs = cocs.filter(received_at__gte=frm); hoans = hoans.filter(settled_at__gte=frm)
     if to:
-        pays = pays.filter(received_at__lte=to); exps = exps.filter(paid_at__lte=to); pos = pos.filter(paid_at__lte=to); nops = nops.filter(date__lte=to)
+        pays = pays.filter(received_at__lte=to); exps = exps.filter(paid_at__lte=to); pos = pos.filter(paid_at__lte=to); nops = nops.filter(date__lte=to); cocs = cocs.filter(received_at__lte=to); hoans = hoans.filter(settled_at__lte=to)
     if clinic_id:
-        pays = pays.filter(contract__clinic_id=clinic_id); exps = exps.filter(clinic_id=clinic_id); pos = pos.filter(request__clinic_id=clinic_id); nops = nops.filter(clinic_id=clinic_id)
+        pays = pays.filter(contract__clinic_id=clinic_id); exps = exps.filter(clinic_id=clinic_id); pos = pos.filter(request__clinic_id=clinic_id); nops = nops.filter(clinic_id=clinic_id); cocs = cocs.filter(clinic_id=clinic_id); hoans = hoans.filter(clinic_id=clinic_id)
 
     rows = []
-    tong_thu = tong_chi = tong_nop = 0
+    tong_thu = tong_chi = tong_nop = tong_coc = tong_hoan = 0
     for p in pays:
         amt = int(p.cash_amount); tong_thu += amt
         rows.append({'kind': 'thu', 'date': p.received_at.isoformat(), 'amount': amt, 'label': f'Thu TM HĐ {p.contract.contract_no}', 'ref': p.contract.contract_no, 'by_name': p.received_by.display_name if p.received_by_id else ''})
+    for c in cocs:
+        amt = int(c.cash_amount); tong_coc += amt
+        rows.append({'kind': 'coc', 'date': c.received_at.isoformat(), 'amount': amt, 'label': 'Nhận cọc (TM) - ' + (c.customer.full_name if c.customer_id else ''), 'ref': c.code, 'by_name': c.received_by.display_name if c.received_by_id else ''})
     for e in exps:
         amt = int(e.amount); tong_chi += amt
         rows.append({'kind': 'chi', 'date': e.paid_at.isoformat(), 'amount': amt, 'label': f'{e.get_category_display()}: {e.title}', 'ref': e.code, 'by_name': e.paid_by.display_name if e.paid_by_id else ''})
     for po in pos:
         amt = int(po.amount); tong_chi += amt
         rows.append({'kind': 'chi', 'date': po.paid_at.isoformat(), 'amount': amt, 'label': f'Trả góp kỳ {po.ky_no}/{po.request.so_ky}: {po.request.title}', 'ref': po.request.code, 'by_name': po.paid_by.display_name if po.paid_by_id else ''})
+    for h in hoans:
+        amt = int(h.amount); tong_hoan += amt
+        rows.append({'kind': 'hoan', 'date': h.settled_at.isoformat(), 'amount': amt, 'label': 'Hoàn cọc - ' + (h.customer.full_name if h.customer_id else ''), 'ref': h.code, 'by_name': h.settled_by.display_name if h.settled_by_id else ''})
     for n in nops:
         amt = int(n.amount); tong_nop += amt
         rows.append({'kind': 'nop', 'date': n.date.isoformat(), 'amount': amt, 'label': 'Nộp quỹ ngân hàng' + ((' - ' + n.bank_note) if n.bank_note else ''), 'ref': '', 'by_name': n.deposited_by.display_name if n.deposited_by_id else ''})
-    order = {'thu': 0, 'chi': 1, 'nop': 2}
+    order = {'thu': 0, 'coc': 1, 'chi': 2, 'hoan': 3, 'nop': 4}
     rows.sort(key=lambda r: (r['date'], order.get(r['kind'], 9)), reverse=True)
-    ton_cuoi = so_du_dau + tong_thu - tong_chi - tong_nop
+    ton_cuoi = so_du_dau + tong_thu + tong_coc - tong_chi - tong_hoan - tong_nop
     return Response({
         'rows': rows,
         'summary': {
             'so_du_dau': so_du_dau,
             'tong_thu': tong_thu,
+            'tong_coc': tong_coc,
             'tong_chi': tong_chi,
+            'tong_hoan': tong_hoan,
             'tong_nop': tong_nop,
             'ton_cuoi': ton_cuoi,
-            'chenh': tong_thu - tong_chi,
+            'chenh': tong_thu + tong_coc - tong_chi - tong_hoan,
             'anchor_date': anchor.date.isoformat() if anchor else None,
         },
     })

@@ -425,3 +425,53 @@ class CashDeposit(models.Model):
 
     def __str__(self):
         return f'Nop quy {self.date} - {self.amount}'
+
+
+class Deposit(models.Model):
+    """Dat coc (giu cho) o cap KHACH - chua la doanh thu. Tat toan: tru vao HD / hoan / mat coc."""
+    STATUS_CHOICES = [
+        ('giu', 'Đang giữ'),
+        ('da_dung', 'Đã trừ vào HĐ'),
+        ('hoan', 'Đã hoàn'),
+        ('mat', 'Mất cọc'),
+    ]
+    METHOD_CHOICES = [('cash', 'Tiền mặt'), ('transfer', 'Chuyển khoản'), ('combined', 'TM + CK')]
+    code = models.CharField(max_length=20, unique=True, help_text='Ma phieu coc, vd DC-0001')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='deposits')
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='deposits')
+    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Tong coc = TM + CK')
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES, default='cash', help_text='Khach nop coc bang TM/CK/ca hai')
+    cash_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan tien mat')
+    transfer_amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, help_text='Phan chuyen khoan')
+    reason = models.CharField(max_length=255, blank=True, help_text='Giu cho dich vu/goi gi')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='giu')
+    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='deposits_received', help_text='Nguoi NHAP phieu tren he thong')
+    received_at = models.DateField(null=True, blank=True, help_text='Ngay nhan coc')
+    # Nguoi NHAN coc thuc te (khi KT nhap ho BS/KTV theo phieu giay) + so phieu giay
+    nguoi_nhan = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='deposits_collected', help_text='Nguoi thuc su nhan coc (theo phieu giay)')
+    so_phieu = models.CharField(max_length=50, blank=True, help_text='So phieu coc giay (chung tu)')
+    # Xac nhan thu (maker-checker): nguoi ghi -> KT xac nhan/bao lech -> nguoi ghi sua -> cho xac nhan
+    VERIFY_STATUS_CHOICES = [
+        ('cho_xac_nhan', 'Chờ xác nhận'),
+        ('da_xac_nhan', 'Đã xác nhận'),
+        ('lech', 'Lệch - cần sửa'),
+    ]
+    verify_status = models.CharField(max_length=15, choices=VERIFY_STATUS_CHOICES, default='cho_xac_nhan')
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='deposits_verified')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verify_note = models.TextField(blank=True)
+    # Tat toan
+    applied_contract = models.ForeignKey('Contract', null=True, blank=True, on_delete=models.SET_NULL, related_name='applied_deposits', help_text='HD ma coc duoc tru vao (co the la DV/SP khach doi sang)')
+    settled_at = models.DateField(null=True, blank=True)
+    settled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='deposits_settled')
+    settle_method = models.CharField(max_length=10, choices=METHOD_CHOICES, blank=True, help_text='Khi HOAN: hoan bang TM/CK')
+    settle_note = models.TextField(blank=True)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Dat coc'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.code} - {self.customer} - {self.amount} [{self.status}]'

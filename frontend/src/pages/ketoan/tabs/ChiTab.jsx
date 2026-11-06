@@ -143,12 +143,11 @@ export default function ChiTab() {
       {card(<IconReceipt size={13} color="#15803d" />, 'Đã chi', String(counts.da_chi), fmt(rows.filter(r => r.status === 'da_chi').reduce((s, r) => s + r.amount, 0)) + 'đ', '#15803d')}
     </div>
   ) : (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
       {card(<IconWallet size={13} color="#64748b" />, 'Số dư đầu kỳ', fmt(cbSum.so_du_dau) + 'đ', cbSum.anchor_date ? `theo đối soát két ${cbSum.anchor_date}` : 'chưa có mốc đối soát', '#334155')}
-      {card(<IconCoin size={13} color="#15803d" />, 'Thu TM', fmt(cbSum.tong_thu) + 'đ', `${cbFrom} → ${cbTo}`, '#15803d')}
-      {card(<IconReceipt size={13} color="#dc2626" />, 'Chi TM', fmt(cbSum.tong_chi) + 'đ', 'Đề xuất đã chi (TM)', '#dc2626')}
-      {card(<IconBuildingBank size={13} color="#b45309" />, 'Nộp bank', fmt(cbSum.tong_nop) + 'đ', 'Nộp quỹ ngân hàng', '#b45309')}
-      {card(<IconWallet size={13} color="#1e40af" />, 'Tồn cuối kỳ', fmt(cbSum.ton_cuoi) + 'đ', 'Đầu + Thu − Chi − Nộp', Number(cbSum.ton_cuoi || 0) >= 0 ? '#1e40af' : '#dc2626', Number(cbSum.ton_cuoi || 0) < 0 ? '#dc2626' : undefined)}
+      {card(<IconCoin size={13} color="#15803d" />, 'Tiền vào', fmt(Number(cbSum.tong_thu || 0) + Number(cbSum.tong_coc || 0)) + 'đ', `Thu HĐ ${fmt(cbSum.tong_thu)} + cọc ${fmt(cbSum.tong_coc)}`, '#15803d')}
+      {card(<IconReceipt size={13} color="#dc2626" />, 'Tiền ra', fmt(Number(cbSum.tong_chi || 0) + Number(cbSum.tong_hoan || 0) + Number(cbSum.tong_nop || 0)) + 'đ', `Chi ${fmt(cbSum.tong_chi)} + hoàn cọc ${fmt(cbSum.tong_hoan)} + nộp ${fmt(cbSum.tong_nop)}`, '#dc2626')}
+      {card(<IconWallet size={13} color="#1e40af" />, 'Tồn cuối kỳ', fmt(cbSum.ton_cuoi) + 'đ', 'Đầu + Vào − Ra', Number(cbSum.ton_cuoi || 0) >= 0 ? '#1e40af' : '#dc2626', Number(cbSum.ton_cuoi || 0) < 0 ? '#dc2626' : undefined)}
     </div>
   )
 
@@ -267,14 +266,21 @@ export default function ChiTab() {
                 {cbRows.length === 0 ? (
                   <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Không có phát sinh TM trong kỳ</td></tr>
                 ) : cbRows.map((r, i) => {
-                  const km = r.kind === 'thu' ? { t: 'Thu', bg: '#dcfce7', c: '#15803d' } : r.kind === 'nop' ? { t: 'Nộp bank', bg: '#fff7ed', c: '#b45309' } : { t: 'Chi', bg: '#fee2e2', c: '#b91c1c' }
+                  const KM = {
+                    thu: { t: 'Thu', bg: '#dcfce7', c: '#15803d', sign: '+' },
+                    coc: { t: 'Nhận cọc', bg: '#cffafe', c: '#0e7490', sign: '+' },
+                    chi: { t: 'Chi', bg: '#fee2e2', c: '#b91c1c', sign: '−' },
+                    hoan: { t: 'Hoàn cọc', bg: '#fef3c7', c: '#92400e', sign: '−' },
+                    nop: { t: 'Nộp bank', bg: '#fff7ed', c: '#b45309', sign: '−' },
+                  }
+                  const km = KM[r.kind] ?? { t: r.kind, bg: '#f1f5f9', c: '#64748b', sign: '' }
                   return (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '7px 11px', fontWeight: 600 }}>{r.date}</td>
                     <td style={{ padding: '7px 11px' }}><span style={{ background: km.bg, color: km.c, padding: '1px 8px', borderRadius: 10, fontSize: 9, fontWeight: 700 }}>{km.t}</span></td>
                     <td style={{ padding: '7px 11px' }}>{r.label}</td>
                     <td style={{ padding: '7px 11px', fontSize: 10, color: '#64748b' }}>{r.ref}</td>
-                    <td style={{ ...tdR, color: km.c, fontWeight: 700 }}>{r.kind === 'thu' ? '+' : '−'} {fmt(r.amount)}đ</td>
+                    <td style={{ ...tdR, color: km.c, fontWeight: 700 }}>{km.sign} {fmt(r.amount)}đ</td>
                     <td style={{ padding: '7px 11px', fontSize: 10, color: '#64748b' }}>{r.by_name}</td>
                   </tr>
                   )

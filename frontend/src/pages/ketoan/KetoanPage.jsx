@@ -14,6 +14,7 @@ import DoanhThuChiTietTab from './tabs/DoanhThuChiTietTab'
 import CongNoTab from './tabs/CongNoTab'
 import DoiSoatTab from './tabs/DoiSoatTab'
 import ChiTab from './tabs/ChiTab'
+import DatCocTab from './tabs/DatCocTab'
 import KhoTab from './tabs/KhoTab'
 import HoSoThueTab from './tabs/HoSoThueTab'
 import LuongTuaTab from './tabs/LuongTuaTab'
@@ -30,6 +31,7 @@ const TABS = [
   { k: 'no', l: 'Công nợ', icon: IconClockDollar },
   { k: 'doisoat', l: 'Đối soát', icon: IconBuildingBank },
   { k: 'chi', l: 'Chi & Sổ quỹ', icon: IconReceipt2 },
+  { k: 'datcoc', l: 'Đặt cọc', icon: IconCoin },
   { k: 'luong', l: 'Lương & Tua', icon: IconCoin },
   { k: 'kho', l: 'Kho', icon: IconPackage },
   { k: 'thue', l: 'Hồ sơ thuế', icon: IconFileCertificate },
@@ -120,6 +122,7 @@ export default function KetoanPage() {
         {tab === 'no'     && <CongNoTab />}
         {tab === 'doisoat' && <DoiSoatTab />}
         {tab === 'chi'     && <ChiTab />}
+        {tab === 'datcoc'  && <DatCocTab />}
         {/* Tab chưa shell: bọc vùng cuổn full-height riêng */}
         {tab === 'duyet'  && <div style={scrollWrap}><DuyetHDTab /></div>}
         {tab === 'thue'   && <div style={scrollWrap}><HoSoThueTab /></div>}

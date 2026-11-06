@@ -3,6 +3,7 @@ import { IconX, IconSend } from '@tabler/icons-react'
 import { getServices, createContract, updateContract, submitContract, getMyCustomers } from '../../../api/sale'
 import { getProducts } from '../../../api/inventory'
 import { getAllUsers } from '../../../api/letan'
+import { createDeposit } from '../../../api/deposits'
 import useAuthStore from '../../../store/authStore'
 import toast from 'react-hot-toast'
 
@@ -32,7 +33,7 @@ function lineTotal(line) {
   return Math.max(0, (line.sessions || 0) * (line.unit_price || 0) - (line.discount || 0))
 }
 
-export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialData }) {
+export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialData, defaultMode }) {
   const isEdit = !!initialData
 
   const authUser = useAuthStore(s => s.user)
@@ -50,6 +51,10 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
   const [ttCK,       setTtCK]       = useState('chua')
   const [maGD,       setMaGD]       = useState('')
   const [saving,     setSaving]     = useState(false)
+  const [mode,       setMode]       = useState(defaultMode === 'coc' ? 'coc' : 'hd')   // 'hd' = hóa đơn | 'coc' = đặt cọc
+  const [coc,        setCoc]        = useState({ amount: '', method: 'cash', so_phieu: '', cash: '', transfer: '' })
+  const lblStyle = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }
+  const inpStyle = { width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }
   const [form, setForm] = useState({
     customer:   defaultCustomer?.id ?? initialData?.customer ?? '',
     loai_dv:    'tham_my',
@@ -219,7 +224,32 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
     }
   }
 
+  const handleSaveCoc = async () => {
+    if (!form.customer) { toast.error('Chọn khách hàng'); return }
+    const cocTotal = coc.method === 'combined' ? (Number(coc.cash || 0) + Number(coc.transfer || 0)) : Number(coc.amount || 0)
+    if (cocTotal <= 0) { toast.error('Nhập số tiền cọc'); return }
+    setSaving(true)
+    try {
+      const payload = coc.method === 'combined'
+        ? { method: 'combined', cash_amount: Number(coc.cash || 0), transfer_amount: Number(coc.transfer || 0) }
+        : { method: coc.method, amount: Number(coc.amount) }
+      await createDeposit({
+        customer: form.customer,
+        ...payload,
+        nguoi_nhan: form.nguoi_ban || null,
+        so_phieu: coc.so_phieu,
+        reason: form.notes,
+      })
+      toast.success('Đã ghi phiếu cọc — chờ KT xác nhận')
+      onDone?.()
+      onClose()
+    } catch (err) {
+      toast.error(err.response?.data?.detail ?? 'Lỗi ghi cọc')
+    } finally { setSaving(false) }
+  }
+
   const handleSave = async (andSubmit = false) => {
+    if (mode === 'coc') return handleSaveCoc()
     if (!form.customer) { toast.error('Chọn khách hàng'); return }
     if (!serviceLines.some(l => l.service_id)) { toast.error('Chọn ít nhất 1 dịch vụ'); return }
     if (serviceLines.some(l => !l.sessions || l.sessions < 1)) { toast.error('Số buổi phải ≥ 1'); return }
@@ -257,13 +287,22 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
           <div>
-            <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{isEdit ? 'Sửa Hợp đồng nháp' : 'Tạo Hoá đơn'}</p>
-            <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>HĐ tạo là Bản nháp → KT duyệt → DT ghi chính thức</p>
+            <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{isEdit ? 'Sửa Hợp đồng nháp' : (mode === 'coc' ? 'Tạo phiếu đặt cọc' : 'Tạo Hoá đơn')}</p>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>{mode === 'coc' ? 'Cọc giữ chỗ → KT xác nhận thu → chưa tính doanh thu' : 'HĐ tạo là Bản nháp → KT duyệt → DT ghi chính thức'}</p>
           </div>
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af' }}><IconX size={20} /></button>
         </div>
 
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Loại phiếu: Hóa đơn / Đặt cọc */}
+          {!isEdit && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[['hd', 'Hóa đơn'], ['coc', 'Đặt cọc']].map(([k, l]) => (
+                <button key={k} onClick={() => setMode(k)}
+                  style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: `2px solid ${mode === k ? (k === 'coc' ? '#0891b2' : ACCENT) : '#dde3ef'}`, background: mode === k ? (k === 'coc' ? '#ecfeff' : '#f0fdf4') : '#fff', color: mode === k ? (k === 'coc' ? '#0891b2' : ACCENT) : '#6b7280', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{l}</button>
+              ))}
+            </div>
+          )}
           {/* Khách hàng */}
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Khách hàng *</label>
@@ -280,6 +319,59 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
             )}
           </div>
 
+          {/* ===== Mode ĐẶT CỌC ===== */}
+          {mode === 'coc' && (
+            <>
+              <div>
+                <label style={lblStyle}>Hình thức nhận cọc</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[['cash', 'Tiền mặt'], ['transfer', 'Chuyển khoản'], ['combined', 'TM + CK']].map(([v, t]) => (
+                    <button key={v} onClick={() => setCoc(c => ({ ...c, method: v }))}
+                      style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: `1px solid ${coc.method === v ? '#0891b2' : '#dde3ef'}`, background: coc.method === v ? '#ecfeff' : '#fff', color: coc.method === v ? '#0891b2' : '#64748b', fontWeight: coc.method === v ? 700 : 500, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{t}</button>
+                  ))}
+                </div>
+              </div>
+              {coc.method === 'combined' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={lblStyle}>Tiền mặt (₫)</label>
+                    <input type="number" value={coc.cash} onChange={e => setCoc(c => ({ ...c, cash: e.target.value }))} placeholder="0" style={inpStyle} />
+                  </div>
+                  <div>
+                    <label style={lblStyle}>Chuyển khoản (₫)</label>
+                    <input type="number" value={coc.transfer} onChange={e => setCoc(c => ({ ...c, transfer: e.target.value }))} placeholder="0" style={inpStyle} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1', fontSize: 11, color: '#0e7490' }}>
+                    Tổng cọc: <b>{fmtMoney(Number(coc.cash || 0) + Number(coc.transfer || 0))}</b>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label style={lblStyle}>Số tiền cọc (₫) *</label>
+                  <input type="number" value={coc.amount} onChange={e => setCoc(c => ({ ...c, amount: e.target.value }))} placeholder="0" style={inpStyle} />
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={lblStyle}>Người nhận cọc (theo phiếu)</label>
+                  <select value={form.nguoi_ban} onChange={e => set('nguoi_ban', e.target.value)} style={inpStyle}>
+                    <option value="">— Mặc định: người nhập —</option>
+                    {allUsers.map(u => <option key={u.id} value={u.id}>{(u.display_name ?? u.full_name ?? u.email)} · {u.role}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lblStyle}>Số phiếu giấy</label>
+                  <input value={coc.so_phieu} onChange={e => setCoc(c => ({ ...c, so_phieu: e.target.value }))} placeholder="VD: phiếu cọc số..." style={inpStyle} />
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#0e7490', background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: 8, padding: '9px 11px' }}>
+                Cọc <b>chưa tính doanh thu</b>. Ghi xong → KT xác nhận thu → giữ → sau trừ vào HĐ (dịch vụ ban đầu hoặc SP/DV khách đổi sang) / hoàn / mất.
+              </div>
+            </>
+          )}
+
+          {/* ===== Mode HÓA ĐƠN ===== */}
+          {mode === 'hd' && (<>
           {/* Loại vòng + Loại DV */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
@@ -616,30 +708,46 @@ export default function ChotHDModal({ onClose, onDone, defaultCustomer, initialD
               <span style={{ fontWeight: 600, textAlign: 'right', color: cfg.color }}>{htttLabel}</span>
             </div>
           </div>
+          </>)}
 
           {/* Ghi chú */}
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Ghi chú tư vấn</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>{mode === 'coc' ? 'Lý do giữ chỗ (ghi chú)' : 'Ghi chú tư vấn'}</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Nội dung tư vấn, cam kết, lưu ý..."
               style={{ width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '7px 10px', fontSize: 13, resize: 'vertical', minHeight: 60, boxSizing: 'border-box' }} />
           </div>
 
           {/* Info box */}
-          <div style={{ padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: 12, color: '#1d4ed8' }}>
-            ℹ️ HĐ tạo ra là <strong>Bản nháp</strong> → KT duyệt → DT ghi nhận chính thức.
-          </div>
+          {mode === 'hd' ? (
+            <div style={{ padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: 12, color: '#1d4ed8' }}>
+              ℹ️ HĐ tạo ra là <strong>Bản nháp</strong> → KT duyệt → DT ghi nhận chính thức.
+            </div>
+          ) : (
+            <div style={{ padding: '8px 12px', background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: 8, fontSize: 12, color: '#0e7490' }}>
+              ℹ️ Phiếu cọc gửi về <strong>KT xác nhận thu</strong> (đối chiếu tiền/phiếu) rồi mới giữ.
+            </div>
+          )}
 
           {/* Footer */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 7, border: '1px solid #dde3ef', background: '#fff', fontSize: 13, cursor: 'pointer' }}>Hủy</button>
-            <button onClick={() => handleSave(false)} disabled={saving}
-              style={{ padding: '8px 16px', borderRadius: 7, border: `1px solid ${ACCENT}`, background: '#f0fdf4', color: ACCENT, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              {saving ? '...' : 'Lưu nháp'}
-            </button>
-            <button onClick={() => handleSave(true)} disabled={saving}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 18px', borderRadius: 7, border: 'none', background: saving ? '#d1d5db' : ACCENT, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              <IconSend size={14} /> {saving ? 'Đang gửi...' : 'Lưu & Gửi KT duyệt'}
-            </button>
+            {mode === 'coc' ? (
+              <button onClick={handleSaveCoc} disabled={saving}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 18px', borderRadius: 7, border: 'none', background: saving ? '#d1d5db' : '#0891b2', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                <IconSend size={14} /> {saving ? 'Đang ghi...' : 'Ghi cọc (chờ KT xác nhận)'}
+              </button>
+            ) : (
+              <>
+                <button onClick={() => handleSave(false)} disabled={saving}
+                  style={{ padding: '8px 16px', borderRadius: 7, border: `1px solid ${ACCENT}`, background: '#f0fdf4', color: ACCENT, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {saving ? '...' : 'Lưu nháp'}
+                </button>
+                <button onClick={() => handleSave(true)} disabled={saving}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 18px', borderRadius: 7, border: 'none', background: saving ? '#d1d5db' : ACCENT, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  <IconSend size={14} /> {saving ? 'Đang gửi...' : 'Lưu & Gửi KT duyệt'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

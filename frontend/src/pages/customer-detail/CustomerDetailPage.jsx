@@ -30,7 +30,8 @@ function getTabsForRole(role, from) {
     { key: 'anh',       label: 'Ảnh điều trị' },
   ]
   if (FULL_ROLES.includes(role)) return hideFinance ? ALL.filter(t => t.key !== 'taichinch') : ALL
-  if (CSKH_ROLES.includes(role)) return ALL.filter(t => t.key !== 'taichinch')
+  // CSKH + Lead CSKH: mở tab Tài chính (chốt 2026-11-05 — để tạo cọc/HĐ + xem công nợ KH mình chăm)
+  if (CSKH_ROLES.includes(role)) return hideFinance ? ALL.filter(t => t.key !== 'taichinch') : ALL
   if (role === 'SALE') return hideFinance ? ALL.filter(t => t.key !== 'taichinch') : ALL
   if (role === 'TELE' || role === 'LE_TAN') return ALL.filter(t => t.key !== 'taichinch')
   // TELE, LE_TAN, MKT, TRUC_PAGE
@@ -165,7 +166,7 @@ export default function CustomerDetailPage() {
           {/* Tab content */}
           {activeTab === 'tongquan'  && <TongQuanTab  customer={customer} contracts={contracts} />}
           {activeTab === 'hanhtrinh' && <HanhTrinhTab customer={customer} appointments={appts} contracts={contracts} />}
-          {activeTab === 'taichinch' && <TaiChinhTab  contracts={contracts} />}
+          {activeTab === 'taichinch' && <TaiChinhTab  contracts={contracts} customer={customer} onChanged={load} />}
           {activeTab === 'lieutrinh' && <LieuTrinhTab customer={customer} />}
           {activeTab === 'anh'       && <AnhTab customer={customer} images={customer.images ?? []} canUpload={canUploadPhoto(role)} />}
         </div>
