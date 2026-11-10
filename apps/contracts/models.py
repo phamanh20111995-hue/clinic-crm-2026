@@ -74,6 +74,18 @@ class TreatmentSession(models.Model):
     notes = models.TextField(blank=True)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    # ── Xac nhan tua 2 lop (maker=le tan check-out, checker=BS/KTV xac nhan/tu choi qua Zalo) ──
+    TUA_STATUS_CHOICES = [
+        ('cho_xac_nhan', 'Chờ xác nhận'),
+        ('da_xac_nhan', 'Đã xác nhận'),
+        ('tu_choi', 'Từ chối'),
+    ]
+    tua_status = models.CharField(max_length=15, choices=TUA_STATUS_CHOICES, default='cho_xac_nhan',
+                                  help_text='Chi buoi da_xac_nhan moi tinh tua vao luong')
+    tua_confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                         on_delete=models.SET_NULL, related_name='tua_confirmations')
+    tua_confirmed_at = models.DateTimeField(null=True, blank=True)
+    tua_reject_reason = models.TextField(blank=True)
 
     class Meta:
         verbose_name = 'Buoi dieu tri'
@@ -81,6 +93,43 @@ class TreatmentSession(models.Model):
 
     def __str__(self):
         return f'Buoi {self.date} - {self.course}'
+
+
+class TuaAllocation(models.Model):
+    """Chia tua 1 buoi cho tung nguoi (BS tu van / BS dieu tri / KTV / Sale) — maker-checker 2 lop.
+    Le tan chia (tao luc check-out) = lop 1; moi nguoi tu xac nhan/tu choi = lop 2.
+    Chi dong da_xac_nhan moi tinh tua vao luong."""
+    ROLE_CHOICES = [
+        ('BS_TU_VAN', 'BS tư vấn'),
+        ('BS_DIEU_TRI', 'BS điều trị'),
+        ('KTV', 'KTV'),
+        ('SALE', 'Sale'),
+    ]
+    STATUS_CHOICES = [
+        ('cho_xac_nhan', 'Chờ xác nhận'),
+        ('da_xac_nhan', 'Đã xác nhận'),
+        ('tu_choi', 'Từ chối'),
+        ('huy', 'Đã hủy'),
+    ]
+    appointment = models.ForeignKey('appointments.Appointment', on_delete=models.CASCADE, related_name='tua_allocations')
+    session = models.ForeignKey('TreatmentSession', null=True, blank=True, on_delete=models.SET_NULL, related_name='tua_allocations')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tua_allocations')
+    role = models.CharField(max_length=15, choices=ROLE_CHOICES)
+    service_name = models.CharField(max_length=200, blank=True, help_text='Snapshot ten DV luc chia')
+    amount = models.DecimalField(max_digits=10, decimal_places=0, default=0, help_text='Tien tua nguoi nay duoc chia')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='cho_xac_nhan')
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    reject_reason = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='tua_allocations_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['appointment', 'user', 'role']
+        verbose_name = 'Chia tua'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.get_role_display()} {self.user} — {self.amount} ({self.get_status_display()})'
 
 
 class Payment(models.Model):

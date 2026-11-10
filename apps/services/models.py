@@ -9,6 +9,8 @@ class Service(models.Model):
     name = models.CharField(max_length=200)
     unit_price = models.DecimalField(max_digits=15, decimal_places=0)
     sessions = models.IntegerField(default=1)
+    tua_rate = models.DecimalField(max_digits=10, decimal_places=0, default=0,
+                                   help_text='Tien tua tra BS/KTV moi buoi thuc hien dich vu nay (P3)')
     is_active = models.BooleanField(default=True)
     class Meta: verbose_name='Dịch vụ'
     def __str__(self): return self.name

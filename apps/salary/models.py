@@ -1,24 +1,67 @@
 from django.db import models
 from django.conf import settings
 
+# Vai tro co the an hoa hong (dung cho CommissionRate + engine)
+COMMISSION_ROLE_CHOICES = [
+    ('SALE', 'Sale'), ('LEAD_SALE', 'Lead Sale'),
+    ('CSKH', 'CSKH'), ('LEAD_CSKH', 'Lead CSKH'),
+    ('TELE', 'Tele'), ('LEAD_TELE', 'Lead Tele'),
+    ('MKT', 'Marketing'), ('LEAD_MKT', 'Lead Marketing'),
+    ('TRUC_PAGE', 'Truc page'), ('LEAD_TRUC_PAGE', 'Lead Truc page'),
+    ('BS', 'Bac si'), ('KTV', 'KTV'),
+]
+
 
 class SalaryConfig(models.Model):
+    """Cau hinh luong 3P cho tung nhan su (P1 vi tri + P2 nang luc/phu cap)."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='salary_config')
-    base_salary = models.DecimalField(max_digits=12, decimal_places=0)
-    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0,
-                                          help_text='% hoa hồng trên doanh thu HĐ')
-    tua_rate = models.DecimalField(max_digits=8, decimal_places=0, default=0,
-                                   help_text='Tiền thưởng mỗi tua xác nhận (VNĐ)')
+    # P1 - Pay for Position (luong cung theo vi tri/chuc danh)
+    base_salary = models.DecimalField(max_digits=12, decimal_places=0, default=0,
+                                      help_text='P1 - Luong vi tri (chia theo cong)')
+    # P2 - Pay for Person (nang luc/tham nien + phu cap co dinh)
+    competency_salary = models.DecimalField(max_digits=12, decimal_places=0, default=0,
+                                            help_text='P2 - Luong nang luc/tham nien (chia theo cong)')
+    allowance = models.DecimalField(max_digits=12, decimal_places=0, default=0,
+                                    help_text='P2 - Phu cap co dinh: an ca, xang xe, dien thoai (chia theo cong)')
+    # Khau tru
     late_deduct_per_minute = models.DecimalField(max_digits=8, decimal_places=0, default=0,
                                                   help_text='Khấu trừ mỗi phút đi muộn (VNĐ)')
     absent_deduct_per_day = models.DecimalField(max_digits=10, decimal_places=0, default=0,
                                                  help_text='Khấu trừ mỗi ngày vắng không phép (VNĐ)')
+    # ── Bao hiem bat buoc + TNCN (tinh luong net) ──
+    bh_salary = models.DecimalField(max_digits=12, decimal_places=0, default=0,
+                                    help_text='Lương đóng BH (0 = dùng P1 base_salary)')
+    dependents = models.IntegerField(default=0, help_text='Số người phụ thuộc (giảm trừ TNCN)')
+    # ── Legacy (khong con dung trong engine 3P; giu lai de khong vo du lieu cu) ──
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                          help_text='[Legacy] da thay bang CommissionRate theo vai tro')
+    tua_rate = models.DecimalField(max_digits=8, decimal_places=0, default=0,
+                                   help_text='[Legacy] da thay bang Service.tua_rate theo dich vu')
 
     class Meta:
         verbose_name = 'Cấu hình lương'
 
     def __str__(self):
         return f"Lương {self.user}: {self.base_salary:,.0f} VNĐ"
+
+
+class CommissionRate(models.Model):
+    """% hoa hong theo vai tro (P3). Moi vai tro 1 rate rieng + rate upsale (ban them) rieng.
+    HR/Chu DN chinh o man Cau hinh luong."""
+    role = models.CharField(max_length=20, unique=True, choices=COMMISSION_ROLE_CHOICES)
+    percent = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                  help_text='% hoa hong tren thuc thu (vong thuong)')
+    percent_upsale = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                         help_text='% hoa hong tren thuc thu HD upsale (ban them)')
+    note = models.CharField(max_length=200, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Ty le hoa hong theo vai tro'
+        ordering = ['role']
+
+    def __str__(self):
+        return f"{self.get_role_display()}: {self.percent}% / upsale {self.percent_upsale}%"
 
 
 class MonthlySalary(models.Model):
@@ -31,10 +74,14 @@ class MonthlySalary(models.Model):
     actual_days = models.IntegerField(default=0, help_text='Ngày thực tế có mặt')
     late_minutes_total = models.IntegerField(default=0)
     absent_days = models.IntegerField(default=0)
-    base = models.DecimalField(max_digits=12, decimal_places=0)
-    commission = models.DecimalField(max_digits=12, decimal_places=0, default=0)
-    tua_income = models.DecimalField(max_digits=12, decimal_places=0, default=0)
-    deductions = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    base = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='P1 - luong vi tri (da chia cong)')
+    competency = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='P2 - luong nang luc (da chia cong)')
+    allowance = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='P2 - phu cap (da chia cong)')
+    commission = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='P3 - hoa hong thuc thu')
+    tua_income = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='P3 - tua BS/KTV')
+    deductions = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='Khấu trừ kỷ luật (đi muộn/vắng)')
+    bh_deduct = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='Bảo hiểm bắt buộc NV đóng (10.5%)')
+    tncn_deduct = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='Thuế TNCN lũy tiến')
     bonus = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     total = models.DecimalField(max_digits=12, decimal_places=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')

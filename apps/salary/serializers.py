@@ -1,17 +1,29 @@
 from rest_framework import serializers
-from .models import SalaryConfig, MonthlySalary
+from .models import SalaryConfig, MonthlySalary, CommissionRate
 
 
 class SalaryConfigSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
+    user_role = serializers.CharField(source='user.role', read_only=True)
 
     class Meta:
         model = SalaryConfig
-        fields = ('id', 'user', 'user_name', 'base_salary', 'commission_rate',
-                  'tua_rate', 'late_deduct_per_minute', 'absent_deduct_per_day')
+        fields = ('id', 'user', 'user_name', 'user_role',
+                  'base_salary', 'competency_salary', 'allowance',
+                  'late_deduct_per_minute', 'absent_deduct_per_day',
+                  'bh_salary', 'dependents')
 
     def get_user_name(self, obj):
         return obj.user.get_full_name() or obj.user.email
+
+
+class CommissionRateSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+
+    class Meta:
+        model = CommissionRate
+        fields = ('id', 'role', 'role_display', 'percent', 'percent_upsale', 'note', 'updated_at')
+        read_only_fields = ('id', 'role_display', 'updated_at')
 
 
 class MonthlySalarySerializer(serializers.ModelSerializer):
@@ -19,6 +31,10 @@ class MonthlySalarySerializer(serializers.ModelSerializer):
     user_role = serializers.CharField(source='user.role', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     approved_by_name = serializers.SerializerMethodField()
+    # Gop 3P de hien thi
+    p1_position = serializers.DecimalField(source='base', max_digits=12, decimal_places=0, read_only=True)
+    p2_person = serializers.SerializerMethodField()
+    p3_performance = serializers.SerializerMethodField()
 
     class Meta:
         model = MonthlySalary
@@ -26,7 +42,9 @@ class MonthlySalarySerializer(serializers.ModelSerializer):
             'id', 'user', 'user_name', 'user_role',
             'month', 'year',
             'working_days', 'actual_days', 'late_minutes_total', 'absent_days',
-            'base', 'commission', 'tua_income', 'deductions', 'bonus', 'total',
+            'base', 'competency', 'allowance',
+            'commission', 'tua_income', 'deductions', 'bh_deduct', 'tncn_deduct', 'bonus', 'total',
+            'p1_position', 'p2_person', 'p3_performance',
             'status', 'status_display',
             'approved_by', 'approved_by_name', 'approved_at',
             'notes', 'created_at',
@@ -35,6 +53,12 @@ class MonthlySalarySerializer(serializers.ModelSerializer):
 
     def get_user_name(self, obj):
         return obj.user.get_full_name() or obj.user.email
+
+    def get_p2_person(self, obj):
+        return int(obj.competency or 0) + int(obj.allowance or 0)
+
+    def get_p3_performance(self, obj):
+        return int(obj.commission or 0) + int(obj.tua_income or 0) + int(obj.bonus or 0)
 
     def get_approved_by_name(self, obj):
         if obj.approved_by:

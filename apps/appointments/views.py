@@ -103,6 +103,18 @@ class AppointmentDetailView(generics.RetrieveUpdateAPIView):
             return AppointmentUpdateSerializer
         return AppointmentListSerializer
 
+    def perform_update(self, serializer):
+        appt = serializer.save()
+        # Le tan gan/sua nguoi inline -> BAN THONG BAO LOP 2 NGAY (khong doi check-out).
+        # Check-out sau do chi la chot tua thuc te (idempotent).
+        changed = set(self.request.data.keys()) & {'doctor', 'bs_dieu_tri', 'ktv', 'sale'}
+        if changed:
+            try:
+                from apps.contracts.tua_sync import sync_tua_allocations
+                sync_tua_allocations(appt, actor=self.request.user)
+            except Exception:
+                pass
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -308,6 +320,13 @@ def checkout(request, pk):
             )
             ghi_buoi += 1
 
+    # Chia tua 2 lop: tao TuaAllocation cho tung nguoi da gan + ban thong bao xac nhan
+    try:
+        from apps.contracts.tua_sync import sync_tua_allocations
+        sync_tua_allocations(appt, actor=request.user)
+    except Exception:
+        pass
+
     data = AppointmentListSerializer(appt).data
     data['ghi_buoi'] = ghi_buoi
     return Response(data)
@@ -425,4 +444,10 @@ def assign_sale(request, pk):
         appt.customer.sale = sale
         appt.customer.save(update_fields=['sale', 'updated_at'])
         Appointment.objects.filter(customer=appt.customer).exclude(pk=appt.pk).update(sale=sale)
+    # Gan Sale -> ban thong bao lop 2 ngay cho Sale (khong doi check-out)
+    try:
+        from apps.contracts.tua_sync import sync_tua_allocations
+        sync_tua_allocations(appt, actor=request.user)
+    except Exception:
+        pass
     return Response(AppointmentListSerializer(appt).data)

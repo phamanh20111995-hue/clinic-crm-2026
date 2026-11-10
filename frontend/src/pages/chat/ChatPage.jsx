@@ -6,6 +6,7 @@ import useAuthStore from '../../store/authStore'
 import Modal from '../../components/ui/Modal'
 import { fmtDateTime } from '../../utils/format'
 import toast from 'react-hot-toast'
+import { confirmTuaAlloc } from '../../api/ketoan'
 
 export default function ChatPage() {
   const { user, accessToken } = useAuthStore()
@@ -52,10 +53,13 @@ export default function ChatPage() {
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       if (data.type === 'message') {
-        setMessages(prev => [...prev, {
+        setMessages(prev => prev.some(m => m.id === data.message_id) ? prev : [...prev, {
           id: data.message_id, sender: data.sender_id, sender_name: data.sender_name,
-          content: data.content, created_at: data.created_at,
+          content: data.content, message_type: data.message_type, metadata: data.metadata || {},
+          is_recalled: false, created_at: data.created_at,
         }])
+      } else if (data.type === 'recalled' || data.type === 'message_recalled') {
+        setMessages(prev => prev.map(m => m.id === data.message_id ? { ...m, is_recalled: true } : m))
       }
     }
     wsRef.current = ws
@@ -103,10 +107,32 @@ export default function ChatPage() {
   }
 
   const channelDisplayName = (ch) => {
+    if (ch.name === 'Hệ thống') return 'Hệ thống'
     if (ch.channel_type === 'direct') {
       return ch.members?.find(m => m.id !== user?.id)?.display_name ?? ch.name ?? 'Chat'
     }
     return ch.name || ch.members?.map(m => m.display_name).join(', ')
+  }
+
+  // ── Tin tua trong cuộc trò chuyện Hệ thống ──
+  const [tuaRejectId, setTuaRejectId] = useState(null)
+  const [tuaReason, setTuaReason] = useState('')
+  const [tuaBusy, setTuaBusy] = useState(null)
+  const patchMsgMeta = (id, patch) => setMessages(prev => prev.map(m => m.id === id ? { ...m, metadata: { ...(m.metadata || {}), ...patch } } : m))
+  const tuaConfirm = async (msg) => {
+    const tid = msg.metadata?.tua_id; if (!tid) return
+    setTuaBusy(msg.id)
+    try { await confirmTuaAlloc(tid, { action: 'confirm' }); patchMsgMeta(msg.id, { status: 'da_xac_nhan' }); toast.success('Đã xác nhận tua') }
+    catch (e) { toast.error(e.response?.data?.detail || 'Lỗi, thử lại') }
+    finally { setTuaBusy(null) }
+  }
+  const tuaReject = async (msg) => {
+    const tid = msg.metadata?.tua_id; if (!tid) return
+    if (!tuaReason.trim()) { toast.error('Nhập lý do từ chối'); return }
+    setTuaBusy(msg.id)
+    try { await confirmTuaAlloc(tid, { action: 'reject', reason: tuaReason.trim() }); patchMsgMeta(msg.id, { status: 'tu_choi', reject_reason: tuaReason.trim() }); setTuaRejectId(null); setTuaReason(''); toast.success('Đã từ chối') }
+    catch (e) { toast.error(e.response?.data?.detail || 'Lỗi, thử lại') }
+    finally { setTuaBusy(null) }
   }
 
   const createChannel = async () => {
@@ -518,6 +544,70 @@ export default function ChatPage() {
                 {msgLoading ? (
                   <div className="flex justify-center py-8"><Spinner /></div>
                 ) : messages.map(msg => {
+                  // Dòng nhật ký tua (kênh giám sát) — căn giữa, không nút
+                  if (msg.message_type === 'system' && msg.metadata?.kind === 'tua_log') {
+                    return (
+                      <div key={msg.id} className="flex justify-center">
+                        <div style={{ maxWidth: 560, fontSize: 12.5, color: '#475569', background: '#f8fafc', border: '1px solid #eef1f6', borderRadius: 10, padding: '7px 12px', textAlign: 'center' }}>
+                          {msg.content}
+                          <span style={{ color: '#cbd5e1', marginLeft: 8, fontSize: 11 }}>{fmtDateTime(msg.created_at)}</span>
+                        </div>
+                      </div>
+                    )
+                  }
+                  // Tin tua (Hệ thống) — có nút Đồng ý / Từ chối
+                  if (msg.message_type === 'system' && msg.metadata?.kind === 'tua') {
+                    const m = msg.metadata || {}
+                    const stMap = {
+                      cho_xac_nhan: { bg: '#fef9c3', c: '#854d0e', s: 'Chờ xác nhận' },
+                      da_xac_nhan:  { bg: '#dcfce7', c: '#15803d', s: 'Đã xác nhận' },
+                      tu_choi:      { bg: '#fee2e2', c: '#991b1b', s: 'Đã từ chối' },
+                      huy:          { bg: '#f1f5f9', c: '#64748b', s: 'Đã hủy' },
+                    }
+                    const st = stMap[m.status] || stMap.cho_xac_nhan
+                    const pending = !msg.is_recalled && m.status === 'cho_xac_nhan'
+                    return (
+                      <div key={msg.id} className="flex justify-center">
+                        <div style={{ maxWidth: 440, width: '100%', background: '#fff', border: '1px solid #dde3ef', borderRadius: 14, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#6d28d9' }}>🔔 Chia tua</span>
+                            {!msg.is_recalled && <span style={{ background: st.bg, color: st.c, padding: '3px 9px', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>{st.s}</span>}
+                          </div>
+                          {msg.is_recalled ? (
+                            <div style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>Lễ tân đã thu hồi phần tua này (chia lại).</div>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 14, color: '#0f2044', fontWeight: 600 }}>{m.customer || '—'} · {m.service || '—'}</div>
+                              <div style={{ fontSize: 13, color: '#64748b', marginTop: 3 }}>
+                                Vai trò: {m.role_display}
+                              </div>
+                              {m.status === 'tu_choi' && m.reject_reason && (
+                                <div style={{ marginTop: 8, fontSize: 12, color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '6px 9px' }}>Lý do: {m.reject_reason}</div>
+                              )}
+                              {pending && tuaRejectId !== msg.id && (
+                                <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                                  <button disabled={tuaBusy === msg.id} onClick={() => tuaConfirm(msg)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: tuaBusy === msg.id ? 0.6 : 1 }}>Đồng ý</button>
+                                  <button disabled={tuaBusy === msg.id} onClick={() => { setTuaRejectId(msg.id); setTuaReason('') }} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Từ chối</button>
+                                </div>
+                              )}
+                              {pending && tuaRejectId === msg.id && (
+                                <div style={{ marginTop: 12 }}>
+                                  <input autoFocus value={tuaReason} onChange={e => setTuaReason(e.target.value)} placeholder="Lý do từ chối (bắt buộc)..."
+                                    onKeyDown={e => { if (e.key === 'Enter') tuaReject(msg); if (e.key === 'Escape') { setTuaRejectId(null); setTuaReason('') } }}
+                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #fecaca', borderRadius: 10, fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                                    <button disabled={tuaBusy === msg.id} onClick={() => tuaReject(msg)} style={{ flex: 1, padding: '9px', borderRadius: 10, border: 'none', background: '#dc2626', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Gửi từ chối</button>
+                                    <button onClick={() => { setTuaRejectId(null); setTuaReason('') }} style={{ flex: 1, padding: '9px', borderRadius: 10, border: '1px solid #dde3ef', background: '#fff', color: '#64748b', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Hủy</button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 8 }}>{fmtDateTime(msg.created_at)}</div>
+                        </div>
+                      </div>
+                    )
+                  }
                   const isMe = msg.sender === user?.id || msg.sender_id === user?.id
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
