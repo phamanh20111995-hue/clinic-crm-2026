@@ -16,6 +16,7 @@ class ShiftAssignmentSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     department_display = serializers.SerializerMethodField()
+    clinic_name = serializers.SerializerMethodField()
 
     can_approve = serializers.SerializerMethodField()
     approved_by_name = serializers.SerializerMethodField()
@@ -23,11 +24,14 @@ class ShiftAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShiftAssignment
         fields = (
-            'id', 'user', 'user_name', 'shift', 'shift_detail', 'date',
+            'id', 'user', 'user_name', 'clinic', 'clinic_name', 'shift', 'shift_detail', 'date',
             'status', 'status_display', 'approved_by', 'approved_at', 'reject_reason',
             'department_display', 'can_approve', 'approved_by_name',
         )
         read_only_fields = ('id',)
+
+    def get_clinic_name(self, obj):
+        return obj.clinic.name if obj.clinic_id else ''
 
     def get_can_approve(self, obj):
         try:
@@ -54,7 +58,7 @@ class ShiftAssignmentSerializer(serializers.ModelSerializer):
 class ShiftAssignmentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShiftAssignment
-        fields = ('user', 'shift', 'date')
+        fields = ('user', 'clinic', 'shift', 'date')
         read_only_fields = ('user',)
 
     def validate(self, attrs):
@@ -140,6 +144,7 @@ class ZKTecoSyncSerializer(serializers.Serializer):
 
 class LeaveRequestSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
+    clinic_name = serializers.SerializerMethodField()
     leave_type_display = serializers.CharField(source='get_leave_type_display', read_only=True)
     duration_type_display = serializers.CharField(source='get_duration_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -151,7 +156,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveRequest
         fields = (
-            'id', 'user', 'user_name', 'department_display',
+            'id', 'user', 'user_name', 'department_display', 'clinic', 'clinic_name',
             'start_date', 'end_date',
             'leave_type', 'leave_type_display',
             'duration_type', 'duration_type_display',
@@ -181,6 +186,9 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
     def get_user_name(self, obj):
         return obj.user.get_full_name() or obj.user.email
+
+    def get_clinic_name(self, obj):
+        return obj.clinic.name if obj.clinic_id else ''
 
     def get_approved_by_name(self, obj):
         if obj.approved_by:

@@ -21,6 +21,7 @@ urlpatterns = [
     path('cash-recon/', payment_api.cash_recon, name='cash-recon'),
     # De xuat chi + duyet nhieu tang + so quy chi
     path('expenses/', expense_api.expense_list_create, name='expense-list-create'),
+    path('expenses/upload/', expense_api.expense_upload, name='expense-upload'),
     path('expenses/<int:pk>/approve/', expense_api.expense_approve, name='expense-approve'),
     path('expenses/<int:pk>/reject/', expense_api.expense_reject, name='expense-reject'),
     path('expenses/<int:pk>/pay/', expense_api.expense_pay, name='expense-pay'),

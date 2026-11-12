@@ -23,7 +23,7 @@ export default function SchedulePage() {
 
   return (
     <AppLayout title="Lịch & Đề xuất" bare>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         {/* Subnav */}
         <div style={{ height: 40, background: '#fff', borderBottom: '1px solid #dde3ef', display: 'flex', alignItems: 'center', paddingLeft: 8, paddingRight: 8, gap: 2, flexShrink: 0, overflowX: 'auto' }}>
           {TABS.map(t => {
@@ -40,7 +40,7 @@ export default function SchedulePage() {
         </div>
 
         {/* Tab content */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           {tab === 'nghiphep' && <NghiPhepTab />}
           {tab === 'calam' && <CaLamViecTab />}
           {tab === 'lichbophan' && <LichBoPhanTab />}

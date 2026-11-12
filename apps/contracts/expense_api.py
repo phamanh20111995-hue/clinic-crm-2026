@@ -1,8 +1,9 @@
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 
 import calendar
 from .models import (
@@ -35,6 +36,38 @@ def _next_code():
     last = ExpenseRequest.objects.order_by('-id').first()
     n = (last.id + 1) if last else 1
     return f'DXC-{n:04d}'
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def expense_upload(request):
+    """Upload 1 file ho so (bao gia / hop dong / chung tu) -> tra ve {url, name} de nhet vao chung_tu."""
+    import os
+    from django.core.files.storage import default_storage
+    f = request.FILES.get('file')
+    if not f:
+        return Response({'detail': 'Thiếu file.'}, status=400)
+    base, ext = os.path.splitext(f.name)
+    safe = ''.join(c for c in base if c.isalnum() or c in ('-', '_'))[:40] or 'file'
+    name = f'expense_docs/{timezone.now().strftime("%Y%m%d%H%M%S")}_{safe}{ext.lower()}'
+    path = default_storage.save(name, f)
+    return Response({'url': default_storage.url(path), 'name': f.name})
+
+
+def _notify_step(e):
+    """Bao cho nguoi duyet buoc hien tai (neu con)."""
+    from apps.chat.notifications import send_notification_to_role
+    cur = e.current_step
+    if cur:
+        send_notification_to_role(cur.role, 'general', f'Đề xuất chi {e.code} chờ bạn duyệt',
+                                  body=e.title, data={'kind': 'expense', 'expense_id': e.id})
+
+
+def _notify_user(user, title, body='', data=None):
+    from apps.chat.notifications import send_notification
+    if user:
+        send_notification(user, 'general', title, body=body, data=data or {'kind': 'expense'})
 
 
 def _add_months(d, months):
@@ -103,11 +136,20 @@ def _expense_row(e, user=None):
         'payment_method': e.payment_method,
         'payment_method_label': e.get_payment_method_display(),
         'co_hoa_don_vat': e.co_hoa_don_vat,
+        'payee_name': e.payee_name,
+        'payee_phone': e.payee_phone,
+        'payee_account': e.payee_account,
+        'payee_bank': e.payee_bank,
+        'payee_qr': e.payee_qr,
+        'due_date': e.due_date.isoformat() if e.due_date else None,
+        'is_urgent': e.is_urgent,
         'chung_tu': e.chung_tu or [],
         'chung_tu_note': e.chung_tu_note,
         'status': e.status,
         'status_label': e.get_status_display(),
         'requested_by_name': e.requested_by.display_name if e.requested_by_id else '',
+        'requested_by_role': e.requested_by.role if e.requested_by_id else '',
+        'requested_by_role_display': e.requested_by.get_role_display() if e.requested_by_id else '',
         'created_at': e.created_at.isoformat(),
         'paid_at': e.paid_at.isoformat() if e.paid_at else None,
         'paid_method': e.paid_method,
@@ -158,6 +200,13 @@ def expense_list_create(request):
                 amount=amount,
                 payment_method=d.get('payment_method', 'cash'),
                 co_hoa_don_vat=bool(d.get('co_hoa_don_vat', False)),
+                payee_name=d.get('payee_name', ''),
+                payee_phone=d.get('payee_phone', ''),
+                payee_account=d.get('payee_account', ''),
+                payee_bank=d.get('payee_bank', ''),
+                payee_qr=d.get('payee_qr', ''),
+                due_date=_parse_date(d.get('due_date')),
+                is_urgent=bool(d.get('is_urgent', False)),
                 so_ky=int(d.get('so_ky') or 0),
                 ky_dau=_parse_date(d.get('ky_dau')),
                 chung_tu=d.get('chung_tu') or [],
@@ -169,6 +218,8 @@ def expense_list_create(request):
                 ExpenseApproval.objects.create(request=e, **step)
             if not chain:  # tu duyet -> sinh lich tra gop ngay
                 generate_expense_payouts(e)
+        if chain:
+            _notify_step(e)  # bao nguoi duyet buoc 1
         return Response(_expense_row(e, request.user), status=201)
 
     # GET
@@ -214,6 +265,14 @@ def expense_approve(request, pk):
             e.save(update_fields=['status'])
             generate_expense_payouts(e)  # tra gop: sinh lich khi duyet xong
     e.refresh_from_db()
+    if e.status == 'da_duyet':
+        _notify_user(e.requested_by, f'Đề xuất chi {e.code} đã duyệt xong — chờ chi', body=e.title,
+                     data={'kind': 'expense', 'expense_id': e.id})
+        from apps.chat.notifications import send_notification_to_role
+        send_notification_to_role('KE_TOAN', 'general', f'Đề xuất chi {e.code} đã duyệt — chờ ghi chi',
+                                  body=e.title, data={'kind': 'expense', 'expense_id': e.id})
+    else:
+        _notify_step(e)  # bao nguoi duyet buoc tiep theo
     return Response(_expense_row(e, request.user))
 
 
@@ -241,6 +300,8 @@ def expense_reject(request, pk):
         e.rejected_by = request.user
         e.save(update_fields=['status', 'reject_reason', 'rejected_by'])
     e.refresh_from_db()
+    _notify_user(e.requested_by, f'Đề xuất chi {e.code} bị từ chối', body=f'Lý do: {reason}',
+                 data={'kind': 'expense', 'expense_id': e.id})
     return Response(_expense_row(e, request.user))
 
 
@@ -267,7 +328,13 @@ def expense_pay(request, pk):
     e.paid_at = d
     e.paid_method = request.data.get('paid_method') or e.payment_method
     e.paid_note = request.data.get('note', '')
-    e.save(update_fields=['status', 'paid_by', 'paid_at', 'paid_method', 'paid_note'])
+    # Chung tu chi (uy nhiem chi / bien nhan) bo sung luc Ghi chi
+    new_ct = request.data.get('chung_tu')
+    if new_ct:
+        e.chung_tu = (e.chung_tu or []) + (new_ct if isinstance(new_ct, list) else [new_ct])
+    e.save(update_fields=['status', 'paid_by', 'paid_at', 'paid_method', 'paid_note', 'chung_tu'])
+    _notify_user(e.requested_by, f'Đề xuất chi {e.code} đã được chi', body=e.title,
+                 data={'kind': 'expense', 'expense_id': e.id})
     return Response(_expense_row(e, request.user))
 
 
@@ -294,6 +361,13 @@ def expense_edit(request, pk):
         e.category = category
         e.payment_method = d.get('payment_method', e.payment_method)
         e.co_hoa_don_vat = bool(d.get('co_hoa_don_vat', e.co_hoa_don_vat))
+        e.payee_name = d.get('payee_name', e.payee_name)
+        e.payee_phone = d.get('payee_phone', e.payee_phone)
+        e.payee_account = d.get('payee_account', e.payee_account)
+        e.payee_bank = d.get('payee_bank', e.payee_bank)
+        e.payee_qr = d.get('payee_qr', e.payee_qr)
+        e.due_date = _parse_date(d.get('due_date')) or e.due_date
+        e.is_urgent = bool(d.get('is_urgent', e.is_urgent))
         e.so_ky = int(d.get('so_ky') or e.so_ky or 0)
         e.ky_dau = _parse_date(d.get('ky_dau')) or e.ky_dau
         e.chung_tu = d.get('chung_tu', e.chung_tu)
@@ -312,6 +386,8 @@ def expense_edit(request, pk):
             if not chain:
                 generate_expense_payouts(e)
     e.refresh_from_db()
+    if e.status == 'cho_duyet':
+        _notify_step(e)  # sua & gui lai -> bao nguoi duyet buoc 1
     return Response(_expense_row(e, request.user))
 
 
@@ -369,7 +445,7 @@ def _cash_net(clinic_id, after=None, before=None):
     exps = ExpenseRequest.objects.filter(status='da_chi', paid_method='cash', paid_at__isnull=False, is_deleted=False).exclude(payment_method='installment')
     pos = ExpensePayout.objects.filter(status='da_chi', method='cash', paid_at__isnull=False, request__is_deleted=False)
     nops = CashDeposit.objects.all()
-    cocs = Deposit.objects.filter(cash_amount__gt=0, received_at__isnull=False, is_deleted=False, verify_status='da_xac_nhan')  # phan TM cua coc (vao) - da xac nhan
+    cocs = Deposit.objects.filter(method='cash', received_at__isnull=False, is_deleted=False)        # coc nhan (vao)
     hoans = Deposit.objects.filter(status='hoan', settle_method='cash', settled_at__isnull=False, is_deleted=False)  # hoan coc (ra)
     if after:
         pays = pays.filter(received_at__gt=after); exps = exps.filter(paid_at__gt=after); pos = pos.filter(paid_at__gt=after); nops = nops.filter(date__gt=after); cocs = cocs.filter(received_at__gt=after); hoans = hoans.filter(settled_at__gt=after)
@@ -377,7 +453,7 @@ def _cash_net(clinic_id, after=None, before=None):
         pays = pays.filter(received_at__lt=before); exps = exps.filter(paid_at__lt=before); pos = pos.filter(paid_at__lt=before); nops = nops.filter(date__lt=before); cocs = cocs.filter(received_at__lt=before); hoans = hoans.filter(settled_at__lt=before)
     if clinic_id:
         pays = pays.filter(contract__clinic_id=clinic_id); exps = exps.filter(clinic_id=clinic_id); pos = pos.filter(request__clinic_id=clinic_id); nops = nops.filter(clinic_id=clinic_id); cocs = cocs.filter(clinic_id=clinic_id); hoans = hoans.filter(clinic_id=clinic_id)
-    thu = sum(int(p.cash_amount) for p in pays) + sum(int(c.cash_amount) for c in cocs)
+    thu = sum(int(p.cash_amount) for p in pays) + sum(int(c.amount) for c in cocs)
     chi = sum(int(e.amount) for e in exps) + sum(int(x.amount) for x in pos)
     nop = sum(int(n.amount) for n in nops) + sum(int(h.amount) for h in hoans)
     return thu - chi - nop
@@ -411,7 +487,7 @@ def cash_book(request):
     exps = ExpenseRequest.objects.select_related('clinic', 'paid_by').filter(status='da_chi', paid_method='cash', paid_at__isnull=False, is_deleted=False).exclude(payment_method='installment')
     pos = ExpensePayout.objects.select_related('request', 'paid_by').filter(status='da_chi', method='cash', paid_at__isnull=False, request__is_deleted=False)
     nops = CashDeposit.objects.select_related('deposited_by').all()
-    cocs = Deposit.objects.select_related('customer', 'received_by').filter(cash_amount__gt=0, received_at__isnull=False, is_deleted=False, verify_status='da_xac_nhan')
+    cocs = Deposit.objects.select_related('customer', 'received_by').filter(method='cash', received_at__isnull=False, is_deleted=False)
     hoans = Deposit.objects.select_related('customer', 'settled_by').filter(status='hoan', settle_method='cash', settled_at__isnull=False, is_deleted=False)
     if frm:
         pays = pays.filter(received_at__gte=frm); exps = exps.filter(paid_at__gte=frm); pos = pos.filter(paid_at__gte=frm); nops = nops.filter(date__gte=frm); cocs = cocs.filter(received_at__gte=frm); hoans = hoans.filter(settled_at__gte=frm)
@@ -426,8 +502,8 @@ def cash_book(request):
         amt = int(p.cash_amount); tong_thu += amt
         rows.append({'kind': 'thu', 'date': p.received_at.isoformat(), 'amount': amt, 'label': f'Thu TM HĐ {p.contract.contract_no}', 'ref': p.contract.contract_no, 'by_name': p.received_by.display_name if p.received_by_id else ''})
     for c in cocs:
-        amt = int(c.cash_amount); tong_coc += amt
-        rows.append({'kind': 'coc', 'date': c.received_at.isoformat(), 'amount': amt, 'label': 'Nhận cọc (TM) - ' + (c.customer.full_name if c.customer_id else ''), 'ref': c.code, 'by_name': c.received_by.display_name if c.received_by_id else ''})
+        amt = int(c.amount); tong_coc += amt
+        rows.append({'kind': 'coc', 'date': c.received_at.isoformat(), 'amount': amt, 'label': 'Nhận cọc - ' + (c.customer.full_name if c.customer_id else ''), 'ref': c.code, 'by_name': c.received_by.display_name if c.received_by_id else ''})
     for e in exps:
         amt = int(e.amount); tong_chi += amt
         rows.append({'kind': 'chi', 'date': e.paid_at.isoformat(), 'amount': amt, 'label': f'{e.get_category_display()}: {e.title}', 'ref': e.code, 'by_name': e.paid_by.display_name if e.paid_by_id else ''})

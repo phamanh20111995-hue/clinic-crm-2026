@@ -3,6 +3,7 @@ import api from './client'
 // ===== Đề xuất chi + duyệt nhiều tầng + sổ quỹ chi =====
 export const getExpenses    = (params)   => api.get('/api/contracts/expenses/', { params })
 export const createExpense  = (data)     => api.post('/api/contracts/expenses/', data)
+export const uploadExpenseDoc = (form)   => api.post('/api/contracts/expenses/upload/', form, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const approveExpense = (id, data) => api.post(`/api/contracts/expenses/${id}/approve/`, data)
 export const rejectExpense  = (id, data) => api.post(`/api/contracts/expenses/${id}/reject/`, data)
 export const payExpense     = (id, data) => api.post(`/api/contracts/expenses/${id}/pay/`, data)

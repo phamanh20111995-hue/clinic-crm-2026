@@ -38,6 +38,9 @@ const txtInp = { padding: '7px 10px', border: '1px solid #dde3ef', borderRadius:
 const selStyle = { padding: '7px 10px', border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, fontFamily: 'inherit', background: '#fff', outline: 'none', cursor: 'pointer' }
 const navBtnStyle = { border: '1px solid #dde3ef', borderRadius: 7, padding: '6px 10px', background: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }
 const btnSave = { display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 9px', border: '1px solid #00b259', borderRadius: 7, background: '#fff', color: '#00880f', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }
+// Ghim cột nút ở mép phải để không bị khuất khi cuộn ngang (giống CongNoTab/ChiTab)
+const thAction = { ...th, right: 0, zIndex: 3, boxShadow: '-6px 0 6px -4px rgba(15,23,42,0.08)' }
+const tdAction = { ...td, position: 'sticky', right: 0, background: '#fff', zIndex: 2, boxShadow: '-6px 0 6px -4px rgba(15,23,42,0.08)' }
 
 function StatCard({ label, value, sub, accent, onClick, active }) {
   return (
@@ -161,7 +164,7 @@ function BangLuong() {
         <thead><tr>
           <th style={th}>Nhân sự</th><th style={th}>Vai trò</th><th style={thR}>Công</th>
           <th style={thR}>P1 · Vị trí</th><th style={thR}>P2 · Năng lực+PC</th><th style={thR}>P3 · Hiệu suất</th>
-          <th style={thR}>Khấu trừ</th><th style={thR}>BH (10.5%)</th><th style={thR}>TNCN</th><th style={thR}>Thực nhận</th><th style={th}>Trạng thái</th><th style={th}></th>
+          <th style={thR}>Khấu trừ</th><th style={thR}>BH (10.5%)</th><th style={thR}>TNCN</th><th style={thR}>Thực nhận</th><th style={th}>Trạng thái</th><th style={thAction}></th>
         </tr></thead>
         <tbody>
           {paged.length === 0 ? (
@@ -181,7 +184,7 @@ function BangLuong() {
               <td style={td}>
                 <span style={{ background: r.status === 'paid' ? '#dcfce7' : r.status === 'approved' ? '#fef9c3' : '#e0f2fe', color: r.status === 'paid' ? '#15803d' : r.status === 'approved' ? '#854d0e' : '#0369a1', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600 }}>{r.status_display || r.status}</span>
               </td>
-              <td style={td}>
+              <td style={tdAction}>
                 {r.status === 'draft' && <button onClick={() => doApprove(r, 'approve')} style={btnSave}>Duyệt</button>}
                 {r.status === 'approved' && <button onClick={() => doApprove(r, 'pay')} style={{ ...btnSave, borderColor: '#1e40af', color: '#1e40af' }}>Thanh toán</button>}
               </td>
@@ -378,7 +381,7 @@ function BangTua() {
             <th style={th}>Khách hàng</th><th style={th}>Loại lượt</th><th style={th}>SĐT</th><th style={th}>Nguồn</th>
             <th style={th}>Nhóm KH</th><th style={th}>Tỉnh/thành</th><th style={th}>Loại data</th><th style={th}>Dịch vụ</th>
             <th style={th}>BS tư vấn</th><th style={th}>BS điều trị</th><th style={th}>KTV</th><th style={th}>Sale</th>
-            <th style={thR}>Tính lương</th><th style={th}></th>
+            <th style={thR}>Tính lương</th><th style={thAction}></th>
           </tr></thead>
           <tbody>
             {paged.length === 0 ? (
@@ -402,7 +405,7 @@ function BangTua() {
                   <td style={td}><RoleCell a={g.roles.KTV} /></td>
                   <td style={td}><RoleCell a={g.roles.SALE} /></td>
                   <td style={{ ...tdR, fontWeight: 700, color: '#6d28d9' }}>{fmt(g.tong)}đ</td>
-                  <td style={td}><button onClick={e => { e.stopPropagation(); setDetail(g) }} style={{ padding: '3px 10px', border: '1px solid #dde3ef', borderRadius: 7, background: '#fff', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Chi tiết</button></td>
+                  <td style={tdAction}><button onClick={e => { e.stopPropagation(); setDetail(g) }} style={{ padding: '3px 10px', border: '1px solid #dde3ef', borderRadius: 7, background: '#fff', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Chi tiết</button></td>
                 </tr>
               )
             })}

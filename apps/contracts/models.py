@@ -298,35 +298,54 @@ class CashReconciliation(models.Model):
 
 EXPENSE_OWNER_THRESHOLD = 1_000_000  # >= muc nay phai them Chu DN duyet
 
-# Loai chi -> (role nguoi duyet dau tien, nhan hien thi)
-EXPENSE_FIRST_APPROVER = {
-    'tele':  ('LEAD_TELE', 'Lead Tele'),
-    'mkt':   ('LEAD_MKT',  'Lead MKT'),
-    'cskh':  ('LEAD_CSKH', 'Lead CSKH'),
-    'sale':  ('LEAD_SALE', 'Lead Sale'),
-    # con lai (co_so / vat_tu / van_phong_pham / hoa_don_vat / luong_ung / khac) -> QL chi nhanh
+# Chuoi duyet de xuat chi theo BO PHAN nguoi de xuat (chot 2026-11-12), KHONG theo loai chi nua.
+# Vai co truong bo phan rieng (lead):
+DEPT_LEAD = {
+    'SALE': 'LEAD_SALE', 'LEAD_SALE': 'LEAD_SALE',
+    'TELE': 'LEAD_TELE', 'LEAD_TELE': 'LEAD_TELE',
+    'CSKH': 'LEAD_CSKH', 'LEAD_CSKH': 'LEAD_CSKH',
+    'MKT': 'LEAD_MKT', 'LEAD_MKT': 'LEAD_MKT',
+    'TRUC_PAGE': 'LEAD_TRUC_PAGE', 'LEAD_TRUC_PAGE': 'LEAD_TRUC_PAGE',
 }
+LEAD_LABEL = {
+    'LEAD_SALE': 'Lead Sale', 'LEAD_TELE': 'Lead Tele', 'LEAD_CSKH': 'Lead CSKH',
+    'LEAD_MKT': 'Lead MKT', 'LEAD_TRUC_PAGE': 'Lead Trực page',
+}
+# Nhom lam viec TAI CO SO -> chuoi co them tang Quan ly co so (QUAN_LY).
+# Nhom online (TELE/MKT/CSKH/TRUC_PAGE) KHONG co tang nay.
+AT_CLINIC_ROLES = {'LE_TAN', 'SALE', 'LEAD_SALE', 'KTV', 'BS'}
 
 
 def build_expense_chain(category, amount, requester_role=None):
-    """Tra ve chuoi duyet [{step_order, role, label}] theo loai chi + so tien.
-    Tang 1 = truong bo phan theo loai; Tang 2 = Ke toan; Tang 3 = Chu DN (khi >= 1 trieu).
-    BO buoc ma chinh nguoi de xuat phai ky (khong tu duyet cho minh): vd Lead tu de xuat ->
-    bo buoc truong bo phan, chi con Ke toan (+ Chu DN neu >= 1 trieu)."""
-    first_role, first_name = EXPENSE_FIRST_APPROVER.get(category, ('QUAN_LY', 'QL chi nhánh'))
-    raw = [
-        {'role': first_role, 'label': f'Trưởng bộ phận ({first_name})'},
-        {'role': 'KE_TOAN', 'label': 'Kế toán'},
-    ]
+    """Chuoi duyet [{step_order, role, label}] theo BO PHAN nguoi de xuat (category giu de tuong thich chu ky goi).
+    (A) Online (MKT/Tele/CSKH/Truc page): Truong bo phan -> Ke toan -> Chu DN (>=1tr).
+    (B) Tai co so (Le tan/Sale/KTV/Bac si): Truong bo phan -> Quan ly co so -> Ke toan -> Chu DN (>=1tr).
+    Vai khong co lead rieng (Le tan/KTV/BS): QL co so dong vai tang dau. BO buoc ma chinh nguoi de xuat phai ky."""
+    raw = []
+    lead = DEPT_LEAD.get(requester_role)
+    if lead:
+        raw.append({'role': lead, 'label': f'Trưởng bộ phận ({LEAD_LABEL.get(lead, lead)})'})
+    if requester_role in AT_CLINIC_ROLES:
+        raw.append({'role': 'QUAN_LY', 'label': 'Quản lý cơ sở'})
+    if not raw:  # khong lead + khong thuoc nhom co so (vd QUAN_LY/KE_TOAN tu de xuat) -> QL co so duyet dau
+        raw.append({'role': 'QUAN_LY', 'label': 'QL chi nhánh'})
+    raw.append({'role': 'KE_TOAN', 'label': 'Kế toán'})
     try:
         amt = int(amount or 0)
     except (TypeError, ValueError):
         amt = 0
     if amt >= EXPENSE_OWNER_THRESHOLD:
         raw.append({'role': 'CHU_DN', 'label': 'Chủ DN'})
+    # Bo buoc ma chinh nguoi de xuat phai ky (khong tu duyet cho minh)
     if requester_role:
         raw = [s for s in raw if s['role'] != requester_role]
-    return [{'step_order': i + 1, 'role': s['role'], 'label': s['label']} for i, s in enumerate(raw)]
+    # Khu trung role (vd nhom co so khong lead -> chi 1 lan QUAN_LY)
+    dedup, seen = [], set()
+    for s in raw:
+        if s['role'] not in seen:
+            seen.add(s['role'])
+            dedup.append(s)
+    return [{'step_order': i + 1, 'role': s['role'], 'label': s['label']} for i, s in enumerate(dedup)]
 
 
 class ExpenseRequest(models.Model):
@@ -358,6 +377,14 @@ class ExpenseRequest(models.Model):
     amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     payment_method = models.CharField(max_length=15, choices=PAYMENT_METHOD_CHOICES, default='cash', help_text='De xuat chi bang TM / CK / Tra gop')
     co_hoa_don_vat = models.BooleanField(default=False, help_text='Co hoa don VAT dau vao (de doi soat MISA)')
+    # Thong tin nguoi nhan tien (de chuyen khoan)
+    payee_name = models.CharField(max_length=200, blank=True, help_text='Nha cung cap / nguoi nhan tien')
+    payee_phone = models.CharField(max_length=20, blank=True, help_text='SDT nguoi nhan tien')
+    payee_account = models.CharField(max_length=50, blank=True, help_text='So tai khoan nhan tien')
+    payee_bank = models.CharField(max_length=120, blank=True, help_text='Ngan hang / chi nhanh')
+    payee_qr = models.CharField(max_length=500, blank=True, help_text='URL anh ma QR nhan tien (tuy chon)')
+    due_date = models.DateField(null=True, blank=True, help_text='Han can chi (tuy chon)')
+    is_urgent = models.BooleanField(default=False, help_text='Chi gap / uu tien')
     # Mua tra gop (PK tra dan hang thang): so ky + ngay ky dau -> sinh lich ExpensePayout khi duyet xong
     so_ky = models.PositiveIntegerField(default=0, help_text='So ky tra gop (chi khi payment_method=installment)')
     ky_dau = models.DateField(null=True, blank=True, help_text='Ngay ky tra dau tien')

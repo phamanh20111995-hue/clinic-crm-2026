@@ -30,6 +30,7 @@ class ShiftAssignment(models.Model):
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shift_assignments')
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='shift_assignments')
     shift = models.ForeignKey(WorkShift, on_delete=models.CASCADE, related_name='assignments')
     date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -97,6 +98,7 @@ class LeaveRequest(models.Model):
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='leave_requests')
+    clinic = models.ForeignKey('accounts.Clinic', null=True, blank=True, on_delete=models.SET_NULL, related_name='leave_requests')
     start_date = models.DateField()
     end_date = models.DateField()
     leave_type = models.CharField(max_length=10, choices=LEAVE_TYPE_CHOICES)

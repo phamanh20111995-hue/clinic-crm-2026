@@ -15,4 +15,5 @@ urlpatterns = [
     # Nghỉ phép
     path('leaves/', views.LeaveRequestListCreateView.as_view(), name='leave-list-create'),
     path('leaves/<int:pk>/approve/', views.approve_leave, name='leave-approve'),
+    path('leaves/<int:pk>/resubmit/', views.resubmit_leave, name='leave-resubmit'),
 ]

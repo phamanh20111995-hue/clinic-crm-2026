@@ -1,202 +1,143 @@
 import { useState, useEffect, useCallback } from 'react'
-import { IconRefresh } from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight, IconCalendarEvent, IconSearch } from '@tabler/icons-react'
 import { getDepartmentWeekShifts } from '../../../api/attendance'
+import { getClinics } from '../../../api/clinics'
+import KetoanListShell from '../../ketoan/components/KetoanListShell'
 import useAuthStore from '../../../store/authStore'
 import { getUserRole } from '../../../utils/rolesV2'
 
-const MANAGEMENT_ROLES = ['QUAN_LY', 'CHU_DN']
 const ACCENT = '#0369a1'
-
-const STATUS_CFG = {
-  pending:  { label: 'Chờ duyệt', bg: '#fef9c3', color: '#854d0e' },
-  approved: { label: 'Đã duyệt',  bg: '#dcfce7', color: '#15803d' },
-  rejected: { label: 'Từ chối',   bg: '#fee2e2', color: '#dc2626' },
-}
-
+const MANAGEMENT = ['QUAN_LY', 'CHU_DN', 'KE_TOAN']
 const DAY_LABELS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN']
-
 const DEPARTMENTS = ['Tele', 'Sale', 'CSKH', 'MKT', 'Trực page', 'Y tế', 'Lễ tân', 'Kế toán', 'Ban quản lý']
+const SHIFT_BG = { sang: ['#dbeafe', '#1e40af'], chieu: ['#fef3c7', '#92400e'], toi: ['#ede9fe', '#6d28d9'], full: ['#dcfce7', '#15803d'] }
+const STATUS_RING = { pending: '1.5px solid #fbbf24', approved: 'none', rejected: '1.5px solid #fca5a5' }
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_CFG[status] ?? { label: status, bg: '#f1f5f9', color: '#64748b' }
-  return (
-    <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 9, fontWeight: 700, background: cfg.bg, color: cfg.color, whiteSpace: 'nowrap' }}>
-      {cfg.label}
-    </span>
-  )
-}
+const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+function getMonday(s) { const b = s ? new Date(`${s}T00:00:00`) : new Date(); const day = b.getDay(); b.setDate(b.getDate() + (day === 0 ? -6 : 1 - day)); return toISO(b) }
+const addDays = (s, n) => { const d = new Date(`${s}T00:00:00`); d.setDate(d.getDate() + n); return toISO(d) }
+const dshort = s => { const d = new Date(`${s}T00:00:00`); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}` }
 
-function fmtDate(s) {
-  if (!s) return '—'
-  return new Date(s).toLocaleDateString('vi-VN')
-}
-
-function fmtShift(shift) {
-  if (!shift) return '—'
-  const name = shift.name_display ?? shift.name ?? '—'
-  if (shift.start_time && shift.end_time) {
-    return `${name} (${shift.start_time.slice(0,5)}–${shift.end_time.slice(0,5)})`
-  }
-  return name
-}
-
-function toISODate(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return y + '-' + m + '-' + day
-}
-
-function getMonday(dateStr) {
-  const base = dateStr ? new Date(`${dateStr}T00:00:00`) : new Date()
-  const day = base.getDay() // 0 = Sun .. 6 = Sat
-  const diff = day === 0 ? -6 : 1 - day
-  base.setDate(base.getDate() + diff)
-  return toISODate(base)
-}
-
-function addDays(dateStr, n) {
-  const d = new Date(`${dateStr}T00:00:00`)
-  d.setDate(d.getDate() + n)
-  return toISODate(d)
-}
+const th = { padding: '8px 12px', textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }
+const thFrz = { ...th, textAlign: 'left', left: 0, zIndex: 4, boxShadow: '6px 0 6px -4px rgba(15,23,42,0.08)' }
+const td = { padding: '9px 12px', fontSize: 12, borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap', textAlign: 'center' }
+const tdFrz = { ...td, textAlign: 'left', position: 'sticky', left: 0, background: '#fff', zIndex: 2, boxShadow: '6px 0 6px -4px rgba(15,23,42,0.08)' }
+const selStyle = { padding: '7px 10px', border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, fontFamily: 'inherit', background: '#fff', color: '#334155', outline: 'none', cursor: 'pointer' }
+const navBtn = { border: '1px solid #dde3ef', borderRadius: 7, padding: '6px 10px', background: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', color: '#334155', display: 'inline-flex', alignItems: 'center', gap: 3 }
+const inp = { padding: '7px 10px', border: '1px solid #dde3ef', borderRadius: 7, fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }
 
 export default function LichBoPhanTab() {
   const user = useAuthStore(s => s.user)
   const role = getUserRole(user)
-  const isManagement = MANAGEMENT_ROLES.includes(role)
+  const isManagement = MANAGEMENT.includes(role)
 
   const [weekStart, setWeekStart] = useState(() => getMonday())
+  const [data, setData] = useState({ department: null, assignments: [] })
+  const [loading, setLoading] = useState(false)
+  const [clinics, setClinics] = useState([])
+  const [selDept, setSelDept] = useState('')
+  const [fCs, setFCs] = useState('')
+  const [q, setQ] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
-  const [deptWeek, setDeptWeek]   = useState({ department: null, week_start: null, assignments: [] })
-  const [loadingDept, setLoadingDept] = useState(false)
-  const [selectedDept, setSelectedDept] = useState('')
-
-  const loadDeptWeek = useCallback(async () => {
-    setLoadingDept(true)
+  const load = useCallback(async () => {
+    setLoading(true)
     try {
       const params = { week_start: weekStart }
-      if (isManagement && selectedDept) params.department = selectedDept
+      if (isManagement && selDept) params.department = selDept
       const r = await getDepartmentWeekShifts(params)
-      setDeptWeek(r.data ?? { department: null, week_start: weekStart, assignments: [] })
-    } catch {
-      setDeptWeek({ department: null, week_start: weekStart, assignments: [] })
-    } finally {
-      setLoadingDept(false)
-    }
-  }, [weekStart, selectedDept, isManagement])
-
-  useEffect(() => { loadDeptWeek() }, [loadDeptWeek])
+      setData(r.data ?? { department: null, assignments: [] })
+    } catch { setData({ department: null, assignments: [] }) } finally { setLoading(false) }
+  }, [weekStart, selDept, isManagement])
+  useEffect(() => { load() }, [load])
+  useEffect(() => { getClinics().then(r => setClinics(r.data?.results ?? r.data ?? [])).catch(() => {}) }, [])
+  useEffect(() => { setPage(1) }, [weekStart, selDept, fCs, q])
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-
-  // group dept-week assignments by user → date → list
-  const deptByUser = {}
-  for (const a of (deptWeek.assignments ?? [])) {
+  // group by user → date
+  const byUser = {}
+  for (const a of (data.assignments ?? [])) {
+    if (fCs && String(a.clinic ?? '') !== String(fCs)) continue
+    if (q && !(a.user_name || '').toLowerCase().includes(q.toLowerCase())) continue
     const key = a.user_name ?? '—'
-    if (!deptByUser[key]) {
-      deptByUser[key] = { user_name: a.user_name, department_display: a.department_display, byDate: {} }
-    }
-    if (!deptByUser[key].byDate[a.date]) deptByUser[key].byDate[a.date] = []
-    deptByUser[key].byDate[a.date].push(a)
+    if (!byUser[key]) byUser[key] = { user_name: a.user_name, department_display: a.department_display, clinic_name: a.clinic_name, byDate: {} }
+    if (!byUser[key].byDate[a.date]) byUser[key].byDate[a.date] = []
+    byUser[key].byDate[a.date].push(a)
   }
-  const deptUsers = Object.values(deptByUser)
+  const users = Object.values(byUser)
+  const pagedUsers = users.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* Topbar */}
-      <div style={{ padding: '10px 16px', background: '#fff', borderBottom: '1px solid #eef1f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f2044' }}>Lịch bộ phận</span>
-        <button onClick={() => loadDeptWeek()} style={btnOutline}><IconRefresh size={13} /> Làm mới</button>
-      </div>
+  const visAssigns = (data.assignments ?? []).filter(a => (!fCs || String(a.clinic ?? '') === String(fCs)) && (!q || (a.user_name || '').toLowerCase().includes(q.toLowerCase())))
+  const acnt = k => visAssigns.filter(a => a.status === k).length
+  const card = (label, value, sub, accent) => (
+    <div style={{ background: '#fff', border: '1px solid #dde3ef', borderRadius: 10, padding: '11px 14px' }}>
+      <div style={{ fontSize: 19, fontWeight: 700, color: accent, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>{label}</div>
+      {sub && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{sub}</div>}
+    </div>
+  )
+  const stats = (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10 }}>
+      {card('Tổng ca trong tuần', visAssigns.length, `${users.length} nhân sự có lịch`, ACCENT)}
+      {card('Chờ duyệt', acnt('pending'), 'Cần duyệt', '#854d0e')}
+      {card('Đã duyệt', acnt('approved'), 'Trong tuần', '#15803d')}
+      {card('Từ chối', acnt('rejected'), '', '#dc2626')}
+    </div>
+  )
 
-      <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* ── Lịch tuần của bộ phận ── */}
-        <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #dde3ef', overflow: 'hidden' }}>
-          <div style={{ padding: '9px 14px', borderBottom: '1px solid #eef1f6', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#0f2044' }}>
-              Lịch tuần của bộ phận{deptWeek.department ? ` — ${deptWeek.department}` : ''}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={labelStyle}>Tuần bắt đầu (Thứ 2)</label>
-                <input
-                  type="date"
-                  value={weekStart}
-                  onChange={e => setWeekStart(getMonday(e.target.value))}
-                  style={inputStyle}
-                />
-              </div>
-              {isManagement && (
-                <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)} style={{ ...inputStyle, width: 'auto' }}>
-                  <option value="">— Phòng của tôi —</option>
-                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              )}
-            </div>
-          </div>
-          {loadingDept ? (
-            <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Đang tải...</div>
-          ) : !deptWeek.department ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>🏢</div>
-              <div style={{ fontSize: 12 }}>Không xác định được bộ phận của bạn</div>
-            </div>
-          ) : deptUsers.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>🗓️</div>
-              <div style={{ fontSize: 12 }}>Chưa có ca nào trong tuần này</div>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <th style={{ padding: '7px 11px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap' }}>Nhân viên / Bộ phận</th>
-                    {weekDays.map((d, i) => (
-                      <th key={d} style={{ padding: '7px 11px', textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap' }}>
-                        {DAY_LABELS[i]}<br />{fmtDate(d)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {deptUsers.map(u => (
-                    <tr key={u.user_name}>
-                      <td style={td}>
-                        <div style={{ fontWeight: 600, color: '#111827' }}>{u.user_name ?? '—'}</div>
-                        <div style={{ fontSize: 9, color: '#94a3b8' }}>{u.department_display ?? ''}</div>
-                      </td>
-                      {weekDays.map(d => (
-                        <td key={d} style={{ ...td, textAlign: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                            {(u.byDate[d] ?? []).map(a => {
-                              const cfg = STATUS_CFG[a.status] ?? { bg: '#f1f5f9', color: '#64748b' }
-                              return (
-                                <span key={a.id}
-                                  title={a.status_display}
-                                  style={{ padding: '2px 6px', borderRadius: 6, fontSize: 9, fontWeight: 700, background: cfg.bg, color: cfg.color, whiteSpace: 'nowrap' }}>
-                                  {a.shift_detail?.name_display ?? fmtShift(a.shift_detail)}
-                                </span>
-                              )
-                            })}
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+  const toolbar = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: '#0f2044' }}>Lịch bộ phận theo tuần{data.department ? ` — ${data.department}` : ''}</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={navBtn}><IconChevronLeft size={14} /> Tuần trước</button>
+          <span style={{ fontWeight: 700, color: '#0f2044', fontSize: 12, minWidth: 130, textAlign: 'center' }}>{dshort(weekDays[0])} – {dshort(weekDays[6])}</span>
+          <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={navBtn}>Tuần sau <IconChevronRight size={14} /></button>
+          <button onClick={() => setWeekStart(getMonday())} style={{ ...navBtn, background: '#eff6ff', color: ACCENT, borderColor: ACCENT, fontWeight: 600 }}>Tuần này</button>
         </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: 200 }}>
+          <IconSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm nhân viên..." style={{ ...inp, paddingLeft: 28, width: '100%' }} />
+        </div>
+        {isManagement && <select value={selDept} onChange={e => setSelDept(e.target.value)} style={selStyle}><option value="">— Phòng của tôi —</option>{DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}</select>}
+        <select value={fCs} onChange={e => setFCs(e.target.value)} style={selStyle}><option value="">Tất cả cơ sở</option>{clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <input type="date" onChange={e => e.target.value && setWeekStart(getMonday(e.target.value))} title="Nhảy tới tuần chứa ngày" style={selStyle} />
+        <span style={{ fontSize: 10, color: '#94a3b8' }}>· viền vàng = chờ duyệt</span>
       </div>
     </div>
   )
-}
 
-const btnOutline = { display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: '1px solid #dde3ef', background: '#fff', color: '#374151', fontSize: 11, cursor: 'pointer' }
-const labelStyle = { fontSize: 10, fontWeight: 600, color: '#475569' }
-const inputStyle = { padding: '6px 10px', borderRadius: 7, border: '1px solid #dde3ef', fontSize: 12, color: '#0f2044', background: '#fff', width: '100%' }
-const td = { padding: '8px 11px', borderBottom: '1px solid #f1f5f9' }
+  return (
+    <KetoanListShell stats={stats} toolbar={toolbar} pagination={{ page, pageSize, count: users.length, onPage: setPage, onPageSize: setPageSize }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 980 }}>
+        <thead><tr>
+          <th style={thFrz}>Nhân viên / Bộ phận</th>
+          {weekDays.map((d, i) => <th key={d} style={th}>{DAY_LABELS[i]}<br /><span style={{ color: '#94a3b8', fontWeight: 400 }}>{dshort(d)}</span></th>)}
+        </tr></thead>
+        <tbody>
+          {loading ? <tr><td style={{ ...td, textAlign: 'center', color: '#94a3b8', padding: 32 }} colSpan={8}>Đang tải...</td></tr>
+            : users.length === 0 ? <tr><td style={{ ...td, textAlign: 'center', color: '#94a3b8', padding: 32 }} colSpan={8}>Chưa có ca trong tuần này</td></tr>
+              : pagedUsers.map(u => (
+                <tr key={u.user_name}>
+                  <td style={tdFrz}><div style={{ fontWeight: 600, color: '#0f2044' }}>{u.user_name || '—'}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>{u.department_display || ''}{u.clinic_name ? ' · ' + u.clinic_name : ''}</div></td>
+                  {weekDays.map(d => (
+                    <td key={d} style={td}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        {(u.byDate[d] ?? []).map(a => {
+                          const bg = SHIFT_BG[a.shift_detail?.name] || ['#f1f5f9', '#475569']
+                          return <span key={a.id} title={a.status_display || a.status} style={{ background: bg[0], color: bg[1], padding: '2px 7px', borderRadius: 6, fontSize: 9, fontWeight: 700, outline: STATUS_RING[a.status] || 'none' }}>{a.shift_detail?.name_display ?? a.shift_detail?.name ?? 'ca'}</span>
+                        })}
+                        {!(u.byDate[d] ?? []).length && <span style={{ color: '#e2e8f0' }}>·</span>}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+        </tbody>
+      </table>
+    </KetoanListShell>
+  )
+}

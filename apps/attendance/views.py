@@ -406,6 +406,51 @@ def _delete_overlapping_shifts(leave):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def resubmit_leave(request, pk):
+    """POST /api/attendance/leaves/{id}/resubmit/ — người tạo SỬA LẠI đơn bị từ chối rồi gửi lại (về 'pending').
+    Giống luồng maker-checker của đề xuất/hóa đơn: từ chối có lý do → người tạo sửa → chờ duyệt lại."""
+    from django.utils.dateparse import parse_date
+    leave = LeaveRequest.objects.filter(pk=pk).select_related('user').first()
+    if not leave:
+        return Response({'detail': 'Không tìm thấy đơn nghỉ phép.'}, status=404)
+    if leave.user_id != request.user.id and getattr(request.user, 'role', None) not in MANAGEMENT_ROLES:
+        return Response({'detail': 'Chỉ người tạo (hoặc quản lý) được sửa lại đơn.'}, status=403)
+    if leave.status != 'rejected':
+        return Response({'detail': 'Chỉ sửa lại được đơn đang bị từ chối.'}, status=400)
+    d = request.data or {}
+    for f in ('leave_type', 'duration_type', 'reason'):
+        if f in d:
+            setattr(leave, f, d[f])
+    if d.get('start_date'):
+        leave.start_date = parse_date(d['start_date']) or leave.start_date
+    if d.get('end_date'):
+        leave.end_date = parse_date(d['end_date']) or leave.end_date
+    if 'clinic' in d:
+        leave.clinic_id = d.get('clinic') or None
+    if 'start_time' in d:
+        leave.start_time = d.get('start_time') or None
+    if 'end_time' in d:
+        leave.end_time = d.get('end_time') or None
+    leave.status = 'pending'
+    leave.reject_reason = ''
+    leave.approved_by = None
+    leave.approved_at = None
+    leave.save()
+    try:
+        from apps.chat.notifications import send_notification_to_roles
+        send_notification_to_roles(
+            _leave_approver_roles(leave.user.role), 'leave_pending',
+            title=f'Đơn nghỉ (sửa & gửi lại) từ {leave.user.get_full_name() or leave.user.email}',
+            body=f'{leave.get_leave_type_display()} · {leave.start_date} → {leave.end_date}',
+            data={'leave_id': leave.id},
+        )
+    except Exception:
+        pass
+    return Response(LeaveRequestSerializer(leave, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def approve_leave(request, pk):
     """
     POST /api/attendance/leaves/{id}/approve/

@@ -453,6 +453,40 @@ def _tncn(assessable):
     return tax
 
 
+def _approved_leave_in_month(user, year, month):
+    """Nghỉ phép ĐÃ DUYỆT rơi trong tháng. Trả về (set ngày nghỉ full-day, tổng công nghỉ).
+    Quy đổi: cả ngày=1, nửa ngày=0.5, theo giờ=giờ/8. Dùng để: loại ngày đã xin nghỉ khỏi
+    'vắng không phép' (nghỉ phép KHÔNG bị phạt) + biết có dữ liệu nghỉ hay chưa.
+    Policy phòng khám (chốt 2026-11): CỨ NGHỈ LÀ KHÔNG TÍNH CÔNG ngày đó (chưa có phép năm hưởng lương)."""
+    import calendar, datetime as dt
+    from apps.attendance.models import LeaveRequest
+    first = dt.date(year, month, 1)
+    last = dt.date(year, month, calendar.monthrange(year, month)[1])
+    full_dates = set()
+    total = 0.0
+    for lv in LeaveRequest.objects.filter(user=user, status='approved',
+                                          start_date__lte=last, end_date__gte=first):
+        s = lv.start_date if lv.start_date > first else first
+        e = lv.end_date if lv.end_date < last else last
+        if e < s:
+            continue
+        if lv.duration_type in ('half_morning', 'half_afternoon'):
+            total += 0.5
+        elif lv.duration_type == 'hourly':
+            if lv.start_time and lv.end_time:
+                hrs = (lv.end_time.hour + lv.end_time.minute / 60.0) - (lv.start_time.hour + lv.start_time.minute / 60.0)
+                total += max(0.0, min(hrs / 8.0, 1.0))
+            else:
+                total += 0.5
+        else:
+            d = s
+            while d <= e:
+                full_dates.add(d)
+                total += 1.0
+                d += dt.timedelta(days=1)
+    return full_dates, total
+
+
 def _calculate_one(user, month, year, overwrite=False):
     """Tính lương 3P cho 1 nhân viên. Returns (instance, created) hoặc (None, False)."""
     existing = MonthlySalary.objects.filter(user=user, month=month, year=year).first()
@@ -466,26 +500,39 @@ def _calculate_one(user, month, year, overwrite=False):
     except SalaryConfig.DoesNotExist:
         return None, False
 
-    # 1. Chấm công
+    # 1. Chấm công + nghỉ phép (policy: CỨ NGHỈ LÀ KHÔNG TÍNH CÔNG ngày đó; nghỉ đã duyệt KHÔNG phạt)
     from apps.attendance.models import AttendanceRecord, ShiftAssignment
-    import calendar
+    import calendar, datetime as dt
     att_qs = AttendanceRecord.objects.filter(user=user, date__year=year, date__month=month)
-    actual_days = att_qs.exclude(status='absent').count()
-    absent_days = att_qs.filter(status='absent').count()
-    late_minutes_total = sum(r.late_minutes for r in att_qs)
+
+    # Ngày nghỉ phép ĐÃ DUYỆT trong tháng
+    leave_dates, leave_days = _approved_leave_in_month(user, year, month)
+
+    PRESENT = ('on_time', 'late', 'early')
+    present_days = att_qs.filter(status__in=PRESENT).count()   # ngày thật sự đi làm = hưởng công
+    # Vắng KHÔNG phép (trừ công + phạt). Loại ngày đã có đơn nghỉ duyệt → nghỉ phép KHÔNG bị phạt.
+    absent_days = att_qs.filter(status='absent').exclude(date__in=leave_dates).count()
+    late_minutes_total = sum(r.late_minutes for r in att_qs.filter(status__in=PRESENT))
 
     working_days = ShiftAssignment.objects.filter(
         user=user, date__year=year, date__month=month,
     ).values('date').distinct().count()
     if working_days == 0:
-        import datetime as dt
         working_days = sum(
             1 for d in range(1, calendar.monthrange(year, month)[1] + 1)
             if dt.date(year, month, d).weekday() < 6
         )
 
-    # Khi chua cham cong (actual_days=0) => tra full P1/P2 theo cau hinh (chua khau tru cong).
-    ratio = (actual_days / working_days) if working_days and actual_days else (1.0 if actual_days == 0 else 0.0)
+    # Công hưởng lương = ngày đi làm thật (nghỉ phép & vắng đều KHÔNG hưởng công).
+    actual_days = present_days
+    # An toàn: CHƯA có bất kỳ dữ liệu chấm công/nghỉ nào ⇒ coi như đi đủ (chưa bật chấm công) ⇒ trả full P1/P2.
+    has_att_data = att_qs.exists() or leave_days > 0
+    if not has_att_data:
+        ratio = 1.0
+    elif working_days:
+        ratio = min(present_days / working_days, 1.0)
+    else:
+        ratio = 0.0
 
     # 2. P1 — Lương vị trí (chia theo công)
     base = Decimal(str(round(float(cfg.base_salary) * ratio)))
