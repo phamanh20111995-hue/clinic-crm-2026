@@ -113,12 +113,12 @@ export default function Luong3PTab() {
 function BangLuong() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear]   = useState(now.getFullYear())
-  const [data, setData]   = useState({ records: [], total_payout: 0, total_staff: 0, approved: 0, paid: 0, draft: 0 })
+  const [data, setData]   = useState({ records: [], total_payout: 0, total_advance: 0, total_thuc_lanh: 0, total_staff: 0, approved: 0, paid: 0, draft: 0 })
   const [loading, setLoading] = useState(false)
 
   const load = () => getSalaryMonthly({ year, month }).then(r => {
     const d = r.data || {}
-    setData({ records: d.records ?? (Array.isArray(d) ? d : []), total_payout: d.total_payout ?? 0, total_staff: d.total_staff ?? 0, approved: d.approved ?? 0, paid: d.paid ?? 0, draft: d.draft ?? 0 })
+    setData({ records: d.records ?? (Array.isArray(d) ? d : []), total_payout: d.total_payout ?? 0, total_advance: d.total_advance ?? 0, total_thuc_lanh: d.total_thuc_lanh ?? 0, total_staff: d.total_staff ?? 0, approved: d.approved ?? 0, paid: d.paid ?? 0, draft: d.draft ?? 0 })
   }).catch(() => {})
   useEffect(() => { load() }, [month, year])
 
@@ -142,10 +142,10 @@ function BangLuong() {
   const paged = recs.slice(pg.slice[0], pg.slice[1])
 
   const stats = statsGrid([
-    { label: 'Tổng chi lương', value: fmt(data.total_payout) + 'đ', sub: `${data.total_staff} nhân sự · T${month}/${year}`, accent: '#6d28d9' },
-    { label: 'Nháp', value: String(data.draft), sub: 'Chờ duyệt', accent: '#1e40af' },
-    { label: 'Đã duyệt', value: String(data.approved), sub: 'Chờ thanh toán', accent: '#854d0e' },
-    { label: 'Đã thanh toán', value: String(data.paid), sub: 'Hoàn tất', accent: '#15803d' },
+    { label: 'Tổng thực nhận', value: fmt(data.total_payout) + 'đ', sub: `${data.total_staff} nhân sự · T${month}/${year}`, accent: '#6d28d9' },
+    { label: 'Tạm ứng đã trừ', value: (data.total_advance > 0 ? '−' : '') + fmt(data.total_advance) + 'đ', sub: 'Ứng lương trong tháng', accent: '#b45309' },
+    { label: 'Còn phải chi (Thực lãnh)', value: fmt(data.total_thuc_lanh || data.total_payout) + 'đ', sub: 'Sau khi trừ tạm ứng', accent: '#15803d' },
+    { label: 'Đã thanh toán', value: `${data.paid}/${data.total_staff}`, sub: `${data.draft} nháp · ${data.approved} đã duyệt`, accent: '#1e40af' },
   ])
   const toolbar = monthYearBar(month, setMonth, year, setYear, (
     <>
@@ -160,15 +160,15 @@ function BangLuong() {
   return (
     <KetoanListShell stats={stats} toolbar={toolbar}
       pagination={{ page: pg.page, pageSize: pg.pageSize, count: recs.length, onPage: pg.setPage, onPageSize: pg.setPageSize }}>
-      <table style={{ ...tbl, minWidth: 1240 }}>
+      <table style={{ ...tbl, minWidth: 1400 }}>
         <thead><tr>
           <th style={th}>Nhân sự</th><th style={th}>Vai trò</th><th style={thR}>Công</th>
           <th style={thR}>P1 · Vị trí</th><th style={thR}>P2 · Năng lực+PC</th><th style={thR}>P3 · Hiệu suất</th>
-          <th style={thR}>Khấu trừ</th><th style={thR}>BH (10.5%)</th><th style={thR}>TNCN</th><th style={thR}>Thực nhận</th><th style={th}>Trạng thái</th><th style={thAction}></th>
+          <th style={thR}>Khấu trừ</th><th style={thR}>BH (10.5%)</th><th style={thR}>TNCN</th><th style={thR}>Thực nhận</th><th style={thR}>Tạm ứng</th><th style={thR}>Thực lãnh</th><th style={th}>Trạng thái</th><th style={thAction}></th>
         </tr></thead>
         <tbody>
           {paged.length === 0 ? (
-            <tr><td style={{ ...td, textAlign: 'center', color: '#9ca3af', padding: 40 }} colSpan={12}>Chưa có bảng lương — bấm <b>Tính lương tháng</b></td></tr>
+            <tr><td style={{ ...td, textAlign: 'center', color: '#9ca3af', padding: 40 }} colSpan={14}>Chưa có bảng lương — bấm <b>Tính lương tháng</b></td></tr>
           ) : paged.map(r => (
             <tr key={r.id} style={{ cursor: 'default' }}>
               <td style={td}><b style={{ color: '#0f2044' }}>{r.user_name}</b></td>
@@ -180,7 +180,9 @@ function BangLuong() {
               <td style={{ ...tdR, color: r.deductions > 0 ? '#dc2626' : '#94a3b8' }}>{r.deductions > 0 ? '−' + fmt(r.deductions) : '0'}</td>
               <td style={{ ...tdR, color: r.bh_deduct > 0 ? '#dc2626' : '#94a3b8' }} title="BHXH 8% + BHYT 1.5% + BHTN 1%">{r.bh_deduct > 0 ? '−' + fmt(r.bh_deduct) : '0'}</td>
               <td style={{ ...tdR, color: r.tncn_deduct > 0 ? '#dc2626' : '#94a3b8' }} title="Thuế TNCN lũy tiến">{r.tncn_deduct > 0 ? '−' + fmt(r.tncn_deduct) : '0'}</td>
-              <td style={{ ...tdR, fontWeight: 700, color: '#0f2044' }}>{fmt(r.total)}đ</td>
+              <td style={{ ...tdR, fontWeight: 600, color: '#334155' }} title="Thực nhận (lương sau BH, TNCN)">{fmt(r.total)}</td>
+              <td style={{ ...tdR, color: r.advance_deduct > 0 ? '#dc2626' : '#94a3b8' }} title="Tạm ứng đã chi trong tháng">{r.advance_deduct > 0 ? '−' + fmt(r.advance_deduct) : '0'}</td>
+              <td style={{ ...tdR, fontWeight: 700, color: '#0f2044' }} title="Thực lãnh = Thực nhận − Tạm ứng">{fmt(r.thuc_lanh ?? r.total)}đ</td>
               <td style={td}>
                 <span style={{ background: r.status === 'paid' ? '#dcfce7' : r.status === 'approved' ? '#fef9c3' : '#e0f2fe', color: r.status === 'paid' ? '#15803d' : r.status === 'approved' ? '#854d0e' : '#0369a1', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600 }}>{r.status_display || r.status}</span>
               </td>

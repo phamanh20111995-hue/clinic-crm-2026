@@ -82,6 +82,7 @@ class MonthlySalary(models.Model):
     deductions = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='Khấu trừ kỷ luật (đi muộn/vắng)')
     bh_deduct = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='Bảo hiểm bắt buộc NV đóng (10.5%)')
     tncn_deduct = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='Thuế TNCN lũy tiến')
+    advance_deduct = models.DecimalField(max_digits=12, decimal_places=0, default=0, help_text='Tạm ứng đã chi trong tháng (trừ ra Thực lãnh)')
     bonus = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     total = models.DecimalField(max_digits=12, decimal_places=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')

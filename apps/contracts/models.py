@@ -392,6 +392,8 @@ class ExpenseRequest(models.Model):
     chung_tu_note = models.CharField(max_length=255, blank=True, help_text='Mo ta chung tu neu chua upload anh')
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='cho_duyet')
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='expense_requests')
+    # Tam ung luong: nguoi duoc ung (de tru vao Thuc lanh thang do). Trong = chinh nguoi de xuat
+    advance_for = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='advances_received', help_text='Nguoi duoc tam ung (chi khi category=luong_ung)')
     # Chi (payout) khi da duyet xong
     paid_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='expenses_paid')
     paid_at = models.DateField(null=True, blank=True)

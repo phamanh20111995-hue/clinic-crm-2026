@@ -3,6 +3,7 @@ import { IconX, IconFileInvoice, IconArrowRight } from '@tabler/icons-react'
 import toast from 'react-hot-toast'
 import { createExpense, editExpense, uploadExpenseDoc, EXPENSE_CATEGORIES } from '../../../api/expenses'
 import { getClinics } from '../../../api/clinics'
+import { getSalaryConfigs } from '../../../api/ketoan'
 
 const fmt = n => Number(n ?? 0).toLocaleString('vi-VN')
 
@@ -49,11 +50,18 @@ export default function ChiModal({ onClose, onDone, editing, userRole }) {
   const [uploading, setUploading] = useState(false)
   const [payeeBank, setPayeeBank] = useState(editing?.payee_bank ?? '')
   const [dueDate, setDueDate] = useState(editing?.due_date ?? '')
+  const [advanceFor, setAdvanceFor] = useState(editing?.advance_for ?? '')
+  const [staff, setStaff] = useState([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { getClinics().then(r => setClinics(r.data?.results ?? r.data ?? [])).catch(() => {}) }, [])
 
   const isAdvance = category === 'luong_ung'
+  useEffect(() => {
+    if (isAdvance && staff.length === 0) {
+      getSalaryConfigs().then(r => setStaff(r.data?.results ?? r.data ?? [])).catch(() => {})
+    }
+  }, [isAdvance])
   const chain = previewChain(amount, userRole)
   const lbl = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }
   const inp = { width: '100%', border: '1px solid #dde3ef', borderRadius: 7, padding: '8px 10px', fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }
@@ -74,6 +82,7 @@ export default function ChiModal({ onClose, onDone, editing, userRole }) {
     if (!title.trim()) return toast.error('Nhập nội dung chi')
     if (Number(amount || 0) <= 0) return toast.error('Nhập số tiền')
     if (method === 'installment' && Number(soKy || 0) < 1) return toast.error('Nhập số kỳ trả góp')
+    if (isAdvance && !advanceFor) return toast.error('Chọn nhân viên được tạm ứng')
     setSaving(true)
     const data = {
       clinic_id: clinic || null,
@@ -85,6 +94,7 @@ export default function ChiModal({ onClose, onDone, editing, userRole }) {
       due_date: dueDate || null,
       so_ky: method === 'installment' ? Number(soKy) : 0,
       ky_dau: method === 'installment' ? (kyDau || null) : null,
+      advance_for: isAdvance ? (advanceFor || null) : null,
     }
     try {
       if (editing) await editExpense(editing.id, data)
@@ -121,6 +131,17 @@ export default function ChiModal({ onClose, onDone, editing, userRole }) {
               </select>
             </div>
           </div>
+
+          {isAdvance && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 12px' }}>
+              <label style={lbl}>Ứng cho nhân viên *</label>
+              <select value={advanceFor} onChange={e => setAdvanceFor(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
+                <option value="">— Chọn người được ứng —</option>
+                {staff.map(s => <option key={s.user} value={s.user}>{s.user_name}</option>)}
+              </select>
+              <div style={{ fontSize: 11, color: '#92400e', marginTop: 5 }}>Số tiền này sẽ tự trừ vào <b>Thực lãnh</b> của nhân viên trong tháng chi.</div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>

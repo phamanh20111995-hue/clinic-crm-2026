@@ -35,6 +35,7 @@ class MonthlySalarySerializer(serializers.ModelSerializer):
     p1_position = serializers.DecimalField(source='base', max_digits=12, decimal_places=0, read_only=True)
     p2_person = serializers.SerializerMethodField()
     p3_performance = serializers.SerializerMethodField()
+    thuc_lanh = serializers.SerializerMethodField()   # Thực lãnh = Thực nhận (total) − tạm ứng
 
     class Meta:
         model = MonthlySalary
@@ -43,7 +44,7 @@ class MonthlySalarySerializer(serializers.ModelSerializer):
             'month', 'year',
             'working_days', 'actual_days', 'late_minutes_total', 'absent_days',
             'base', 'competency', 'allowance',
-            'commission', 'tua_income', 'deductions', 'bh_deduct', 'tncn_deduct', 'bonus', 'total',
+            'commission', 'tua_income', 'deductions', 'bh_deduct', 'tncn_deduct', 'advance_deduct', 'bonus', 'total', 'thuc_lanh',
             'p1_position', 'p2_person', 'p3_performance',
             'status', 'status_display',
             'approved_by', 'approved_by_name', 'approved_at',
@@ -59,6 +60,9 @@ class MonthlySalarySerializer(serializers.ModelSerializer):
 
     def get_p3_performance(self, obj):
         return int(obj.commission or 0) + int(obj.tua_income or 0) + int(obj.bonus or 0)
+
+    def get_thuc_lanh(self, obj):
+        return max(int(obj.total or 0) - int(obj.advance_deduct or 0), 0)
 
     def get_approved_by_name(self, obj):
         if obj.approved_by:

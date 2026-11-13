@@ -418,6 +418,8 @@ def monthly_salary(request):
         'year': year, 'month': month,
         'total_staff': qs.count(),
         'total_payout': sum(float(r['total']) for r in data),
+        'total_advance': sum(float(r.get('advance_deduct') or 0) for r in data),
+        'total_thuc_lanh': sum(float(r.get('thuc_lanh') or 0) for r in data),
         'approved': qs.filter(status='approved').count(),
         'paid': qs.filter(status='paid').count(),
         'draft': qs.filter(status='draft').count(),
@@ -451,6 +453,18 @@ def _tncn(assessable):
         else:
             break
     return tax
+
+
+def _advance_for(user, year, month):
+    """Tong tam ung luong DA CHI cua user trong thang (de xuat chi loai 'luong_ung', status da_chi).
+    Ung cho ai = advance_for; neu khong set thi mac dinh = nguoi tao (requested_by)."""
+    from apps.contracts.models import ExpenseRequest
+    from django.db.models import Q
+    qs = ExpenseRequest.objects.filter(
+        category='luong_ung', status='da_chi', is_deleted=False,
+        paid_at__year=year, paid_at__month=month,
+    ).filter(Q(advance_for=user) | (Q(advance_for__isnull=True) & Q(requested_by=user)))
+    return sum(int(e.amount) for e in qs)
 
 
 def _approved_leave_in_month(user, year, month):
@@ -566,6 +580,9 @@ def _calculate_one(user, month, year, overwrite=False):
     # 8. Thực nhận (net) = gross − khấu trừ kỷ luật − BH − TNCN
     total = max(gross - deductions - bh_deduct - tncn_deduct, Decimal('0'))
 
+    # 9. Tạm ứng đã chi trong tháng (trừ ra Thực lãnh, KHÔNG đổi Thực nhận)
+    advance_deduct = Decimal(str(_advance_for(user, year, month)))
+
     salary, created = MonthlySalary.objects.update_or_create(
         user=user, month=month, year=year,
         defaults={
@@ -573,6 +590,7 @@ def _calculate_one(user, month, year, overwrite=False):
             'late_minutes_total': late_minutes_total, 'absent_days': absent_days,
             'base': base, 'competency': competency, 'allowance': allowance,
             'commission': commission, 'tua_income': tua_income, 'bonus': bonus,
+            'advance_deduct': advance_deduct,
             'deductions': deductions, 'bh_deduct': bh_deduct, 'tncn_deduct': tncn_deduct,
             'total': total, 'status': 'draft',
         },

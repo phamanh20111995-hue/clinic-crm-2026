@@ -150,6 +150,8 @@ def _expense_row(e, user=None):
         'requested_by_name': e.requested_by.display_name if e.requested_by_id else '',
         'requested_by_role': e.requested_by.role if e.requested_by_id else '',
         'requested_by_role_display': e.requested_by.get_role_display() if e.requested_by_id else '',
+        'advance_for': e.advance_for_id,
+        'advance_for_name': (e.advance_for.display_name if e.advance_for_id else ''),
         'created_at': e.created_at.isoformat(),
         'paid_at': e.paid_at.isoformat() if e.paid_at else None,
         'paid_method': e.paid_method,
@@ -213,6 +215,7 @@ def expense_list_create(request):
                 chung_tu_note=d.get('chung_tu_note', ''),
                 status='cho_duyet' if chain else 'da_duyet',
                 requested_by=request.user,
+                advance_for_id=(d.get('advance_for') or None) if category == 'luong_ung' else None,
             )
             for step in chain:
                 ExpenseApproval.objects.create(request=e, **step)
@@ -223,7 +226,7 @@ def expense_list_create(request):
         return Response(_expense_row(e, request.user), status=201)
 
     # GET
-    qs = ExpenseRequest.objects.select_related('clinic', 'requested_by', 'paid_by').prefetch_related('approvals__approver', 'payouts__paid_by').filter(is_deleted=False)
+    qs = ExpenseRequest.objects.select_related('clinic', 'requested_by', 'paid_by', 'advance_for').prefetch_related('approvals__approver', 'payouts__paid_by').filter(is_deleted=False)
     status = request.query_params.get('status')
     category = request.query_params.get('category')
     clinic_id = request.query_params.get('clinic_id')
@@ -361,6 +364,11 @@ def expense_edit(request, pk):
         e.category = category
         e.payment_method = d.get('payment_method', e.payment_method)
         e.co_hoa_don_vat = bool(d.get('co_hoa_don_vat', e.co_hoa_don_vat))
+        if category == 'luong_ung':
+            if 'advance_for' in d:
+                e.advance_for_id = d.get('advance_for') or None
+        else:
+            e.advance_for_id = None
         e.payee_name = d.get('payee_name', e.payee_name)
         e.payee_phone = d.get('payee_phone', e.payee_phone)
         e.payee_account = d.get('payee_account', e.payee_account)
