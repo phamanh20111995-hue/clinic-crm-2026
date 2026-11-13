@@ -12,6 +12,7 @@ import {
 } from '../../../api/ketoan'
 import { getAllUsers } from '../../../api/letan'
 import KetoanListShell from '../components/KetoanListShell'
+import ChiTietCongModal from '../modals/ChiTietCongModal'
 import toast from 'react-hot-toast'
 
 const fmt = n => Number(n ?? 0).toLocaleString('vi-VN')
@@ -26,6 +27,18 @@ const SUBTABS = [
   { k: 'tua',     l: 'Đơn giá tua',      icon: IconStethoscope },
   { k: 'cung',    l: 'Lương cứng (P1·P2)', icon: IconUserDollar },
 ]
+
+// Gom vai trò → bộ phận (để lọc + xuất theo bộ phận)
+const DEPT_OF = {
+  SALE: 'Sale', LEAD_SALE: 'Sale',
+  TELE: 'Tele', TRUC_PAGE: 'Tele', LEAD_TELE: 'Tele',
+  CSKH: 'CSKH', LEAD_CSKH: 'CSKH',
+  MKT: 'Marketing', LEAD_MKT: 'Marketing',
+  LE_TAN: 'Lễ tân', KE_TOAN: 'Kế toán',
+  BS: 'Bác sĩ/KTV', KTV: 'Bác sĩ/KTV',
+  QUAN_LY: 'Quản lý', CHU_DN: 'Quản lý', HCNS: 'HCNS',
+}
+const norm = s => (s ?? '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
 
 // ── Chuẩn bảng (giống CustomerTable/Tele) ──
 const th  = { padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #eef1f6', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }
@@ -115,6 +128,10 @@ function BangLuong() {
   const [year, setYear]   = useState(now.getFullYear())
   const [data, setData]   = useState({ records: [], total_payout: 0, total_advance: 0, total_thuc_lanh: 0, total_staff: 0, approved: 0, paid: 0, draft: 0 })
   const [loading, setLoading] = useState(false)
+  const [congRow, setCongRow] = useState(null)
+  const [search, setSearch] = useState('')
+  const [dept, setDept] = useState('')
+  const [picked, setPicked] = useState(() => new Set())
 
   const load = () => getSalaryMonthly({ year, month }).then(r => {
     const d = r.data || {}
@@ -138,8 +155,35 @@ function BangLuong() {
   const recs = data.records || []
   const p2 = r => Number(r.competency || 0) + Number(r.allowance || 0)
   const p3 = r => Number(r.commission || 0) + Number(r.tua_income || 0) + Number(r.bonus || 0)
-  const pg = usePaging(recs.length, [month, year, recs.length])
-  const paged = recs.slice(pg.slice[0], pg.slice[1])
+  const depts = [...new Set(recs.map(r => DEPT_OF[r.user_role] || 'Khác'))].sort()
+  const filtered = recs.filter(r =>
+    (!dept || (DEPT_OF[r.user_role] || 'Khác') === dept) &&
+    (!search || norm(r.user_name).includes(norm(search)))
+  )
+  const pg = usePaging(filtered.length, [month, year, filtered.length, dept, search])
+  const paged = filtered.slice(pg.slice[0], pg.slice[1])
+  const toExport = picked.size ? recs.filter(r => picked.has(r.id)) : filtered
+  const togglePick = id => setPicked(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const allFilteredPicked = filtered.length > 0 && filtered.every(r => picked.has(r.id))
+  const toggleAll = () => setPicked(p => { const n = new Set(p); if (allFilteredPicked) filtered.forEach(r => n.delete(r.id)); else filtered.forEach(r => n.add(r.id)); return n })
+
+  const exportXlsx = () => {
+    if (!toExport.length) return toast.error('Không có dòng nào để xuất (kiểm tra bộ lọc)')
+    const head = ['Nhân sự', 'Bộ phận', 'Vai trò', 'Ngày đi làm', 'Công chuẩn', 'Phút muộn', 'P1 vị trí', 'P2 NL+PC', 'P3 hiệu suất', 'Khấu trừ', 'BH 10.5%', 'TNCN', 'Thực nhận', 'Tạm ứng', 'Thực lãnh', 'Trạng thái']
+    const rows = toExport.map(r => [r.user_name, DEPT_OF[r.user_role] || 'Khác', r.user_role, r.actual_days, r.working_days, r.late_minutes_total, r.base, p2(r), p3(r), r.deductions, r.bh_deduct, r.tncn_deduct, r.total, r.advance_deduct, (r.thuc_lanh ?? r.total), r.status_display || r.status])
+    const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    const numCols = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+    const sum = k => toExport.reduce((a, r) => a + Number(r[k] || 0), 0)
+    const sumTL = toExport.reduce((a, r) => a + Number(r.thuc_lanh ?? r.total ?? 0), 0)
+    let html = '<table border=1><tr>' + head.map(h => `<th style="background:#6d28d9;color:#fff">${esc(h)}</th>`).join('') + '</tr>'
+    rows.forEach(r => { html += '<tr>' + r.map((c, i) => `<td>${numCols.has(i) && c !== '' && !isNaN(c) ? Number(c).toLocaleString('vi-VN') : esc(c)}</td>`).join('') + '</tr>' })
+    html += `<tr><td colspan="12"><b>TỔNG (${toExport.length} người)</b></td><td><b>${sum('total').toLocaleString('vi-VN')}</b></td><td><b>${sum('advance_deduct').toLocaleString('vi-VN')}</b></td><td><b>${sumTL.toLocaleString('vi-VN')}</b></td><td></td></tr></table>`
+    const scope = picked.size ? '_chon' : (dept ? '_' + norm(dept).replace(/[^a-z0-9]+/g, '') : '')
+    const fname = `bang_luong_T${month}_${year}${scope}.xls`
+    const blob = new Blob(['﻿<html><head><meta charset="utf-8"></head><body>' + html + '</body></html>'], { type: 'application/vnd.ms-excel' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; a.click()
+    toast.success(`Đã xuất ${fname} (${toExport.length} người)`)
+  }
 
   const stats = statsGrid([
     { label: 'Tổng thực nhận', value: fmt(data.total_payout) + 'đ', sub: `${data.total_staff} nhân sự · T${month}/${year}`, accent: '#6d28d9' },
@@ -153,27 +197,45 @@ function BangLuong() {
         style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', border: 'none', borderRadius: 7, background: '#6d28d9', color: '#fff', fontSize: 12, fontWeight: 700, cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: loading ? .6 : 1 }}>
         <IconCalculator size={14} /> {loading ? 'Đang tính…' : 'Tính lương tháng'}
       </button>
-      <span style={{ fontSize: 10, color: '#94a3b8' }}>Tính lại cập nhật bản <b>nháp</b>; đã duyệt/đã trả giữ nguyên.</span>
+      <button onClick={exportXlsx}
+        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', border: '1px solid #15803d', borderRadius: 7, background: '#fff', color: '#15803d', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+        ⤓ Xuất Excel ({toExport.length})
+      </button>
+      <span style={{ width: 1, height: 22, background: '#dde3ef' }} />
+      {searchBar(search, setSearch, 'Tìm tên nhân sự…')}
+      <select value={dept} onChange={e => setDept(e.target.value)} style={selStyle}>
+        <option value="">Tất cả bộ phận</option>
+        {depts.map(d => <option key={d} value={d}>{d}</option>)}
+      </select>
+      {(dept || search || picked.size > 0) && (
+        <button onClick={() => { setDept(''); setSearch(''); setPicked(new Set()) }} style={navBtnStyle}>Xóa lọc</button>
+      )}
+      <span style={{ fontSize: 10, color: '#94a3b8' }}>
+        {picked.size > 0 ? `Đang chọn ${picked.size} người → Xuất chỉ xuất những người này.` : 'Lọc bộ phận/tên hoặc tick chọn người rồi Xuất. Bấm số Công để xem chi tiết.'}
+      </span>
     </>
   ))
 
   return (
+    <>
     <KetoanListShell stats={stats} toolbar={toolbar}
       pagination={{ page: pg.page, pageSize: pg.pageSize, count: recs.length, onPage: pg.setPage, onPageSize: pg.setPageSize }}>
       <table style={{ ...tbl, minWidth: 1400 }}>
         <thead><tr>
+          <th style={{ ...th, width: 32, textAlign: 'center' }}><input type="checkbox" checked={allFilteredPicked} onChange={toggleAll} style={{ cursor: 'pointer' }} title="Chọn tất cả (theo bộ lọc)" /></th>
           <th style={th}>Nhân sự</th><th style={th}>Vai trò</th><th style={thR}>Công</th>
           <th style={thR}>P1 · Vị trí</th><th style={thR}>P2 · Năng lực+PC</th><th style={thR}>P3 · Hiệu suất</th>
           <th style={thR}>Khấu trừ</th><th style={thR}>BH (10.5%)</th><th style={thR}>TNCN</th><th style={thR}>Thực nhận</th><th style={thR}>Tạm ứng</th><th style={thR}>Thực lãnh</th><th style={th}>Trạng thái</th><th style={thAction}></th>
         </tr></thead>
         <tbody>
           {paged.length === 0 ? (
-            <tr><td style={{ ...td, textAlign: 'center', color: '#9ca3af', padding: 40 }} colSpan={14}>Chưa có bảng lương — bấm <b>Tính lương tháng</b></td></tr>
+            <tr><td style={{ ...td, textAlign: 'center', color: '#9ca3af', padding: 40 }} colSpan={15}>{recs.length ? 'Không có nhân sự khớp bộ lọc' : 'Chưa có bảng lương — bấm '}{!recs.length && <b>Tính lương tháng</b>}</td></tr>
           ) : paged.map(r => (
-            <tr key={r.id} style={{ cursor: 'default' }}>
+            <tr key={r.id} style={{ cursor: 'default', background: picked.has(r.id) ? '#faf5ff' : undefined }}>
+              <td style={{ ...td, textAlign: 'center' }}><input type="checkbox" checked={picked.has(r.id)} onChange={() => togglePick(r.id)} style={{ cursor: 'pointer' }} /></td>
               <td style={td}><b style={{ color: '#0f2044' }}>{r.user_name}</b></td>
               <td style={td}><span style={{ background: '#ede9fe', color: '#6d28d9', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600 }}>{r.user_role}</span></td>
-              <td style={tdR}>{r.actual_days}/{r.working_days}</td>
+              <td style={tdR}><span onClick={() => setCongRow(r)} style={{ color: '#1d4ed8', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }} title="Xem chi tiết công">{r.actual_days}/{r.working_days}</span></td>
               <td style={tdR}>{fmt(r.base)}</td>
               <td style={tdR} title={`Năng lực ${fmt(r.competency)} + Phụ cấp ${fmt(r.allowance)}`}>{fmt(p2(r))}</td>
               <td style={tdR} title={`Hoa hồng ${fmt(r.commission)} + Tua ${fmt(r.tua_income)} + Thưởng ${fmt(r.bonus)}`}><b style={{ color: '#6d28d9' }}>{fmt(p3(r))}</b></td>
@@ -195,6 +257,8 @@ function BangLuong() {
         </tbody>
       </table>
     </KetoanListShell>
+    {congRow && <ChiTietCongModal row={congRow} month={month} year={year} onClose={() => setCongRow(null)} />}
+    </>
   )
 }
 

@@ -10,7 +10,7 @@
   --violet-h:   #5b21b6;
   --appbg:      #eef1f6;
   --cborder:    #dde3ef;
-  --sidebar-w:  58px;
+  --sidebar-w:  244px;
   --topbar-h:   46px;
   --subnav-h:   40px;
 }
@@ -151,6 +151,28 @@
     line-height: 1.1;
     text-align: center;
   }
+
+  /* Thanh cuộn mảnh cho sidebar (thay thanh mặc định to/xám) */
+  .sidebar-v2 nav {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.18) transparent;
+  }
+  .sidebar-v2 nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-v2 nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-v2 nav::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,.16);
+    border-radius: 3px;
+  }
+  .sidebar-v2 nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.3); }
+
+  /* Thanh cuộn ngang mảnh cho hàng tab subnav (workspace) */
+  .subnav-scroll::-webkit-scrollbar { height: 6px; }
+  .subnav-scroll::-webkit-scrollbar-track { background: transparent; }
+  .subnav-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  .subnav-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
   /* ── v2 Topbar (46px) ── */
   .topbar-v2 {

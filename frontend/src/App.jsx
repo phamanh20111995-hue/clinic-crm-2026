@@ -23,6 +23,8 @@ import KetoanPage        from './pages/ketoan/KetoanPage'
 import MarketingPage     from './pages/marketing/MarketingPage'
 import CskhPage          from './pages/cskh/CskhPage'
 import SchedulePage      from './pages/schedule/SchedulePage'
+import HcnsPage          from './pages/hcns/HcnsPage'
+import PlaceholderPage   from './components/common/PlaceholderPage'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore(s => s.user)
@@ -36,6 +38,11 @@ function HomeRedirect() {
   const home = getHomeRoute(getUserRole(user))
   return <Navigate to={home} replace />
 }
+
+// Shortcut: shell page bọc PrivateRoute
+const Shell = (title, subtitle, icon) => (
+  <PrivateRoute><PlaceholderPage title={title} subtitle={subtitle} icon={icon} /></PrivateRoute>
+)
 
 export default function App() {
   return (
@@ -67,6 +74,22 @@ export default function App() {
         <Route path="/customers/:id"element={<PrivateRoute><CustomerDetailPage /></PrivateRoute>} />
         <Route path="/chat"         element={<PrivateRoute><ChatPage /></PrivateRoute>} />
         <Route path="/lich-lam-viec" element={<PrivateRoute><SchedulePage /></PrivateRoute>} />
+
+        {/* ── HCNS workspace (mới) ── */}
+        <Route path="/hcns"         element={<PrivateRoute><HcnsPage /></PrivateRoute>} />
+
+        {/* ── Module shell mới (Phase A — chưa nối backend) ── */}
+        <Route path="/data"        element={Shell('Data', 'Quản lý data thô theo nguồn — tách từ Tele (cùng nguồn dữ liệu, khác view).', '🔀')} />
+        <Route path="/bac-si-ktv"  element={Shell('Bác sĩ / KTV', 'Workspace chuyên môn Bác sĩ & KTV.', '🩺')} />
+        <Route path="/quan-ly"     element={Shell('Quản lý', 'Khu điều hành của Quản lý cơ sở.', '🛡️')} />
+        <Route path="/live-chat"   element={Shell('Live Chat', 'Chat với khách từ Facebook, Zalo, Website... (khác Chat nội bộ).', '💬')} />
+        <Route path="/rio-rewards" element={Shell('RIO Rewards', 'Loyalty khách hàng: tích điểm, ví điểm, hạng, đổi quà, voucher, referral.', '🎁')} />
+        <Route path="/rnd"         element={Shell('R&D', 'Nghiên cứu & phát triển dịch vụ/phác đồ: đề tài, SOP, pilot, safety.', '🧪')} />
+        <Route path="/ai-hub"      element={Shell('AI Hub', 'Trung tâm công cụ AI dùng chung toàn CRM.', '🤖')} />
+        <Route path="/bao-cao"     element={Shell('Báo cáo & Phân tích', 'Tổng hợp dữ liệu quan trọng từ nhiều bộ phận cho quản lý.', '📊')} />
+        <Route path="/ket-noi"     element={Shell('Kết nối kênh', 'Kết nối Facebook, Zalo, Website, payment gateway...', '🔌')} />
+        <Route path="/du-lieu"     element={Shell('Dữ liệu & Danh mục', 'Quản lý danh mục dùng chung: nguồn, tỉnh/thành, nhóm KH, dịch vụ...', '🗂️')} />
+        <Route path="/cai-dat"     element={Shell('Cài đặt hệ thống', 'Cấu hình chung của CRM.', '⚙️')} />
 
         {/* ── v1 screens kept alive (not linked from sidebar) ── */}
         <Route path="/tele-queue"   element={<PrivateRoute><TeleQueuePage /></PrivateRoute>} />

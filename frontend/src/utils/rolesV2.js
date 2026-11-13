@@ -1,16 +1,28 @@
-// v2 role config — Tabler Icons + menu map
+// v2 role config — Tabler Icons + GROUPED sidebar nav (Phase A: cấu trúc 4 nhóm)
 import {
-  IconUsers,
+  IconLayoutDashboard,
+  IconBuildingCommunity,
+  IconDatabase,
   IconPhone,
-  IconChartBar,
-  IconMessages,
-  IconClipboardList,
-  IconShoppingCart,
-  IconCalculator,
   IconSpeakerphone,
-  IconStethoscope,
   IconHeart,
+  IconShoppingCart,
+  IconClipboardList,
+  IconStethoscope,
+  IconCalculator,
+  IconUserCog,
+  IconUserShield,
+  IconUsers,
+  IconHeadset,
+  IconMessages,
   IconCalendarEvent,
+  IconGift,
+  IconFlask,
+  IconRobot,
+  IconChartBar,
+  IconPlugConnected,
+  IconListDetails,
+  IconSettings,
 } from '@tabler/icons-react'
 
 export const ROLES = {
@@ -29,6 +41,7 @@ export const ROLES = {
   MKT:       { label: 'Marketing',  short: 'MK',  accent: '#059669' },
   BS:        { label: 'Bác sĩ',     short: 'BS',  accent: '#991b1b' },
   KTV:       { label: 'KTV',        short: 'KTV', accent: '#0369a1' },
+  HCNS:      { label: 'HCNS',       short: 'HC',  accent: '#0891b2' },
 }
 
 export const getRoleInfo   = (role) => ROLES[role] ?? { label: role, short: '?', accent: '#6b7280' }
@@ -52,6 +65,7 @@ const ROLE_BADGE = {
   MKT:       'bg-emerald-100 text-emerald-800',
   BS:        'bg-red-100 text-red-800',
   KTV:       'bg-sky-100 text-sky-800',
+  HCNS:      'bg-cyan-100 text-cyan-800',
 }
 export const getRoleColor = (role) => ROLE_BADGE[role] ?? 'bg-gray-100 text-gray-800'
 
@@ -69,6 +83,7 @@ export const getHomeRoute = (role) => {
     LEAD_MKT:  '/marketing',
     CSKH:      '/cskh',
     LEAD_CSKH: '/cskh',
+    HCNS:      '/hcns',
     BS:        '/kpi',
     KTV:       '/kpi',
     QUAN_LY:   '/kpi',
@@ -77,87 +92,85 @@ export const getHomeRoute = (role) => {
   return map[role] ?? '/kpi'
 }
 
-// ── Sidebar nav items (v2 — only v2 screens) ─────────────────
-// v1 pages (rooms, contracts, attendance, salary, appointments standalone) removed from sidebar;
-// their files still exist but are not linked.
-const ALL_NAV = [
+// ── Sidebar nav — CẤU TRÚC NHÓM (Phase A) ────────────────────
+// roles: null = mọi người; mảng = chỉ các role đó.
+// st: 'ok' = route thật đang chạy; 'new' = shell mới.
+const ADMIN = ['QUAN_LY', 'CHU_DN']
+
+export const NAV_GROUPS = [
   {
-    key: 'customers',
-    path: '/customers',
-    label: 'Khách hàng',
-    Icon: IconUsers,
-    roles: ['QUAN_LY', 'CHU_DN', 'KE_TOAN'],
+    header: 'Tổng quan',
+    items: [
+      { key: 'tongquan', path: '/kpi', label: 'Tổng quan', Icon: IconLayoutDashboard, roles: null, st: 'ok' },
+    ],
   },
   {
-    key: 'tele',
-    path: '/tele',
-    label: 'Tele / Data',
-    Icon: IconPhone,
-    roles: ['TELE', 'TRUC_PAGE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN'],
+    header: 'Công việc',
+    expand: {
+      key: 'cvbp', label: 'Công việc theo bộ phận', Icon: IconBuildingCommunity,
+      items: [
+        { key: 'data',    path: '/data',       label: 'Data',         Icon: IconDatabase,       roles: ['TELE', 'TRUC_PAGE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN'], st: 'new' },
+        { key: 'tele',    path: '/tele',       label: 'Tele',         Icon: IconPhone,          roles: ['TELE', 'TRUC_PAGE', 'LEAD_TELE', 'QUAN_LY', 'CHU_DN'], st: 'ok' },
+        { key: 'marketing', path: '/marketing', label: 'Marketing',   Icon: IconSpeakerphone,   roles: ['MKT', 'LEAD_MKT', 'QUAN_LY', 'CHU_DN'], st: 'ok' },
+        { key: 'cskh',    path: '/cskh',       label: 'CSKH',         Icon: IconHeart,          roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'], st: 'ok' },
+        { key: 'sale',    path: '/sale',       label: 'Sale',         Icon: IconShoppingCart,   roles: ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN'], st: 'ok' },
+        { key: 'letan',   path: '/letan',      label: 'Lễ tân',       Icon: IconClipboardList,  roles: ['LE_TAN', 'QUAN_LY', 'CHU_DN'], st: 'ok' },
+        { key: 'bskt',    path: '/bac-si-ktv', label: 'Bác sĩ / KTV', Icon: IconStethoscope,    roles: ['BS', 'KTV', 'QUAN_LY', 'CHU_DN'], st: 'new' },
+        { key: 'ketoan',  path: '/ketoan',     label: 'Kế toán',      Icon: IconCalculator,     roles: ['KE_TOAN', 'QUAN_LY', 'CHU_DN'], st: 'ok' },
+        { key: 'hcns',    path: '/hcns',       label: 'HCNS',         Icon: IconUserCog,        roles: ['HCNS', 'QUAN_LY', 'CHU_DN'], st: 'new' },
+        { key: 'quanly',  path: '/quan-ly',    label: 'Quản lý',      Icon: IconUserShield,     roles: ADMIN, st: 'new' },
+      ],
+    },
   },
   {
-    key: 'letan',
-    path: '/letan',
-    label: 'Lễ tân',
-    Icon: IconClipboardList,
-    roles: ['LE_TAN', 'QUAN_LY', 'CHU_DN'],
+    header: 'Hệ thống chung',
+    items: [
+      { key: 'khachhang', path: '/customers',    label: 'Khách hàng',          Icon: IconUsers,         roles: ['QUAN_LY', 'CHU_DN', 'KE_TOAN'], st: 'ok' },
+      { key: 'livechat',  path: '/live-chat',    label: 'Live Chat',           Icon: IconHeadset,       roles: ADMIN, st: 'new', badge: '24' },
+      { key: 'chatnoibo', path: '/chat',         label: 'Chat nội bộ',         Icon: IconMessages,      roles: null, st: 'ok' },
+      { key: 'lichdx',    path: '/lich-lam-viec', label: 'Lịch & Đề xuất',     Icon: IconCalendarEvent, roles: null, st: 'ok' },
+      { key: 'rewards',   path: '/rio-rewards',  label: 'RIO Rewards',         Icon: IconGift,          roles: ADMIN, st: 'new' },
+      { key: 'rnd',       path: '/rnd',          label: 'R&D',                 Icon: IconFlask,         roles: ADMIN, st: 'new' },
+      { key: 'aihub',     path: '/ai-hub',       label: 'AI Hub',              Icon: IconRobot,         roles: ADMIN, st: 'new', beta: true },
+      { key: 'baocao',    path: '/bao-cao',      label: 'Báo cáo & P.tích',    Icon: IconChartBar,      roles: ADMIN, st: 'new' },
+    ],
   },
   {
-    key: 'cskh',
-    path: '/cskh',
-    label: 'CSKH',
-    Icon: IconHeart,
-    roles: ['CSKH', 'LEAD_CSKH', 'QUAN_LY', 'CHU_DN'],
-  },
-  {
-    key: 'sale',
-    path: '/sale',
-    label: 'Sale',
-    Icon: IconShoppingCart,
-    roles: ['SALE', 'LEAD_SALE', 'QUAN_LY', 'CHU_DN'],
-  },
-  {
-    key: 'ketoan',
-    path: '/ketoan',
-    label: 'Kế toán',
-    Icon: IconCalculator,
-    roles: ['KE_TOAN', 'QUAN_LY', 'CHU_DN'],
-  },
-  {
-    key: 'marketing',
-    path: '/marketing',
-    label: 'Marketing',
-    Icon: IconSpeakerphone,
-    roles: ['MKT', 'LEAD_MKT', 'QUAN_LY', 'CHU_DN'],
-  },
-  {
-    key: 'kpi',
-    path: '/kpi',
-    label: 'KPI',
-    Icon: IconChartBar,
-    // All roles see KPI (their own dashboard)
-    roles: null,
-  },
-  {
-    key: 'chat',
-    path: '/chat',
-    label: 'Chat',
-    Icon: IconMessages,
-    roles: null,
-  },
-  {
-    key: 'lich-lam-viec',
-    path: '/lich-lam-viec',
-    label: 'Lịch & Đề xuất',
-    Icon: IconCalendarEvent,
-    roles: null,
+    header: 'Kết nối & hệ thống',
+    items: [
+      { key: 'ketnoi', path: '/ket-noi', label: 'Kết nối kênh',       Icon: IconPlugConnected, roles: ADMIN, st: 'new' },
+      { key: 'dulieu', path: '/du-lieu', label: 'Dữ liệu & DM',       Icon: IconListDetails,   roles: ADMIN, st: 'new' },
+      { key: 'caidat', path: '/cai-dat', label: 'Cài đặt',            Icon: IconSettings,      roles: ADMIN, st: 'new' },
+    ],
   },
 ]
 
-export const getNavItems = (role) =>
-  ALL_NAV.filter((item) => !item.roles || item.roles.includes(role))
+const canSee = (item, role) => !item.roles || item.roles.includes(role)
 
-// v1 compat shim
+// Trả về các nhóm đã lọc theo role (ẩn mục/nhóm rỗng)
+export const getNavGroups = (role) =>
+  NAV_GROUPS
+    .map((g) => {
+      if (g.expand) {
+        const items = g.expand.items.filter((it) => canSee(it, role))
+        if (!items.length) return null
+        return { header: g.header, expand: { ...g.expand, items } }
+      }
+      const items = (g.items || []).filter((it) => canSee(it, role))
+      if (!items.length) return null
+      return { header: g.header, items }
+    })
+    .filter(Boolean)
+
+// v1 compat shim — flat list (một số nơi cũ còn import getNavItems)
+export const getNavItems = (role) => {
+  const flat = []
+  for (const g of NAV_GROUPS) {
+    if (g.expand) { for (const it of g.expand.items) if (canSee(it, role)) flat.push(it) }
+    else for (const it of (g.items || [])) if (canSee(it, role)) flat.push(it)
+  }
+  return flat
+}
 export { getNavItems as getNavItemsV1 }
 
 /**

@@ -5,6 +5,8 @@ export const createLeave  = (data)   => api.post('/api/attendance/leaves/', data
 export const approveLeave = (id, data) => api.post(`/api/attendance/leaves/${id}/approve/`, data)
 export const resubmitLeave = (id, data) => api.post(`/api/attendance/leaves/${id}/resubmit/`, data)
 
+export const getMonthlyAttendance = (params) => api.get('/api/attendance/monthly/', { params }).catch(() => ({ data: { records: [] } }))
+
 export const getShifts            = (params) => api.get('/api/attendance/shifts/', { params }).catch(() => ({ data: [] }))
 export const getShiftAssignments  = (params) => api.get('/api/attendance/shift-assignments/', { params }).catch(() => ({ data: [] }))
 export const createShiftAssignment = (data)  => api.post('/api/attendance/shift-assignments/', data)
